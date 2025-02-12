@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary 
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Main Theme Colors -->
+    <Color x:Key="Primary">#FF4444</Color>
+    <Color x:Key="Secondary">#2B2B2B</Color>
+    <Color x:Key="Background">White</Color>
+
+    <!-- Text Colors -->
+    <Color x:Key="TextPrimary">#2B2B2B</Color>
+    <Color x:Key="TextSecondary">#757575</Color>
+
+    <!-- Status Colors -->
+    <Color x:Key="Success">#4CAF50</Color>
+    <Color x:Key="Warning">#FFC107</Color>
+    <Color x:Key="Error">#FF4444</Color>
+
+    <!-- Keep existing system colors if needed -->
+    <Color x:Key="White">White</Color>
+    <Color x:Key="Black">Black</Color>
+    <Color x:Key="Gray100">#E1E1E1</Color>
+    <Color x:Key="Gray200">#C8C8C8</Color>
+    <Color x:Key="Gray300">#ACACAC</Color>
+    <Color x:Key="Gray400">#919191</Color>
+    <Color x:Key="Gray500">#6E6E6E</Color>
+    <Color x:Key="Gray600">#404040</Color>
+    <Color x:Key="Gray900">#212121</Color>
+    <Color x:Key="Gray950">#141414</Color>
+</ResourceDictionary>
