@@ -12,6 +12,10 @@
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <Style TargetType="Border" x:Key="CalendarPopupStyle">
+                <Setter Property="ZIndex" Value="9999" />
+            </Style>
+
             <!-- 值轉換器 -->
             <converters:InverseBoolToStringConverter x:Key="InverseBoolToStringConverter"/>
 

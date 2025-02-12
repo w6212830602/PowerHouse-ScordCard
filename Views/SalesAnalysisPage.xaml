@@ -4,162 +4,93 @@
              xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:vm="clr-namespace:ScoreCard.ViewModels"
              xmlns:models="clr-namespace:ScoreCard.Models"
+             xmlns:controls="clr-namespace:ScoreCard.Controls"
              x:Class="ScoreCard.Views.SalesAnalysisPage"
              x:DataType="vm:SalesAnalysisViewModel"
              BackgroundColor="#F8F9FA"
-             NavigationPage.HasNavigationBar="False">
+             Title="Sales Analysis">
 
-    <Grid RowDefinitions="Auto,Auto,*">
-        <!-- Header with Tabs -->
+    <Grid RowDefinitions="Auto,*">
+        <!-- View Type Selector and Date Range -->
         <Grid Grid.Row="0" 
-              BackgroundColor="#2D2D2D"
-              RowDefinitions="Auto,Auto">
+              Padding="20,10"
+              BackgroundColor="White"
+              ColumnDefinitions="Auto,*,Auto">
 
-            <!-- Company Name and Logo -->
-            <HorizontalStackLayout Grid.Row="0"
-                                 Padding="20,10">
-                <Label Text="PowerHouse" 
-                       TextColor="White"
-                       FontSize="20"
-                       FontAttributes="Bold"/>
-                <Label Text="DATA CENTRE GROUP"
-                       TextColor="#666666"
-                       FontSize="12"
-                       Margin="5,0,0,0"
-                       VerticalOptions="End"/>
+            <!-- Summary/Detailed Toggle -->
+            <HorizontalStackLayout Grid.Column="0">
+                <Border Stroke="#FF3B30"
+                        StrokeThickness="1"
+                        BackgroundColor="#FF3B30"
+                        StrokeShape="RoundRectangle 4,0,0,4"
+                        HeightRequest="36">
+                    <Label Text="Summary"
+                           TextColor="White"
+                           VerticalOptions="Center"
+                           Margin="20,0"/>
+                </Border>
+                <Border Stroke="#FF3B30"
+                        StrokeThickness="1"
+                        BackgroundColor="Transparent"
+                        StrokeShape="RoundRectangle 0,4,4,0"
+                        HeightRequest="36">
+                    <Label Text="Detailed"
+                           TextColor="#FF3B30"
+                           VerticalOptions="Center"
+                           Margin="20,0"/>
+                </Border>
             </HorizontalStackLayout>
 
-            <!-- Navigation Tabs -->
-            <Grid Grid.Row="1" 
-                  Padding="20,0,20,0"
-                  ColumnSpacing="20">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+            <!-- Empty Space -->
+            <BoxView Grid.Column="1"/>
 
-                <!-- Dashboard Tab -->
-                <VerticalStackLayout Grid.Column="0">
-                    <Label Text="Dashboard"
-                           TextColor="#999999"
-                           FontSize="14"
-                           Padding="0,10"/>
-                    <BoxView HeightRequest="2"
-                            Color="Transparent"/>
-                </VerticalStackLayout>
-
-                <!-- Sales Analysis Tab -->
-                <VerticalStackLayout Grid.Column="1">
-                    <Label Text="Sales Analysis"
-                           TextColor="White"
-                           FontSize="14"
-                           Padding="0,10"/>
-                    <BoxView HeightRequest="2"
-                            Color="#FF3B30"/>
-                </VerticalStackLayout>
-
-                <!-- Settings Tab -->
-                <VerticalStackLayout Grid.Column="2">
-                    <Label Text="Settings"
-                           TextColor="#999999"
-                           FontSize="14"
-                           Padding="0,10"/>
-                    <BoxView HeightRequest="2"
-                            Color="Transparent"/>
-                </VerticalStackLayout>
-            </Grid>
+            <!-- Date Picker -->
+            <controls:CustomDatePicker Grid.Column="2"
+                                     StartDate="{Binding StartDate}"
+                                     EndDate="{Binding EndDate}"/>
         </Grid>
-
-        <!-- Control Panel -->
-        <Grid Grid.Row="1" 
-              Padding="20,15"
-              BackgroundColor="White"
-              ColumnDefinitions="150,150,*,Auto"
-              ColumnSpacing="15">
-
-            <!-- Time Range Picker -->
-            <Border Grid.Column="0"
-                    Stroke="#E5E7EB"
-                    StrokeThickness="1">
-                <Picker Title="Time Range"
-                        SelectedItem="{Binding SelectedTimeRange}"
-                        Margin="10,0">
-                    <Picker.Items>
-                        <x:String>YTD</x:String>
-                        <x:String>Q1</x:String>
-                        <x:String>Q2</x:String>
-                        <x:String>Q3</x:String>
-                        <x:String>Q4</x:String>
-                    </Picker.Items>
-                </Picker>
-            </Border>
-
-            <!-- View Type Picker -->
-            <Border Grid.Column="1"
-                    Stroke="#E5E7EB"
-                    StrokeThickness="1">
-                <Picker Title="View Type"
-                        SelectedItem="{Binding SelectedViewType}"
-                        Margin="10,0">
-                    <Picker.Items>
-                        <x:String>By Product</x:String>
-                        <x:String>By Rep</x:String>
-                        <x:String>By Dept-LOB</x:String>
-                    </Picker.Items>
-                </Picker>
-            </Border>
-
-            <!-- Refresh Button -->
-            <Button Grid.Column="3"
-                    Text="Refresh"
-                    Command="{Binding RefreshCommand}"
-                    BackgroundColor="#0066CC"
-                    TextColor="White"
-                    CornerRadius="4"
-                    HeightRequest="36"
-                    Padding="20,0"/>
-        </Grid>
-
         <!-- Main Content -->
         <ScrollView Grid.Row="2">
             <VerticalStackLayout Padding="20" Spacing="20">
                 <!-- KPI Cards -->
-                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="20">
-                    <!-- Total Achievement -->
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="20">
+                    <!-- Total Sales -->
                     <Border Grid.Column="0"
                             Stroke="#E5E7EB"
                             StrokeThickness="1"
-                            StrokeShape="RoundRectangle 4"
                             BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="Total Achievement"
+                            <Label Text="Total Sales"
                                    TextColor="#666666"
                                    FontSize="14"/>
-                            <Label Text="{Binding Summary.TotalAchievement, StringFormat='${0:N0}'}"
-                                   TextColor="Black"
+                            <Label Text="$8.57M"
+                                   TextColor="#FF3B30"
                                    FontSize="24"
                                    FontAttributes="Bold"
                                    Margin="0,5,0,0"/>
+                            <Label Text="85.7% of target"
+                                   TextColor="#666666"
+                                   FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
 
-                    <!-- Achievement Rate -->
+                    <!-- YTD Achievement -->
                     <Border Grid.Column="1"
                             Stroke="#E5E7EB"
                             StrokeThickness="1"
-                            StrokeShape="RoundRectangle 4"
                             BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="Achievement Rate"
+                            <Label Text="YTD Achievement"
                                    TextColor="#666666"
                                    FontSize="14"/>
-                            <Label Text="{Binding Summary.AchievementPercentage, StringFormat='{0:N1}%'}"
+                            <Label Text="85.7%"
                                    TextColor="Black"
                                    FontSize="24"
                                    FontAttributes="Bold"
                                    Margin="0,5,0,0"/>
+                            <Label Text="vs 100% target"
+                                   TextColor="#666666"
+                                   FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
 
@@ -167,21 +98,42 @@
                     <Border Grid.Column="2"
                             Stroke="#E5E7EB"
                             StrokeThickness="1"
-                            StrokeShape="RoundRectangle 4"
                             BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
                             <Label Text="Total Margin"
                                    TextColor="#666666"
                                    FontSize="14"/>
-                            <Label Text="{Binding Summary.TotalMargin, StringFormat='${0:N0}'}"
-                                   TextColor="Black"
+                            <Label Text="$2.5M"
+                                   TextColor="#4CAF50"
                                    FontSize="24"
                                    FontAttributes="Bold"
                                    Margin="0,5,0,0"/>
+                            <Label Text="25% margin rate"
+                                   TextColor="#666666"
+                                   FontSize="12"/>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Remaining Target -->
+                    <Border Grid.Column="3"
+                            Stroke="#E5E7EB"
+                            StrokeThickness="1"
+                            BackgroundColor="White">
+                        <VerticalStackLayout Padding="15">
+                            <Label Text="Remaining Target"
+                                   TextColor="#666666"
+                                   FontSize="14"/>
+                            <Label Text="$1.43M"
+                                   TextColor="#0066CC"
+                                   FontSize="24"
+                                   FontAttributes="Bold"
+                                   Margin="0,5,0,0"/>
+                            <Label Text="14.3% to achieve"
+                                   TextColor="#666666"
+                                   FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
-
 
                 <!-- Charts Area -->
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="20">
@@ -189,15 +141,14 @@
                     <Border Grid.Column="0"
                             Stroke="#E5E7EB"
                             StrokeThickness="1"
-                            StrokeShape="RoundRectangle 8"
-                            BackgroundColor="White">
-                        <VerticalStackLayout Padding="20,15">
+                            BackgroundColor="White"
+                            HeightRequest="300">
+                        <VerticalStackLayout Padding="15">
                             <Label Text="Target vs Achievement"
                                    TextColor="#1A1A1A"
                                    FontSize="16"
                                    FontAttributes="Bold"/>
-                            <BoxView HeightRequest="300"
-                                    BackgroundColor="#F3F4F6"/>
+                            <!-- Chart will be added here -->
                         </VerticalStackLayout>
                     </Border>
 
@@ -205,86 +156,73 @@
                     <Border Grid.Column="1"
                             Stroke="#E5E7EB"
                             StrokeThickness="1"
-                            StrokeShape="RoundRectangle 8"
-                            BackgroundColor="White">
-                        <VerticalStackLayout Padding="20,15">
+                            BackgroundColor="White"
+                            HeightRequest="300">
+                        <VerticalStackLayout Padding="15">
                             <Label Text="Achievement Trend"
                                    TextColor="#1A1A1A"
                                    FontSize="16"
                                    FontAttributes="Bold"/>
-                            <BoxView HeightRequest="300"
-                                    BackgroundColor="#F3F4F6"/>
+                            <!-- Chart will be added here -->
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
 
-                <!-- Leaderboard -->
+                <!-- Sales Leaderboard -->
                 <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
-                        StrokeShape="RoundRectangle 8"
                         BackgroundColor="White">
-                    <VerticalStackLayout Padding="20,15">
+                    <VerticalStackLayout Padding="15">
                         <Label Text="Sales Leaderboard"
                                TextColor="#1A1A1A"
                                FontSize="16"
                                FontAttributes="Bold"
                                Margin="0,0,0,15"/>
 
-                        <!-- Header -->
                         <Grid ColumnDefinitions="2*,*,*,*" 
                               Padding="15,10"
                               BackgroundColor="#F9FAFB">
                             <Label Grid.Column="0" 
                                    Text="Sales Rep" 
-                                   TextColor="#6B7280"
-                                   FontSize="14"/>
+                                   TextColor="#666666"/>
                             <Label Grid.Column="1" 
                                    Text="Achievement" 
-                                   TextColor="#6B7280"
-                                   FontSize="14"/>
+                                   TextColor="#666666"/>
                             <Label Grid.Column="2" 
                                    Text="Commission" 
-                                   TextColor="#6B7280"
-                                   FontSize="14"/>
+                                   TextColor="#666666"/>
                             <Label Grid.Column="3" 
                                    Text="Achievement %" 
-                                   TextColor="#6B7280"
-                                   FontSize="14"/>
+                                   TextColor="#666666"/>
                         </Grid>
 
-                        <!-- Leaderboard Items -->
-                        <CollectionView ItemsSource="{Binding Leaderboard}">
-                            <CollectionView.ItemTemplate>
-                                <DataTemplate x:DataType="models:SalesRepPerformance">
-                                    <Grid ColumnDefinitions="2*,*,*,*" 
-                                          Padding="15,12">
-                                        <Label Grid.Column="0" 
-                                               Text="{Binding SalesRep}"
-                                               TextColor="#1A1A1A"/>
-                                        <Label Grid.Column="1" 
-                                               Text="{Binding Achievement, StringFormat='${0:N0}'}"
-                                               TextColor="#1A1A1A"/>
-                                        <Label Grid.Column="2" 
-                                               Text="{Binding Commission, StringFormat='${0:N0}'}"
-                                               TextColor="#1A1A1A"/>
-                                        <Label Grid.Column="3" 
-                                               Text="{Binding AchievementPercentage, StringFormat='{0:N1}%'}"
-                                               TextColor="#1A1A1A"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </CollectionView.ItemTemplate>
-                        </CollectionView>
+                        <!-- Sample Leaderboard Data -->
+                        <Grid ColumnDefinitions="2*,*,*,*" 
+                              Padding="15,12">
+                            <Label Grid.Column="0" Text="Pourya"/>
+                            <Label Grid.Column="1" Text="$70,000"/>
+                            <Label Grid.Column="2" Text="$0"/>
+                            <Label Grid.Column="3" Text="100.0%"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="2*,*,*,*" 
+                              Padding="15,12">
+                            <Label Grid.Column="0" Text="Tracy"/>
+                            <Label Grid.Column="1" Text="$37,877"/>
+                            <Label Grid.Column="2" Text="$0"/>
+                            <Label Grid.Column="3" Text="100.0%"/>
+                        </Grid>
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>
         </ScrollView>
 
         <!-- Loading Indicator -->
-        <Grid Grid.RowSpan="3" 
-              IsVisible="{Binding IsLoading}"
-              BackgroundColor="#80000000">
+        <Grid Grid.RowSpan="2" 
+              BackgroundColor="#80000000"
+              IsVisible="{Binding IsLoading}">
             <ActivityIndicator IsRunning="{Binding IsLoading}"
-                             Color="#0066CC"/>
+                             HorizontalOptions="Center" 
+                             VerticalOptions="Center"/>
         </Grid>
     </Grid>
 </ContentPage>

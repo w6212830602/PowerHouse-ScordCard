@@ -17,6 +17,12 @@ namespace ScoreCard.ViewModels
         private readonly IExcelService _excelService;
 
         [ObservableProperty]
+        private DateTime startDate = DateTime.Now.AddDays(-30);
+
+        [ObservableProperty]
+        private DateTime endDate = DateTime.Now;
+
+        [ObservableProperty]
         private bool isLoading;
 
         [ObservableProperty]

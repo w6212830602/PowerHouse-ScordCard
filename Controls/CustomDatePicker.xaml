@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ScoreCard.Controls.CustomDatePicker">
+    <Grid>
+        <!-- Date Display -->
+        <HorizontalStackLayout x:Name="DateDisplay" 
+                              Spacing="10">
+            <!-- Start Date Block -->
+            <Border BackgroundColor="#F3F4F6"
+                    Padding="15,8"
+                    HeightRequest="36"
+                    StrokeShape="RoundRectangle 4">
+                <HorizontalStackLayout>
+                    <Label Text="Start Date"
+                           TextColor="#666666"
+                           FontSize="14"
+                           VerticalOptions="Center"
+                           Margin="0,0,8,0"/>
+                    <Label Text="{Binding StartDate, StringFormat='{0:MMM dd, yyyy}'}"
+                           TextColor="Black"
+                           FontSize="14"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnStartDateClicked"/>
+                </Border.GestureRecognizers>
+            </Border>
+
+            <Label Text="to"
+                   TextColor="#666666"
+                   VerticalOptions="Center"/>
+
+            <!-- End Date Block -->
+            <Border BackgroundColor="#F3F4F6"
+                    Padding="15,8"
+                    HeightRequest="36"
+                    StrokeShape="RoundRectangle 4">
+                <HorizontalStackLayout>
+                    <Label Text="End Date"
+                           TextColor="#666666"
+                           FontSize="14"
+                           VerticalOptions="Center"
+                           Margin="0,0,8,0"/>
+                    <Label Text="{Binding EndDate, StringFormat='{0:MMM dd, yyyy}'}"
+                           TextColor="Black"
+                           FontSize="14"
+                           VerticalOptions="Center"/>
+                </HorizontalStackLayout>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnEndDateClicked"/>
+                </Border.GestureRecognizers>
+            </Border>
+        </HorizontalStackLayout>
+
+        <!-- Calendar Popup -->
+        <Border x:Name="Calendar"
+                IsVisible="False"
+                BackgroundColor="White"
+                StrokeShape="RoundRectangle 8"
+                Stroke="#E5E7EB"
+                StrokeThickness="1"
+                Margin="0,45,0,0"
+                Padding="20"
+                WidthRequest="600"
+                HorizontalOptions="End"
+                VerticalOptions="Start"
+                ZIndex="9999">
+
+            <Grid ColumnDefinitions="*,*" 
+                  ColumnSpacing="20">
+
+                <!-- Current Month -->
+                <VerticalStackLayout Grid.Column="0">
+                    <Grid ColumnDefinitions="Auto,*,Auto" 
+                          Margin="0,0,0,10">
+                        <Button Grid.Column="0"
+                                Text="&lt;"
+                                BackgroundColor="Transparent"
+                                TextColor="#666666"
+                                HeightRequest="36"
+                                WidthRequest="36"
+                                Padding="0"
+                                Clicked="OnPreviousMonthClicked"/>
+                        <Label x:Name="CurrentMonthLabel"
+                               Grid.Column="1"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center"/>
+                    </Grid>
+
+                    <Grid RowDefinitions="Auto,*">
+                        <!-- Week Headers -->
+                        <Grid ColumnDefinitions="*,*,*,*,*,*,*"
+                              Margin="0,0,0,10">
+                            <Label Grid.Column="0" Text="M" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="T" HorizontalOptions="Center"/>
+                            <Label Grid.Column="2" Text="W" HorizontalOptions="Center"/>
+                            <Label Grid.Column="3" Text="T" HorizontalOptions="Center"/>
+                            <Label Grid.Column="4" Text="F" HorizontalOptions="Center"/>
+                            <Label Grid.Column="5" Text="S" HorizontalOptions="Center"/>
+                            <Label Grid.Column="6" Text="S" HorizontalOptions="Center"/>
+                        </Grid>
+
+                        <!-- Days Grid -->
+                        <Grid x:Name="CurrentMonthGrid" 
+                              Grid.Row="1"
+                              RowDefinitions="*,*,*,*,*,*"
+                              ColumnDefinitions="*,*,*,*,*,*,*"
+                              RowSpacing="5"
+                              ColumnSpacing="5"/>
+                    </Grid>
+                </VerticalStackLayout>
+
+                <!-- Next Month -->
+                <VerticalStackLayout Grid.Column="1">
+                    <Grid ColumnDefinitions="Auto,*,Auto" 
+                          Margin="0,0,0,10">
+                        <Label x:Name="NextMonthLabel"
+                               Grid.Column="1"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center"/>
+                        <Button Grid.Column="2"
+                                Text="&gt;"
+                                BackgroundColor="Transparent"
+                                TextColor="#666666"
+                                HeightRequest="36"
+                                WidthRequest="36"
+                                Padding="0"
+                                Clicked="OnNextMonthClicked"/>
+                    </Grid>
+
+                    <Grid RowDefinitions="Auto,*">
+                        <!-- Week Headers -->
+                        <Grid ColumnDefinitions="*,*,*,*,*,*,*"
+                              Margin="0,0,0,10">
+                            <Label Grid.Column="0" Text="M" HorizontalOptions="Center"/>
+                            <Label Grid.Column="1" Text="T" HorizontalOptions="Center"/>
+                            <Label Grid.Column="2" Text="W" HorizontalOptions="Center"/>
+                            <Label Grid.Column="3" Text="T" HorizontalOptions="Center"/>
+                            <Label Grid.Column="4" Text="F" HorizontalOptions="Center"/>
+                            <Label Grid.Column="5" Text="S" HorizontalOptions="Center"/>
+                            <Label Grid.Column="6" Text="S" HorizontalOptions="Center"/>
+                        </Grid>
+
+                        <!-- Days Grid -->
+                        <Grid x:Name="NextMonthGrid" 
+                              Grid.Row="1"
+                              RowDefinitions="*,*,*,*,*,*"
+                              ColumnDefinitions="*,*,*,*,*,*,*"
+                              RowSpacing="5"
+                              ColumnSpacing="5"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Grid>
+        </Border>
+    </Grid>
+</ContentView>
