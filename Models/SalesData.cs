@@ -17,13 +17,13 @@ namespace ScoreCard.Models
         public decimal CommissionPercentage { get; set; }
         public decimal TotalCommission { get; set; }
 
-        // 財年計算
+        // 財年計算 (8月以後為新的一年)
         public int FiscalYear
         {
             get => ReceivedDate.Month >= 8 ? ReceivedDate.Year + 1 : ReceivedDate.Year;
         }
 
-        // 財年季度計算
+        // 財年季度計算 
         public int Quarter
         {
             get => ReceivedDate.Month switch
@@ -36,6 +36,4 @@ namespace ScoreCard.Models
             };
         }
     }
-
-
 }

@@ -8,7 +8,7 @@ namespace ScoreCard.Models
 {
     public class SalesLeaderboardItem
     {
-        public int Rank { get; set; }
+        public int Rank { get; set; } 
         public string SalesRep { get; set; }
         public decimal AgencyCommission { get; set; }
         public decimal BuyResellCommission { get; set; }
