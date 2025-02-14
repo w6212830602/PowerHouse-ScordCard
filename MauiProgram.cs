@@ -2,9 +2,8 @@
 using ScoreCard.Views;
 using ScoreCard.Services;
 using ScoreCard.ViewModels;
-using ScoreCard.Views;
 using Microsoft.Maui.LifecycleEvents;
-
+using Syncfusion.Maui.Core.Hosting;
 
 namespace ScoreCard
 {
@@ -15,6 +14,7 @@ namespace ScoreCard
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .ConfigureSyncfusionCore()    // 添加 Syncfusion 配置
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -37,14 +37,18 @@ namespace ScoreCard
             builder.Services.AddSingleton<IExcelService, ExcelService>();
 
             // Register ViewModels
-            builder.Services.AddTransient<ViewModels.DashboardViewModel>();
-            builder.Services.AddTransient<ViewModels.SalesAnalysisViewModel>();
-            builder.Services.AddTransient<ViewModels.SettingsViewModel>();
+            builder.Services.AddTransient<DashboardViewModel>();
+            builder.Services.AddTransient<SalesAnalysisViewModel>();
+            builder.Services.AddTransient<SettingsViewModel>();
 
             // Register Pages
-            builder.Services.AddTransient<Views.DashboardPage>();
-            builder.Services.AddTransient<Views.SalesAnalysisPage>();
-            builder.Services.AddTransient<Views.SettingsPage>();
+            builder.Services.AddTransient<DashboardPage>();
+            builder.Services.AddTransient<SalesAnalysisPage>();
+            builder.Services.AddTransient<SettingsPage>();
+
+#if DEBUG
+            builder.Logging.AddDebug();
+#endif
 
             return builder.Build();
         }
