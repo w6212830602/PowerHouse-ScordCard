@@ -1,35 +1,49 @@
 ﻿using Microsoft.Maui.Controls;
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace ScoreCard.Controls
 {
-    public partial class CustomDatePicker : ContentView
+    public partial class CustomDatePicker : ContentView, INotifyPropertyChanged
     {
         public static readonly BindableProperty StartDateProperty =
             BindableProperty.Create(nameof(StartDate), typeof(DateTime), typeof(CustomDatePicker),
-                DateTime.Now, propertyChanged: OnDateChanged);
+                DateTime.Now, BindingMode.TwoWay, propertyChanged: OnDateChanged);
 
         public static readonly BindableProperty EndDateProperty =
             BindableProperty.Create(nameof(EndDate), typeof(DateTime), typeof(CustomDatePicker),
-                DateTime.Now, propertyChanged: OnDateChanged);
+                DateTime.Now, BindingMode.TwoWay, propertyChanged: OnDateChanged);
 
         private DateTime _displayMonth;
         private bool _isStartDateActive;
 
-        // 添加一個關閉按鈕或點擊外部區域來關閉日曆
+        // 添加日期变更事件
+        public event EventHandler<DateTime> StartDateChanged;
+        public event EventHandler<DateTime> EndDateChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
+
+
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+
         public CustomDatePicker()
         {
             InitializeComponent();
             BindingContext = this;
             _displayMonth = DateTime.Now;
-            _isStartDateActive = true; // 預設是選擇開始日期
+            _isStartDateActive = true;
 
             var dateTapGesture = new TapGestureRecognizer();
             dateTapGesture.Tapped += (s, e) =>
             {
                 if (!Calendar.IsVisible)
                 {
-                    _isStartDateActive = true; // 每次打開日曆時，都重置為選擇開始日期
+                    _isStartDateActive = true;
                     _displayMonth = StartDate;
                 }
                 Calendar.IsVisible = !Calendar.IsVisible;
@@ -37,7 +51,6 @@ namespace ScoreCard.Controls
             };
             DateDisplay.GestureRecognizers.Add(dateTapGesture);
 
-            // 添加背景點擊事件來關閉日曆
             var backgroundTapGesture = new TapGestureRecognizer();
             backgroundTapGesture.Tapped += (s, e) =>
             {
@@ -48,12 +61,8 @@ namespace ScoreCard.Controls
             };
             this.GestureRecognizers.Add(backgroundTapGesture);
 
-            // 防止日曆區域的點擊事件影響背景
             var calendarTapGesture = new TapGestureRecognizer();
-            calendarTapGesture.Tapped += (s, e) =>
-            {
-                // 不做任何事，只是攔截事件
-            };
+            calendarTapGesture.Tapped += (s, e) => { };
             Calendar.GestureRecognizers.Add(calendarTapGesture);
 
             UpdateCalendarDisplay();
@@ -62,13 +71,31 @@ namespace ScoreCard.Controls
         public DateTime StartDate
         {
             get => (DateTime)GetValue(StartDateProperty);
-            set => SetValue(StartDateProperty, value);
+            set
+            {
+                if ((DateTime)GetValue(StartDateProperty) != value)
+                {
+                    SetValue(StartDateProperty, value);
+                    StartDateChanged?.Invoke(this, value);
+                    OnPropertyChanged(nameof(StartDate));
+                    Debug.WriteLine($"Start date changed to: {value:yyyy-MM-dd}");
+                }
+            }
         }
 
         public DateTime EndDate
         {
             get => (DateTime)GetValue(EndDateProperty);
-            set => SetValue(EndDateProperty, value);
+            set
+            {
+                if ((DateTime)GetValue(EndDateProperty) != value)
+                {
+                    SetValue(EndDateProperty, value);
+                    EndDateChanged?.Invoke(this, value);
+                    OnPropertyChanged(nameof(EndDate));
+                    Debug.WriteLine($"End date changed to: {value:yyyy-MM-dd}");
+                }
+            }
         }
 
         private static void OnDateChanged(BindableObject bindable, object oldValue, object newValue)
@@ -112,7 +139,9 @@ namespace ScoreCard.Controls
 
             CurrentMonthLabel.Text = _displayMonth.ToString("MMMM yyyy");
             NextMonthLabel.Text = _displayMonth.AddMonths(1).ToString("MMMM yyyy");
+
         }
+
 
         private void UpdateMonthGrid(Grid grid, DateTime month)
         {
@@ -141,7 +170,6 @@ namespace ScoreCard.Controls
 
                     var currentDate = new DateTime(month.Year, month.Month, dayNumber);
 
-                    // 設置選中狀態的視覺效果
                     if (currentDate >= StartDate && currentDate <= EndDate)
                     {
                         dateButton.BackgroundColor = Color.FromArgb("#FF3B30");
@@ -154,14 +182,13 @@ namespace ScoreCard.Controls
                         if (_isStartDateActive)
                         {
                             StartDate = dateForHandler;
-                            _isStartDateActive = false; // 選完開始日期後，切換到選擇結束日期
-                            EndDate = dateForHandler; // 初始化結束日期為開始日期
+                            _isStartDateActive = false;
+                            EndDate = dateForHandler;
                         }
                         else
                         {
                             if (dateForHandler < StartDate)
                             {
-                                // 如果選擇的結束日期比開始日期早，則重新開始選擇
                                 StartDate = dateForHandler;
                                 _isStartDateActive = false;
                                 EndDate = dateForHandler;
@@ -169,7 +196,11 @@ namespace ScoreCard.Controls
                             else
                             {
                                 EndDate = dateForHandler;
-                                Calendar.IsVisible = false; // 選擇完結束日期後關閉日曆
+                                Calendar.IsVisible = false;
+
+                                // 触发日期更改事件
+                                StartDateChanged?.Invoke(this, StartDate);
+                                EndDateChanged?.Invoke(this, EndDate);
                             }
                         }
 
@@ -183,7 +214,5 @@ namespace ScoreCard.Controls
                 }
             }
         }
-
-
     }
 }

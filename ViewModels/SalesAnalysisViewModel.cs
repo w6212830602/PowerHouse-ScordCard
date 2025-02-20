@@ -1,113 +1,169 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using ScoreCard.Models;
-using ScoreCard.Services;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.Maui;
+using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ScoreCard.Models;
+using ScoreCard.Services;
+using System.Linq;
+using System.Diagnostics;
 
 namespace ScoreCard.ViewModels
 {
     public partial class SalesAnalysisViewModel : ObservableObject
     {
         private readonly IExcelService _excelService;
+        private List<SalesData> _allSalesData;
 
         [ObservableProperty]
-        private DateTime startDate = DateTime.Now.AddDays(-30);
+        private DateTime _startDate;
 
         [ObservableProperty]
-        private DateTime endDate = DateTime.Now;
+        private DateTime _endDate;
 
         [ObservableProperty]
-        private bool isLoading;
+        private bool _isSummaryView = true;
 
         [ObservableProperty]
-        private string selectedTimeRange = "YTD";
+        private bool _isLoading;
 
         [ObservableProperty]
-        private string selectedViewType = "By Rep";
+        private SalesAnalysisSummary _summary;
 
         [ObservableProperty]
-        private SalesAnalysisSummary summary;
+        private ObservableCollection<Models.ChartData> _targetVsAchievementData = new();
 
         [ObservableProperty]
-        private ObservableCollection<SalesRepPerformance> leaderboard;
+        private ObservableCollection<Models.ChartData> _achievementTrendData = new();
 
         [ObservableProperty]
-        private ObservableCollection<MonthlyPerformance> monthlyPerformance;
+        private ObservableCollection<SalesRepPerformance> _leaderboard = new();
 
         [ObservableProperty]
-        private bool isSummaryView = true;
+        private double _yAxisMaximum = 20;
 
-        [ObservableProperty]
-        private ObservableCollection<ChartData> targetVsAchievementData;
-
-        [ObservableProperty]
-        private ObservableCollection<ChartData> achievementTrendData;
+        private ICommand _switchViewCommand;
+        public ICommand SwitchViewCommand => _switchViewCommand;
 
         public SalesAnalysisViewModel(IExcelService excelService)
         {
             _excelService = excelService;
-            _excelService.DataUpdated += OnDataUpdated;
+            LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
+            _switchViewCommand = new RelayCommand<string>(ExecuteSwitchView);
 
-            summary = new SalesAnalysisSummary();
-            leaderboard = new ObservableCollection<SalesRepPerformance>();
-            monthlyPerformance = new ObservableCollection<MonthlyPerformance>();
-            targetVsAchievementData = new ObservableCollection<ChartData>();
-            achievementTrendData = new ObservableCollection<ChartData>();
+            // 設定初始日期範圍為當前會計年度
+            var currentDate = DateTime.Now;
+            var fiscalYearStart = currentDate.Month >= 8 ?
+                new DateTime(currentDate.Year, 8, 1) :
+                new DateTime(currentDate.Year - 1, 8, 1);
 
-            Task.Run(async () => await LoadDataAsync());
-        }
+            StartDate = fiscalYearStart;
+            EndDate = fiscalYearStart.AddYears(1).AddDays(-1);
 
-        [RelayCommand]
-        private async Task Refresh()
-        {
-            await LoadDataAsync();
-        }
-
-        private void OnDataUpdated(object sender, DateTime e)
-        {
-            MainThread.BeginInvokeOnMainThread(async () =>
+            PropertyChanged += (s, e) =>
             {
-                await LoadDataAsync();
-            });
+                if (e.PropertyName == nameof(StartDate) || e.PropertyName == nameof(EndDate))
+                {
+                    LoadDataCommand.ExecuteAsync(null);
+                }
+            };
+
+            LoadDataCommand.ExecuteAsync(null);
+        }
+
+        public IAsyncRelayCommand LoadDataCommand { get; }
+
+        private void ExecuteSwitchView(string viewType)
+        {
+            if (!string.IsNullOrEmpty(viewType))
+            {
+                IsSummaryView = viewType.ToLower() == "summary";
+            }
         }
 
         private async Task LoadDataAsync()
         {
-            if (IsLoading) return;
-
             try
             {
                 IsLoading = true;
+
                 var (data, lastUpdated) = await _excelService.LoadDataAsync();
+                Debug.WriteLine($"Loaded data count: {data?.Count ?? 0}");
 
-                // 先過濾時間範圍
-                var filteredData = FilterDataByTimeRange(data);
+                _allSalesData = data;
 
-                // 更新摘要信息
+                // 過濾數據：忽略時間部分，只比較日期
+                var filteredData = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= StartDate.Date && x.ReceivedDate.Date <= EndDate.Date)
+                    .ToList();
+
+                Debug.WriteLine($"Filtered data count: {filteredData.Count}, Date range: {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
+
+                // 按月份分組計算數據
+                var monthlyData = filteredData
+                    .GroupBy(x => new { Year = x.ReceivedDate.Year, Month = x.ReceivedDate.Month })
+                    .Select(g => new Models.ChartData
+                    {
+                        Label = $"{g.Key.Year}/{g.Key.Month:D2}",
+                        Target = Math.Round(g.Sum(x => x.POValue) / 1000000m, 2),
+                        Achievement = Math.Round(g.Sum(x => x.VertivValue) / 1000000m, 2)
+                    })
+                    .OrderBy(x => x.Label)
+                    .ToList();
+
+                Debug.WriteLine($"Monthly data points: {monthlyData.Count}");
+                foreach (var point in monthlyData)
+                {
+                    Debug.WriteLine($"Month: {point.Label}, Target: {point.Target}, Achievement: {point.Achievement}");
+                }
+
+                // 清除並更新圖表數據
+                TargetVsAchievementData.Clear();
+                AchievementTrendData.Clear();
+
+                foreach (var item in monthlyData)
+                {
+                    TargetVsAchievementData.Add(item);
+                    AchievementTrendData.Add(item);
+                }
+
+                // 更新匯總數據
                 Summary = new SalesAnalysisSummary
                 {
-                    TotalTarget = filteredData.Sum(d => d.POValue),
-                    TotalAchievement = filteredData.Sum(d => d.VertivValue),
-                    TotalMargin = filteredData.Sum(d => d.TotalCommission),
-                    TopPerformers = GetTopPerformers(filteredData),
-                    MonthlyData = GetMonthlyData(filteredData)
+                    TotalTarget = Math.Round(filteredData.Sum(x => x.POValue) / 1000000m, 2),
+                    TotalAchievement = Math.Round(filteredData.Sum(x => x.VertivValue) / 1000000m, 2),
+                    TotalMargin = Math.Round(filteredData.Sum(x => x.TotalCommission) / 1000000m, 2)
                 };
 
-                // 更新圖表數據
-                UpdateChartData(filteredData);
-
                 // 更新排行榜
-                Leaderboard = new ObservableCollection<SalesRepPerformance>(Summary.TopPerformers);
+                var leaderboardData = filteredData
+                    .GroupBy(x => x.SalesRep)
+                    .Select(g => new SalesRepPerformance
+                    {
+                        SalesRep = g.Key,
+                        Achievement = Math.Round(g.Sum(x => x.VertivValue), 2),
+                        Commission = Math.Round(g.Sum(x => x.TotalCommission), 2),
+                        Target = Math.Round(g.Sum(x => x.POValue), 2)
+                    })
+                    .OrderByDescending(x => x.Achievement)
+                    .Take(5)
+                    .ToList();
+
+                Leaderboard.Clear();
+                foreach (var item in leaderboardData)
+                {
+                    Leaderboard.Add(item);
+                }
+
+                // 更新Y軸最大值
+                UpdateChartAxes();
+
+                Debug.WriteLine($"Data load completed. Summary - Target: {Summary.TotalTarget}M, Achievement: {Summary.TotalAchievement}M");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading data: {ex.Message}");
+                Debug.WriteLine($"Error in LoadDataAsync: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("Error", ex.Message, "OK");
             }
             finally
             {
@@ -115,103 +171,18 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        private List<SalesData> FilterDataByTimeRange(List<SalesData> data)
+        private void UpdateChartAxes()
         {
-            if (SelectedTimeRange == "Custom")
+            if (TargetVsAchievementData?.Any() == true)
             {
-                return data.Where(d => d.ReceivedDate >= StartDate && d.ReceivedDate <= EndDate).ToList();
+                var maxValue = Math.Max(
+                    TargetVsAchievementData.Max(x => Convert.ToDouble(x.Target)),
+                    TargetVsAchievementData.Max(x => Convert.ToDouble(x.Achievement))
+                );
+
+                YAxisMaximum = Math.Ceiling(maxValue * 1.2);
+                Debug.WriteLine($"Updated Y-axis maximum to {YAxisMaximum}");
             }
-
-            return data.Where(d =>
-            {
-                return SelectedTimeRange switch
-                {
-                    "YTD" => d.ReceivedDate.Year == DateTime.Now.Year,
-                    "Q1" => d.Quarter == 1,
-                    "Q2" => d.Quarter == 2,
-                    "Q3" => d.Quarter == 3,
-                    "Q4" => d.Quarter == 4,
-                    _ => true
-                };
-            }).ToList();
-        }
-
-        private List<SalesRepPerformance> GetTopPerformers(List<SalesData> data)
-        {
-            return data.GroupBy(d => d.SalesRep)
-                      .Select(g => new SalesRepPerformance
-                      {
-                          SalesRep = g.Key,
-                          Achievement = g.Sum(d => d.VertivValue),
-                          Commission = g.Sum(d => d.TotalCommission),
-                          Target = g.Sum(d => d.POValue)
-                      })
-                      .OrderByDescending(p => p.Achievement)
-                      .Take(10)
-                      .ToList();
-        }
-
-        private List<MonthlyPerformance> GetMonthlyData(List<SalesData> data)
-        {
-            return data.GroupBy(x => new DateTime(x.ReceivedDate.Year, x.ReceivedDate.Month, 1))
-                       .Select(g => new MonthlyPerformance
-                       {
-                           Month = g.Key,
-                           Target = g.Sum(x => x.POValue),
-                           Achievement = g.Sum(x => x.VertivValue),
-                           Margin = g.Sum(x => x.TotalCommission)
-                       })
-                       .OrderBy(x => x.Month)
-                       .ToList();
-        }
-
-
-        private void UpdateChartData(List<SalesData> filteredData)
-        {
-            var monthlyData = GetMonthlyData(filteredData);
-
-            TargetVsAchievementData = new ObservableCollection<ChartData>(
-                monthlyData.Select(m => new ChartData
-                {
-                    Label = m.Month.ToString("MMM"),
-                    Target = m.Target / 1000,
-                    Achievement = m.Achievement / 1000
-                })
-            );
-
-            AchievementTrendData = new ObservableCollection<ChartData>(
-                monthlyData.Select(m => new ChartData
-                {
-                    Label = m.Month.ToString("MMM"),
-                    Achievement = m.Achievement / 1000
-                })
-            );
-        }
-
-        partial void OnSelectedTimeRangeChanged(string value)
-        {
-            LoadDataAsync().ConfigureAwait(false);
-        }
-
-        partial void OnStartDateChanged(DateTime value)
-        {
-            LoadDataAsync().ConfigureAwait(false);
-        }
-
-        partial void OnEndDateChanged(DateTime value)
-        {
-            LoadDataAsync().ConfigureAwait(false);
-        }
-
-        partial void OnSelectedViewTypeChanged(string value)
-        {
-            LoadDataAsync().ConfigureAwait(false);
-        }
-
-        [RelayCommand]
-        private void SwitchView()
-        {
-            IsSummaryView = !IsSummaryView;
         }
     }
 }
