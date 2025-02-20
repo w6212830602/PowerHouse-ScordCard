@@ -100,15 +100,16 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Filtered data count: {filteredData.Count}, Date range: {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
 
                 // 按月份分組計算數據
+                // 在 LoadDataAsync 方法中修改分組和排序邏輯
                 var monthlyData = filteredData
                     .GroupBy(x => new { Year = x.ReceivedDate.Year, Month = x.ReceivedDate.Month })
                     .Select(g => new Models.ChartData
                     {
-                        Label = $"{g.Key.Year}/{g.Key.Month:D2}",
+                        Label = $"{g.Key.Year}/{g.Key.Month:D2}",  // 使用兩位數月份
                         Target = Math.Round(g.Sum(x => x.POValue) / 1000000m, 2),
                         Achievement = Math.Round(g.Sum(x => x.VertivValue) / 1000000m, 2)
                     })
-                    .OrderBy(x => x.Label)
+                    .OrderBy(x => x.Label)  // 直接使用 Label 進行排序
                     .ToList();
 
                 Debug.WriteLine($"Monthly data points: {monthlyData.Count}");
