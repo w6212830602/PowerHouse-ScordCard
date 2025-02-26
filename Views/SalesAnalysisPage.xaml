@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
              xmlns:vm="clr-namespace:ScoreCard.ViewModels"
              xmlns:models="clr-namespace:ScoreCard.Models"
              xmlns:controls="clr-namespace:ScoreCard.Controls"
              xmlns:chart="clr-namespace:Syncfusion.Maui.Charts;assembly=Syncfusion.Maui.Charts"
+             xmlns:converts="clr-namespace:ScoreCard.Converts"
              x:Class="ScoreCard.Views.SalesAnalysisPage"
              x:DataType="vm:SalesAnalysisViewModel"
              BackgroundColor="#F8F9FA"
              Title="Sales Analysis">
+
+    <ContentPage.Resources>
+        <converts:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converts:InverseBoolToColorConverter x:Key="InverseBoolToColorConverter"/>
+    </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*">
         <!-- View Type Selector and Date Range -->
@@ -53,8 +58,9 @@
 
             <!-- Date Picker -->
             <controls:CustomDatePicker Grid.Column="2"
-                          StartDate="{Binding StartDate, Mode=TwoWay}"
-                          EndDate="{Binding EndDate, Mode=TwoWay}"/>
+                                       x:Name="DateRangePicker"
+                                       StartDate="{Binding StartDate, Mode=TwoWay}" 
+                                       EndDate="{Binding EndDate, Mode=TwoWay}"/>
         </Grid>
 
         <!-- Main Content -->
@@ -116,7 +122,7 @@
                                    FontSize="24"
                                    FontAttributes="Bold"
                                    Margin="0,5,0,0"/>
-                            <Label Text="{Binding Summary.MarginPercentage, StringFormat='{0}% margin rate'}"
+                            <Label Text="{Binding Summary.MarginPercentage, StringFormat='{0:N1}% margin rate'}"
                                    TextColor="#666666"
                                    FontSize="12"/>
                         </VerticalStackLayout>
@@ -147,64 +153,75 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="20">
                     <!-- Target vs Achievement Chart -->
                     <Border Grid.Column="0"
-            Stroke="#E5E7EB"
-            StrokeThickness="1"
-            StrokeShape="RoundRectangle 4"
-            BackgroundColor="White">
+                            Stroke="#E5E7EB"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 4"
+                            BackgroundColor="White">
                         <Grid RowDefinitions="Auto,*" Padding="15">
                             <Label Text="Target vs Achievement"
-                   TextColor="#1A1A1A"
-                   FontSize="16"
-                   FontAttributes="Bold"/>
+                                   TextColor="#1A1A1A"
+                                   FontSize="16"
+                                   FontAttributes="Bold"/>
+
                             <!-- Target vs Achievement Chart -->
                             <chart:SfCartesianChart Grid.Row="1" 
-                       Margin="0,10,0,0"
-                       HeightRequest="300">
+                                                   Margin="0,10,0,0"
+                                                   HeightRequest="300">
                                 <chart:SfCartesianChart.Legend>
                                     <chart:ChartLegend/>
                                 </chart:SfCartesianChart.Legend>
 
                                 <chart:SfCartesianChart.XAxes>
                                     <chart:CategoryAxis ShowMajorGridLines="True"
-                          LabelRotation="330">
+                                                      LabelRotation="330">
                                         <chart:CategoryAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1" 
-                                    StrokeDashArray="5,5"/>
+                                                                StrokeDashArray="5,5"/>
                                         </chart:CategoryAxis.MajorGridLineStyle>
                                     </chart:CategoryAxis>
                                 </chart:SfCartesianChart.XAxes>
 
                                 <chart:SfCartesianChart.YAxes>
                                     <chart:NumericalAxis Minimum="0"
-                           Maximum="{Binding YAxisMaximum}"
-                           Interval="1"
-                           ShowMajorGridLines="True">
+                                                       Maximum="{Binding YAxisMaximum}"
+                                                       Interval="1"
+                                                       ShowMajorGridLines="True">
                                         <chart:NumericalAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1" 
-                                    StrokeDashArray="5,5"/>
+                                                                StrokeDashArray="5,5"/>
                                         </chart:NumericalAxis.MajorGridLineStyle>
                                     </chart:NumericalAxis>
                                 </chart:SfCartesianChart.YAxes>
 
                                 <chart:SfCartesianChart.Series>
                                     <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                          XBindingPath="Label"
-                          YBindingPath="Target"
-                          Label="Target"
-                          ShowDataLabels="True">
+                  XBindingPath="Label"
+                  YBindingPath="Target"
+                  Label="Target"
+                  ShowDataLabels="True">
                                         <chart:ColumnSeries.Fill>
-                                            <SolidColorBrush Color="#6B46C1"/>
+                                            <Color>#6B46C1</Color>
                                         </chart:ColumnSeries.Fill>
                                     </chart:ColumnSeries>
 
                                     <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                          XBindingPath="Label"
-                          YBindingPath="Achievement"
-                          Label="Achievement"
-                          ShowDataLabels="True">
+                  XBindingPath="Label"
+                  YBindingPath="Achievement"
+                  Label="Achievement"
+                  ShowDataLabels="True">
                                         <chart:ColumnSeries.Fill>
-                                            <SolidColorBrush Color="#4CAF50"/>
+                                            <Color>#4CAF50</Color>
                                         </chart:ColumnSeries.Fill>
+                                    </chart:ColumnSeries>
+
+                                    <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
+                                                      XBindingPath="Label"
+                                                      YBindingPath="Achievement"
+                                                      Label="Achievement">
+                                        <chart:ColumnSeries.Fill>
+                                            <Color>#4CAF50</Color>
+                                        </chart:ColumnSeries.Fill>
+                                        <chart:ColumnSeries.ShowDataLabels>True</chart:ColumnSeries.ShowDataLabels>
                                     </chart:ColumnSeries>
                                 </chart:SfCartesianChart.Series>
                             </chart:SfCartesianChart>
@@ -213,21 +230,21 @@
 
                     <!-- Achievement Trend Chart -->
                     <Border Grid.Column="1"
-            Stroke="#E5E7EB"
-            StrokeThickness="1"
-            StrokeShape="RoundRectangle 4"
-            BackgroundColor="White">
+                            Stroke="#E5E7EB"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 4"
+                            BackgroundColor="White">
                         <Grid RowDefinitions="Auto,*" Padding="15">
                             <Label Text="Achievement Trend"
-                   TextColor="#1A1A1A"
-                   FontSize="16"
-                   FontAttributes="Bold"/>
+                                   TextColor="#1A1A1A"
+                                   FontSize="16"
+                                   FontAttributes="Bold"/>
                             <chart:SfCartesianChart Grid.Row="1" 
-                       Margin="0,10,0,0"
-                       HeightRequest="300">
+                                                   Margin="0,10,0,0"
+                                                   HeightRequest="300">
                                 <chart:SfCartesianChart.XAxes>
                                     <chart:CategoryAxis ShowMajorGridLines="True"
-                          LabelRotation="330">
+                                                      LabelRotation="330">
                                         <chart:CategoryAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1"/>
                                         </chart:CategoryAxis.MajorGridLineStyle>
@@ -236,9 +253,9 @@
 
                                 <chart:SfCartesianChart.YAxes>
                                     <chart:NumericalAxis Minimum="0"
-                           Maximum="{Binding YAxisMaximum}"
-                           Interval="1"
-                           ShowMajorGridLines="True">
+                                                       Maximum="{Binding YAxisMaximum}"
+                                                       Interval="1"
+                                                       ShowMajorGridLines="True">
                                         <chart:NumericalAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1"/>
                                         </chart:NumericalAxis.MajorGridLineStyle>
@@ -247,13 +264,13 @@
 
                                 <chart:SfCartesianChart.Series>
                                     <chart:SplineSeries ItemsSource="{Binding AchievementTrendData}"
-                          XBindingPath="Label"
-                          YBindingPath="Achievement"
-                          ShowDataLabels="True">
+                  XBindingPath="Label"
+                  YBindingPath="Achievement"
+                  ShowDataLabels="True"
+                  StrokeWidth="2">
                                         <chart:SplineSeries.Fill>
-                                            <SolidColorBrush Color="#4CAF50"/>
+                                            <Color>#4CAF50</Color>
                                         </chart:SplineSeries.Fill>
-                                        <chart:SplineSeries.StrokeWidth>2</chart:SplineSeries.StrokeWidth>
                                     </chart:SplineSeries>
                                 </chart:SfCartesianChart.Series>
                             </chart:SfCartesianChart>

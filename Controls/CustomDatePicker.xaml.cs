@@ -18,29 +18,30 @@ namespace ScoreCard.Controls
 
         private DateTime _displayMonth;
         private bool _isStartDateActive;
+        private bool _isInternalChange; // 標記內部變更，避免循環觸發
 
-        // 添加日期变更事件
+        // 日期變更事件
         public event EventHandler<DateTime> StartDateChanged;
         public event EventHandler<DateTime> EndDateChanged;
         public event PropertyChangedEventHandler PropertyChanged;
-
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-
         public CustomDatePicker()
         {
             InitializeComponent();
-            BindingContext = this;
+            this.BindingContext = this; // 確保 BindingContext 是自己，避免繼承父元素的 BindingContext
             _displayMonth = DateTime.Now;
             _isStartDateActive = true;
 
+            // 設置日期顯示的點擊事件
             var dateTapGesture = new TapGestureRecognizer();
             dateTapGesture.Tapped += (s, e) =>
             {
+                Debug.WriteLine("Date display tapped");
                 if (!Calendar.IsVisible)
                 {
                     _isStartDateActive = true;
@@ -51,9 +52,11 @@ namespace ScoreCard.Controls
             };
             DateDisplay.GestureRecognizers.Add(dateTapGesture);
 
+            // 背景點擊事件（隱藏日曆）
             var backgroundTapGesture = new TapGestureRecognizer();
             backgroundTapGesture.Tapped += (s, e) =>
             {
+                Debug.WriteLine("Background tapped");
                 if (Calendar.IsVisible)
                 {
                     Calendar.IsVisible = false;
@@ -61,8 +64,13 @@ namespace ScoreCard.Controls
             };
             this.GestureRecognizers.Add(backgroundTapGesture);
 
+            // 日曆點擊事件（防止冒泡）
             var calendarTapGesture = new TapGestureRecognizer();
-            calendarTapGesture.Tapped += (s, e) => { };
+            calendarTapGesture.Tapped += (s, e) =>
+            {
+                Debug.WriteLine("Calendar tapped - stopping propagation");
+                // 阻止事件傳播到背景
+            };
             Calendar.GestureRecognizers.Add(calendarTapGesture);
 
             UpdateCalendarDisplay();
@@ -75,10 +83,12 @@ namespace ScoreCard.Controls
             {
                 if ((DateTime)GetValue(StartDateProperty) != value)
                 {
+                    _isInternalChange = true;
                     SetValue(StartDateProperty, value);
                     StartDateChanged?.Invoke(this, value);
                     OnPropertyChanged(nameof(StartDate));
-                    Debug.WriteLine($"Start date changed to: {value:yyyy-MM-dd}");
+                    Debug.WriteLine($"[CustomDatePicker] StartDate set to: {value:yyyy-MM-dd}");
+                    _isInternalChange = false;
                 }
             }
         }
@@ -90,10 +100,12 @@ namespace ScoreCard.Controls
             {
                 if ((DateTime)GetValue(EndDateProperty) != value)
                 {
+                    _isInternalChange = true;
                     SetValue(EndDateProperty, value);
                     EndDateChanged?.Invoke(this, value);
                     OnPropertyChanged(nameof(EndDate));
-                    Debug.WriteLine($"End date changed to: {value:yyyy-MM-dd}");
+                    Debug.WriteLine($"[CustomDatePicker] EndDate set to: {value:yyyy-MM-dd}");
+                    _isInternalChange = false;
                 }
             }
         }
@@ -101,11 +113,38 @@ namespace ScoreCard.Controls
         private static void OnDateChanged(BindableObject bindable, object oldValue, object newValue)
         {
             var picker = (CustomDatePicker)bindable;
+
+            // 避免處理內部變更導致的循環觸發
+            if (picker._isInternalChange)
+                return;
+
+            // 更新日曆顯示
             picker.UpdateCalendarDisplay();
+
+            // 確保組件在繫結的屬性變更時，主動通知 ViewModel
+            if (oldValue is DateTime oldDate && newValue is DateTime newDate && oldDate != newDate)
+            {
+                string propertyName = null;
+
+                // 判斷是哪個屬性變更了
+                if (bindable.GetType().GetProperty(nameof(StartDate)).GetValue(bindable).Equals(newValue))
+                {
+                    propertyName = nameof(StartDate);
+                    Debug.WriteLine($"[CustomDatePicker] OnDateChanged: StartDate from {oldDate:yyyy-MM-dd} to {newDate:yyyy-MM-dd}");
+                    picker.StartDateChanged?.Invoke(picker, newDate);
+                }
+                else if (bindable.GetType().GetProperty(nameof(EndDate)).GetValue(bindable).Equals(newValue))
+                {
+                    propertyName = nameof(EndDate);
+                    Debug.WriteLine($"[CustomDatePicker] OnDateChanged: EndDate from {oldDate:yyyy-MM-dd} to {newDate:yyyy-MM-dd}");
+                    picker.EndDateChanged?.Invoke(picker, newDate);
+                }
+            }
         }
 
         private void OnStartDateClicked(object sender, EventArgs e)
         {
+            Debug.WriteLine("[CustomDatePicker] Start date clicked");
             _isStartDateActive = true;
             _displayMonth = StartDate;
             Calendar.IsVisible = true;
@@ -114,6 +153,7 @@ namespace ScoreCard.Controls
 
         private void OnEndDateClicked(object sender, EventArgs e)
         {
+            Debug.WriteLine("[CustomDatePicker] End date clicked");
             _isStartDateActive = false;
             _displayMonth = EndDate;
             Calendar.IsVisible = true;
@@ -139,19 +179,17 @@ namespace ScoreCard.Controls
 
             CurrentMonthLabel.Text = _displayMonth.ToString("MMMM yyyy");
             NextMonthLabel.Text = _displayMonth.AddMonths(1).ToString("MMMM yyyy");
-
         }
-
 
         private void UpdateMonthGrid(Grid grid, DateTime month)
         {
             grid.Children.Clear();
 
             var firstDay = new DateTime(month.Year, month.Month, 1);
-            int offset = ((int)firstDay.DayOfWeek + 6) % 7;
+            int offset = ((int)firstDay.DayOfWeek + 6) % 7; // 調整為星期一開始
             int daysInMonth = DateTime.DaysInMonth(month.Year, month.Month);
 
-            for (int i = 0; i < 42; i++)
+            for (int i = 0; i < 42; i++) // 6週 x 7天
             {
                 int dayNumber = i - offset + 1;
                 if (dayNumber > 0 && dayNumber <= daysInMonth)
@@ -170,6 +208,7 @@ namespace ScoreCard.Controls
 
                     var currentDate = new DateTime(month.Year, month.Month, dayNumber);
 
+                    // 設置所選日期範圍的視覺效果
                     if (currentDate >= StartDate && currentDate <= EndDate)
                     {
                         dateButton.BackgroundColor = Color.FromArgb("#FF3B30");
@@ -179,33 +218,53 @@ namespace ScoreCard.Controls
                     var dateForHandler = currentDate;
                     dateButton.Clicked += (s, e) =>
                     {
+                        Debug.WriteLine($"[CustomDatePicker] Date button clicked: {dateForHandler:yyyy-MM-dd}");
+
+                        DateTime oldStart = StartDate;
+                        DateTime oldEnd = EndDate;
+
                         if (_isStartDateActive)
                         {
+                            // 設置起始日期
                             StartDate = dateForHandler;
                             _isStartDateActive = false;
-                            EndDate = dateForHandler;
+
+                            // 若選擇的起始日期比當前結束日期晚，則同時設置結束日期
+                            if (dateForHandler > EndDate)
+                            {
+                                EndDate = dateForHandler;
+                            }
                         }
                         else
                         {
+                            // 若選擇的結束日期比起始日期早，則交換順序
                             if (dateForHandler < StartDate)
                             {
+                                EndDate = StartDate;
                                 StartDate = dateForHandler;
-                                _isStartDateActive = false;
-                                EndDate = dateForHandler;
                             }
                             else
                             {
                                 EndDate = dateForHandler;
                                 Calendar.IsVisible = false;
-
-                                // 触发日期更改事件
-                                StartDateChanged?.Invoke(this, StartDate);
-                                EndDateChanged?.Invoke(this, EndDate);
                             }
                         }
 
+                        // 手動觸發事件，確保 ViewModel 能接收到變更
                         MainThread.BeginInvokeOnMainThread(() =>
                         {
+                            if (StartDate != oldStart)
+                            {
+                                Debug.WriteLine($"[CustomDatePicker] Explicitly triggering StartDateChanged: {oldStart:yyyy-MM-dd} -> {StartDate:yyyy-MM-dd}");
+                                StartDateChanged?.Invoke(this, StartDate);
+                            }
+
+                            if (EndDate != oldEnd)
+                            {
+                                Debug.WriteLine($"[CustomDatePicker] Explicitly triggering EndDateChanged: {oldEnd:yyyy-MM-dd} -> {EndDate:yyyy-MM-dd}");
+                                EndDateChanged?.Invoke(this, EndDate);
+                            }
+
                             UpdateCalendarDisplay();
                         });
                     };
