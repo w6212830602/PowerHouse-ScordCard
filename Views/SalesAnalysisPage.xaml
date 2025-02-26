@@ -204,15 +204,6 @@
                                         </chart:ColumnSeries.Fill>
                                     </chart:ColumnSeries>
 
-                                    <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                  XBindingPath="Label"
-                  YBindingPath="Achievement"
-                  Label="Achievement"
-                  ShowDataLabels="True">
-                                        <chart:ColumnSeries.Fill>
-                                            <Color>#4CAF50</Color>
-                                        </chart:ColumnSeries.Fill>
-                                    </chart:ColumnSeries>
 
                                     <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
                                                       XBindingPath="Label"
