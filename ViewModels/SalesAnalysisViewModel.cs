@@ -51,26 +51,47 @@ namespace ScoreCard.ViewModels
             LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
             _switchViewCommand = new RelayCommand<string>(ExecuteSwitchView);
 
-            // 設定初始日期範圍為當前會計年度
-            var currentDate = DateTime.Now;
-            var fiscalYearStart = currentDate.Month >= 8 ?
-                new DateTime(currentDate.Year, 8, 1) :
-                new DateTime(currentDate.Year - 1, 8, 1);
-
-            StartDate = fiscalYearStart;
-            EndDate = fiscalYearStart.AddYears(1).AddDays(-1);
-
+            // 監聽日期變化
             PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(StartDate) || e.PropertyName == nameof(EndDate))
                 {
+                    Debug.WriteLine($"Date changed - Start: {StartDate:yyyy/MM/dd}, End: {EndDate:yyyy/MM/dd}");
                     LoadDataCommand.ExecuteAsync(null);
                 }
             };
 
-            LoadDataCommand.ExecuteAsync(null);
+            // 初始載入
+            InitializeAsync();
         }
+        // 初始化
+        private async void InitializeAsync()
+        {
+            try
+            {
+                // 初始載入數據
+                var (data, lastUpdated) = await _excelService.LoadDataAsync();
+                _allSalesData = data;
 
+                // 設定初始日期範圍（如果尚未設定）
+                if (StartDate == default || EndDate == default)
+                {
+                    var dates = _allSalesData.Select(x => x.ReceivedDate).OrderBy(x => x).ToList();
+                    if (dates.Any())
+                    {
+                        StartDate = dates.First().Date;
+                        EndDate = dates.Last().Date;
+                        Debug.WriteLine($"Initial date range set - Start: {StartDate:yyyy/MM/dd}, End: {EndDate:yyyy/MM/dd}");
+                    }
+                }
+               
+                await LoadDataCommand.ExecuteAsync(null);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in InitializeAsync: {ex.Message}");
+            }
+        }
         public IAsyncRelayCommand LoadDataCommand { get; }
 
         private void ExecuteSwitchView(string viewType)
@@ -80,48 +101,57 @@ namespace ScoreCard.ViewModels
                 IsSummaryView = viewType.ToLower() == "summary";
             }
         }
-
+        // 載入數據
         private async Task LoadDataAsync()
         {
             try
             {
                 IsLoading = true;
+                Debug.WriteLine($"LoadDataAsync - Using date range: {StartDate:yyyy/MM/dd} to {EndDate:yyyy/MM/dd}");
 
-                var (data, lastUpdated) = await _excelService.LoadDataAsync();
-                Debug.WriteLine($"Loaded data count: {data?.Count ?? 0}");
+                // 確保已有數據載入
+                if (_allSalesData == null)
+                {
+                    var (data, lastUpdated) = await _excelService.LoadDataAsync();
+                    _allSalesData = data;
+                }
 
-                _allSalesData = data;
+                // 正確處理日期過濾
+                var startDate = StartDate.Date;
+                var endDate = EndDate.Date;
 
-                // 過濾數據：忽略時間部分，只比較日期
+                // 過濾數據：只比較日期部分
                 var filteredData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= StartDate.Date && x.ReceivedDate.Date <= EndDate.Date)
+                    .Where(x => x.ReceivedDate.Date >= startDate && x.ReceivedDate.Date <= endDate)
                     .ToList();
 
-                Debug.WriteLine($"Filtered data count: {filteredData.Count}, Date range: {StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}");
+                Debug.WriteLine($"Filtered data count: {filteredData.Count}");
 
-                // 按月份分組計算數據
-                // 在 LoadDataAsync 方法中修改分組和排序邏輯
+                // 按月份分組並排序
                 var monthlyData = filteredData
-                    .GroupBy(x => new { Year = x.ReceivedDate.Year, Month = x.ReceivedDate.Month })
+                    .GroupBy(x => new
+                    {
+                        Year = x.ReceivedDate.Year,
+                        Month = x.ReceivedDate.Month
+                    })
                     .Select(g => new Models.ChartData
                     {
-                        Label = $"{g.Key.Year}/{g.Key.Month:D2}",  // 使用兩位數月份
+                        Label = $"{g.Key.Year}/{g.Key.Month:D2}",
                         Target = Math.Round(g.Sum(x => x.POValue) / 1000000m, 2),
                         Achievement = Math.Round(g.Sum(x => x.VertivValue) / 1000000m, 2)
                     })
-                    .OrderBy(x => x.Label)  // 直接使用 Label 進行排序
+                    .OrderBy(x => x.Label)
                     .ToList();
 
-                Debug.WriteLine($"Monthly data points: {monthlyData.Count}");
+                Debug.WriteLine($"Monthly data points in range: {monthlyData.Count}");
                 foreach (var point in monthlyData)
                 {
-                    Debug.WriteLine($"Month: {point.Label}, Target: {point.Target}, Achievement: {point.Achievement}");
+                    Debug.WriteLine($"Data point: {point.Label}, Target: {point.Target}, Achievement: {point.Achievement}");
                 }
 
-                // 清除並更新圖表數據
+                // 更新圖表數據
                 TargetVsAchievementData.Clear();
                 AchievementTrendData.Clear();
-
                 foreach (var item in monthlyData)
                 {
                     TargetVsAchievementData.Add(item);
@@ -156,10 +186,7 @@ namespace ScoreCard.ViewModels
                     Leaderboard.Add(item);
                 }
 
-                // 更新Y軸最大值
                 UpdateChartAxes();
-
-                Debug.WriteLine($"Data load completed. Summary - Target: {Summary.TotalTarget}M, Achievement: {Summary.TotalAchievement}M");
             }
             catch (Exception ex)
             {
@@ -170,6 +197,12 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = false;
             }
+        }
+
+        private async void OnDateRangeChanged()
+        {
+            Debug.WriteLine($"Date range changed: {StartDate:yyyy/MM/dd} - {EndDate:yyyy/MM/dd}");
+            await LoadDataCommand.ExecuteAsync(null);
         }
 
         private void UpdateChartAxes()

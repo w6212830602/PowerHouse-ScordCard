@@ -32,6 +32,7 @@ namespace ScoreCard
                 Debug.WriteLine($"應用程式初始化錯誤: {ex.Message}");
             }
         }
+
         private void InitializeFileMonitoring()
         {
             try
@@ -63,6 +64,7 @@ namespace ScoreCard
             {
                 _logger?.LogInformation("視窗已創建");
             };
+
 
             window.Destroying += (s, e) =>
             {
