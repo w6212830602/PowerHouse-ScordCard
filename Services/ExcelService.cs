@@ -17,82 +17,84 @@ namespace ScoreCard.Services
 
         public async Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME)
         {
-            try
+            return await Task.Run(() =>
             {
-                string fullPath = Path.Combine(Constants.BASE_PATH, filePath);
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-                var data = new List<SalesData>();
-                DateTime lastUpdated = File.GetLastWriteTime(fullPath);
-
-                using (var package = new ExcelPackage(new FileInfo(fullPath)))
+                try
                 {
-                    var worksheet = package.Workbook.Worksheets[_worksheetName];
-                    if (worksheet == null)
-                        throw new Exception($"Worksheet '{_worksheetName}' not found");
+                    string fullPath = Path.Combine(Constants.BASE_PATH, filePath);
+                    ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                    var data = new List<SalesData>();
+                    DateTime lastUpdated = File.GetLastWriteTime(fullPath);
 
-                    var rowCount = worksheet.Dimension.Rows;
-
-                    for (int row = 2; row <= rowCount; row++)
+                    using (var package = new ExcelPackage(new FileInfo(fullPath)))
                     {
-                        try
+                        var worksheet = package.Workbook.Worksheets[_worksheetName];
+                        if (worksheet == null)
+                            throw new Exception($"Worksheet '{_worksheetName}' not found");
+
+                        var rowCount = worksheet.Dimension.Rows;
+
+                        for (int row = 2; row <= rowCount; row++)
                         {
-                            var salesData = new SalesData
+                            try
                             {
-                                ReceivedDate = worksheet.Cells[row, 1].GetValue<DateTime>(),  // A欄
-                                POValue = GetDecimalValue(worksheet.Cells[row, 7]),           // G欄
-                                VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),       // H欄
-                                TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]),  // N欄
-                                CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P欄
-                                Status = worksheet.Cells[row, 18].GetValue<string>(),         // R欄
-                                SalesRep = worksheet.Cells[row, 26].GetValue<string>(),       // Z欄
-                                ProductType = worksheet.Cells[row, 30].GetValue<string>()     // AD欄
-                            };
-                            Debug.WriteLine($"Reading row {row}: Date={salesData.ReceivedDate}, Status={salesData.Status}");
-
-
-                            if (IsValidSalesData(salesData))
-                            {
-                                // 跳過 cancelled 狀態的數據
-                                if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
+                                var salesData = new SalesData
                                 {
-                                    data.Add(salesData);
-                                }
-                                else
+                                    ReceivedDate = worksheet.Cells[row, 1].GetValue<DateTime>(),  // A欄
+                                    POValue = GetDecimalValue(worksheet.Cells[row, 7]),           // G欄
+                                    VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),       // H欄
+                                    TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]),  // N欄
+                                    CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P欄
+                                    Status = worksheet.Cells[row, 18].GetValue<string>(),         // R欄
+                                    SalesRep = worksheet.Cells[row, 26].GetValue<string>(),       // Z欄
+                                    ProductType = worksheet.Cells[row, 30].GetValue<string>()     // AD欄
+                                };
+                                Debug.WriteLine($"Reading row {row}: Date={salesData.ReceivedDate}, Status={salesData.Status}");
+
+                                if (IsValidSalesData(salesData))
                                 {
-                                    Debug.WriteLine($"Skipped cancelled record at row {row}");
+                                    // 跳過 cancelled 狀態的數據
+                                    if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
+                                    {
+                                        data.Add(salesData);
+                                    }
+                                    else
+                                    {
+                                        Debug.WriteLine($"Skipped cancelled record at row {row}");
+                                    }
                                 }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error reading row {row}: {ex.Message}");
-                            continue;
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error reading row {row}: {ex.Message}");
+                                continue;
+                            }
                         }
                     }
+
+                    // 按季度分組統計
+                    var quarterlyStats = data.GroupBy(x => x.Quarter)
+                                           .ToDictionary(g => g.Key, g => new
+                                           {
+                                               TotalPOValue = g.Sum(x => x.POValue),
+                                               TotalVertivValue = g.Sum(x => x.VertivValue),
+                                               TotalCommission = g.Sum(x => x.TotalCommission)
+                                           });
+
+                    System.Diagnostics.Debug.WriteLine($"Loaded {data.Count} valid records");
+                    foreach (var stat in quarterlyStats)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Q{stat.Key}: Target=${stat.Value.TotalPOValue:N0}, Achieved=${stat.Value.TotalVertivValue:N0}");
+                    }
+
+                    return (data, lastUpdated);
                 }
-
-                // 按季度分組統計
-                var quarterlyStats = data.GroupBy(x => x.Quarter)
-                                       .ToDictionary(g => g.Key, g => new
-                                       {
-                                           TotalPOValue = g.Sum(x => x.POValue),
-                                           TotalVertivValue = g.Sum(x => x.VertivValue),
-                                           TotalCommission = g.Sum(x => x.TotalCommission)
-                                       });
-
-                System.Diagnostics.Debug.WriteLine($"Loaded {data.Count} valid records");
-                foreach (var stat in quarterlyStats)
+                catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Q{stat.Key}: Target=${stat.Value.TotalPOValue:N0}, Achieved=${stat.Value.TotalVertivValue:N0}");
+                    System.Diagnostics.Debug.WriteLine($"Error loading Excel data: {ex.Message}");
+                    throw;
                 }
-
-                return (data, lastUpdated);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error loading Excel data: {ex.Message}");
-                throw;
-            }
+            });
         }
 
         public async Task<bool> UpdateDataAsync(string filePath = Constants.EXCEL_FILE_NAME, List<SalesData> data = null)
@@ -140,7 +142,6 @@ namespace ScoreCard.Services
                     Filter = fileInfo.Name,
                     NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size
                 };
-
                 _watcher.Changed += async (s, e) =>
                 {
                     try

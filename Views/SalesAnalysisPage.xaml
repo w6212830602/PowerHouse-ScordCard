@@ -8,12 +8,15 @@
              xmlns:converts="clr-namespace:ScoreCard.Converts"
              x:Class="ScoreCard.Views.SalesAnalysisPage"
              x:DataType="vm:SalesAnalysisViewModel"
+             Shell.NavBarIsVisible="True"
              BackgroundColor="#F8F9FA"
              Title="Sales Analysis">
 
     <ContentPage.Resources>
         <converts:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <converts:InverseBoolToColorConverter x:Key="InverseBoolToColorConverter"/>
+        <converts:StringEqualsConverter x:Key="StringEqualsConverter"/>
+        <converts:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*">
@@ -274,42 +277,252 @@
                         StrokeThickness="1"
                         BackgroundColor="White">
                     <VerticalStackLayout Padding="15">
-                        <Label Text="Sales Leaderboard"
-                               TextColor="#1A1A1A"
-                               FontSize="16"
-                               FontAttributes="Bold"
-                               Margin="0,0,0,15"/>
+                        <Grid RowDefinitions="Auto,Auto,*">
+                            <Label Text="Sales Leaderboard" 
+                                   TextColor="#1A1A1A"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   Margin="0,0,0,15"/>
 
-                        <Grid ColumnDefinitions="2*,*,*,*" 
-                              Padding="15,10"
-                              BackgroundColor="#F9FAFB">
-                            <Label Grid.Column="0" 
-                                   Text="Sales Rep" 
-                                   TextColor="#666666"/>
-                            <Label Grid.Column="1" 
-                                   Text="Achievement" 
-                                   TextColor="#666666"/>
-                            <Label Grid.Column="2" 
-                                   Text="Commission" 
-                                   TextColor="#666666"/>
-                            <Label Grid.Column="3" 
-                                   Text="Achievement %" 
-                                   TextColor="#666666"/>
-                        </Grid>
+                            <!-- 視圖類型選擇器和狀態過濾器 -->
+                            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,15">
+                                <!-- 視圖類型選擇器 (By Product, By Rep, By Dept-LOB) -->
+                                <HorizontalStackLayout Grid.Column="0" Spacing="0">
+                                    <!-- By Product 按鈕 -->
+                                    <Border Stroke="#E2E8F0"
+                StrokeThickness="1"
+                BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#212121,White'}"
+                StrokeShape="RoundRectangle 4,0,0,4"
+                HeightRequest="36">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
+                                        </Border.GestureRecognizers>
+                                        <Label Text="By Product"
+                   TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"
+                   FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}}"
+                   Margin="15,0"/>
+                                    </Border>
 
-                        <CollectionView ItemsSource="{Binding Leaderboard}">
-                            <CollectionView.ItemTemplate>
-                                <DataTemplate x:DataType="models:SalesRepPerformance">
-                                    <Grid ColumnDefinitions="2*,*,*,*" 
-                                          Padding="15,12">
-                                        <Label Grid.Column="0" Text="{Binding SalesRep}"/>
-                                        <Label Grid.Column="1" Text="{Binding Achievement, StringFormat='${0:N0}'}"/>
-                                        <Label Grid.Column="2" Text="{Binding Commission, StringFormat='${0:N0}'}"/>
-                                        <Label Grid.Column="3" Text="{Binding AchievementPercentage, StringFormat='{0:N1}%'}"/>
+                                    <!-- By Rep 按鈕 -->
+                                    <Border Stroke="#E2E8F0"
+                StrokeThickness="1"
+                BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#212121,White'}"
+                StrokeShape="Rectangle"
+                HeightRequest="36">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByRep"/>
+                                        </Border.GestureRecognizers>
+                                        <Label Text="By Rep"
+                   TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"
+                   FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}}"
+                   Margin="15,0"/>
+                                    </Border>
+
+                                    <!-- By Dept-LOB 按鈕 -->
+                                    <Border Stroke="#E2E8F0"
+                StrokeThickness="1"
+                BackgroundColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#212121,White'}"
+                StrokeShape="RoundRectangle 0,4,4,0"
+                HeightRequest="36">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByDeptLOB"/>
+                                        </Border.GestureRecognizers>
+                                        <Label Text="By Dept-LOB"
+                   TextColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"
+                   FontAttributes="{Binding IsDeptLobView, Converter={StaticResource BoolToStringConverter}}"
+                   Margin="15,0"/>
+                                    </Border>
+                                </HorizontalStackLayout>
+
+                                <!-- 狀態過濾器 (Booked, Completed) -->
+                                <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
+                                    <!-- Booked 按鈕 -->
+                                    <Border Stroke="#E2E8F0"
+                StrokeThickness="1"
+                BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,White'}"
+                StrokeShape="RoundRectangle 4,0,0,4"
+                HeightRequest="36">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
+                                        </Border.GestureRecognizers>
+                                        <Label Text="Booked"
+                   TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"
+                   FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}}"
+                   Margin="15,0"/>
+                                    </Border>
+
+                                    <!-- Completed 按鈕 -->
+                                    <Border Stroke="#E2E8F0"
+                StrokeThickness="1"
+                BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='#212121,White'}"
+                StrokeShape="RoundRectangle 0,4,4,0"
+                HeightRequest="36">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
+                                        </Border.GestureRecognizers>
+                                        <Label Text="Completed"
+                   TextColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"
+                   FontAttributes="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToStringConverter}}"
+                   Margin="15,0"/>
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </Grid>
+
+                            <!-- Dynamic Table Content based on View Type -->
+                            <Grid Grid.Row="2">
+                                <!-- By Product View -->
+                                <VerticalStackLayout IsVisible="{Binding IsProductView}">
+                                    <Grid ColumnDefinitions="2*,*,*,*,*,*" 
+                                          Padding="15,10"
+                                          BackgroundColor="#F9FAFB">
+                                        <Label Grid.Column="0" 
+                                               Text="Product Type" 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="1" 
+                                               Text="Agency Comm." 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="2" 
+                                               Text="Buy Resell Comm." 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="3" 
+                                               Text="Total Commission" 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="4" 
+                                               Text="PO Value" 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="5" 
+                                               Text="% of Total" 
+                                               TextColor="#666666"/>
                                     </Grid>
-                                </DataTemplate>
-                            </CollectionView.ItemTemplate>
-                        </CollectionView>
+
+                                    <CollectionView ItemsSource="{Binding ProductSalesData}">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ProductSalesData">
+                                                <Grid ColumnDefinitions="2*,*,*,*,*,*" Padding="15,12">
+                                                    <Label Grid.Column="0" Text="{Binding ProductType}"/>
+                                                    <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="3" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="4" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="5" Text="{Binding PercentageOfTotal, StringFormat='{0:P1}'}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
+                                </VerticalStackLayout>
+
+                                <!-- By Rep View -->
+                                <VerticalStackLayout IsVisible="{Binding IsRepView}">
+                                    <Grid ColumnDefinitions="60,2*,*,*,*" 
+                                          Padding="15,10"
+                                          BackgroundColor="#F9FAFB">
+                                        <Label Grid.Column="0" 
+                                               Text="Rank" 
+                                               TextColor="#666666"
+                                               HorizontalOptions="Center"/>
+                                        <Label Grid.Column="1" 
+                                               Text="Sales Rep" 
+                                               TextColor="#666666"
+                                               Margin="10,0,0,0"/>
+                                        <Label Grid.Column="2" 
+                                               Text="Agency Comm." 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="3" 
+                                               Text="Buy Resell Comm." 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="4" 
+                                               Text="Total Commission" 
+                                               TextColor="#666666"/>
+                                    </Grid>
+
+                                    <CollectionView ItemsSource="{Binding SalesLeaderboard}">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:SalesLeaderboardItem">
+                                                <Grid ColumnDefinitions="60,2*,*,*,*" 
+                                                      Padding="15,12">
+                                                    <Label Grid.Column="0" 
+                                                           Text="{Binding Rank}"
+                                                           HorizontalOptions="Center"/>
+                                                    <Label Grid.Column="1" 
+                                                           Text="{Binding SalesRep}"
+                                                           Margin="10,0,0,0"/>
+                                                    <Label Grid.Column="2" 
+                                                           Text="{Binding AgencyCommission, StringFormat='${0:N0}'}"/>
+                                                    <Label Grid.Column="3" 
+                                                           Text="{Binding BuyResellCommission, StringFormat='${0:N0}'}"/>
+                                                    <Label Grid.Column="4" 
+                                                           Text="{Binding TotalCommission, StringFormat='${0:N0}'}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
+                                </VerticalStackLayout>
+
+                                <!-- By Department/LOB View -->
+                                <VerticalStackLayout IsVisible="{Binding IsDeptLobView}">
+                                    <Grid ColumnDefinitions="60,2*,*,*,*" 
+                                          Padding="15,10"
+                                          BackgroundColor="#F9FAFB">
+                                        <Label Grid.Column="0" 
+                                               Text="Rank" 
+                                               TextColor="#666666"
+                                               HorizontalOptions="Center"/>
+                                        <Label Grid.Column="1" 
+                                               Text="LOB" 
+                                               TextColor="#666666"
+                                               Margin="10,0,0,0"/>
+                                        <Label Grid.Column="2" 
+                                               Text="F25 Margin Target" 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="3" 
+                                               Text="Margin YTD" 
+                                               TextColor="#666666"/>
+                                        <Label Grid.Column="4" 
+                                               Text="% of Margin Target" 
+                                               TextColor="#666666"/>
+                                    </Grid>
+
+                                    <CollectionView ItemsSource="{Binding DepartmentLobData}">
+                                        <CollectionView.ItemTemplate>
+                                            <DataTemplate x:DataType="models:DepartmentLobData">
+                                                <Grid ColumnDefinitions="60,2*,*,*,*" 
+                                                      Padding="15,12"
+                                                      BackgroundColor="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,#F9FAFB,Transparent'}">
+                                                    <Label Grid.Column="0" 
+                                                           Text="{Binding Rank}" 
+                                                           IsVisible="{Binding Rank, Converter={StaticResource GreaterThanZeroConverter}}"
+                                                           HorizontalOptions="Center"
+                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                                                    <Label Grid.Column="1" 
+                                                           Text="{Binding LOB}"
+                                                           Margin="10,0,0,0"
+                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                                                    <Label Grid.Column="2" 
+                                                           Text="{Binding MarginTarget, StringFormat='${0:N0}'}"
+                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                                                    <Label Grid.Column="3" 
+                                                           Text="{Binding MarginYTD, StringFormat='${0:N0}'}"
+                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                                                    <Label Grid.Column="4" 
+                                                           Text="{Binding MarginPercentage, StringFormat='{0:P0}'}"
+                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </CollectionView.ItemTemplate>
+                                    </CollectionView>
+                                </VerticalStackLayout>
+                            </Grid>
+                        </Grid>
                     </VerticalStackLayout>
                 </Border>
             </VerticalStackLayout>
