@@ -12,7 +12,7 @@ using System.Text.Json;
 
 namespace ScoreCard.ViewModels
 {
-    public class SalesAnalysisViewModel : INotifyPropertyChanged
+    public partial class SalesAnalysisViewModel : INotifyPropertyChanged
     {
         private readonly IExcelService _excelService;
         private List<SalesData> _allSalesData;
@@ -247,7 +247,16 @@ namespace ScoreCard.ViewModels
         {
             if (!string.IsNullOrEmpty(viewType))
             {
-                IsSummaryView = viewType.ToLower() == "summary";
+                if (viewType.ToLower() == "summary")
+                {
+                    IsSummaryView = true;
+                }
+                else if (viewType.ToLower() == "detailed")
+                {
+                    // 如果切換到詳細視圖，則導航到詳細頁面
+                    NavigateToDetailedViewCommand.Execute(null);
+                    return;
+                }
             }
         }
 
@@ -777,7 +786,7 @@ namespace ScoreCard.ViewModels
                 new SalesLeaderboardItem { SalesRep = "Terry MB", AgencyCommission = 4868, BuyResellCommission = 2086 },
                 new SalesLeaderboardItem { SalesRep = "Nathan", AgencyCommission = 3457, BuyResellCommission = 1482 }
             };
-                }
+                } 
 
                 // 添加排名
                 for (int i = 0; i < salesRepData.Count; i++)
@@ -787,7 +796,7 @@ namespace ScoreCard.ViewModels
 
                 SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(salesRepData);
                 Debug.WriteLine($"已加載 {salesRepData.Count} 條銷售代表數據");
-            }
+            } 
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入銷售代表數據錯誤: {ex.Message}");
@@ -935,6 +944,32 @@ namespace ScoreCard.ViewModels
             Debug.WriteLine($"ProductSalesData 項目數: {ProductSalesData?.Count ?? 0}");
             Debug.WriteLine($"DepartmentLobData 項目數: {DepartmentLobData?.Count ?? 0}");
             Debug.WriteLine("=========================\n");
+        }
+
+        [RelayCommand]
+        private async Task NavigateToDetailedView()
+        {
+            {
+                try
+                {
+                    // 修正導航方式，使用相對路徑而非絕對路徑
+                    await Shell.Current.GoToAsync("DetailedSales");
+                    Debug.WriteLine("導航到詳細視圖");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"導航錯誤: {ex.Message}");
+
+                    // 顯示錯誤訊息，便於調試
+                    if (Application.Current?.MainPage != null)
+                    {
+                        await Application.Current.MainPage.DisplayAlert(
+                            "導航錯誤",
+                            $"無法導航到詳細頁面: {ex.Message}",
+                            "確定");
+                    }
+                }
+            }
         }
 
     }

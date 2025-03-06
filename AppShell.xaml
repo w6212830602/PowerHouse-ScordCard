@@ -23,6 +23,13 @@
             Title="Settings"
             ContentTemplate="{DataTemplate views:SettingsPage}"
             Route="Settings" />
+
+        <!-- 添加詳細分析頁面，但設置為不顯示在菜單中 -->
+        <ShellContent
+            Title="Detailed Analysis"
+            ContentTemplate="{DataTemplate views:DetailedSalesPage}"
+            Route="DetailedAnalysis"
+            FlyoutItemIsVisible="False" />
     </FlyoutItem>
 
 </Shell>

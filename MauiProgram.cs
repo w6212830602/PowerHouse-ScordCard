@@ -40,11 +40,14 @@ namespace ScoreCard
             builder.Services.AddTransient<DashboardViewModel>();
             builder.Services.AddTransient<SalesAnalysisViewModel>();
             builder.Services.AddTransient<SettingsViewModel>();
+            builder.Services.AddTransient<DetailedSalesViewModel>();
 
             // Register Pages
             builder.Services.AddTransient<DashboardPage>();
             builder.Services.AddTransient<SalesAnalysisPage>();
             builder.Services.AddTransient<SettingsPage>();
+            builder.Services.AddTransient<DetailedSalesPage>();
+
 
 #if DEBUG
             builder.Logging.AddDebug();

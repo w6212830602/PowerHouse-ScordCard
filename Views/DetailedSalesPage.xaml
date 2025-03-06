@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:ScoreCard.ViewModels"
+             xmlns:models="clr-namespace:ScoreCard.Models"
+             xmlns:controls="clr-namespace:ScoreCard.Controls"
+             xmlns:converts="clr-namespace:ScoreCard.Converts"
+             x:Class="ScoreCard.Views.DetailedSalesPage"
+             x:DataType="viewmodels:DetailedSalesViewModel"
+             BackgroundColor="#F8F9FA"
+             Title="Sales Analysis - Detailed">
+
+    <ContentPage.Resources>
+        <converts:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converts:BoolToStringConverter x:Key="BoolToStringConverter"/>
+        <converts:CurrencyConverter x:Key="CurrencyConverter"/>
+        <converts:TotalAgencyCommissionConverter x:Key="TotalAgencyCommissionConverter"/>
+        <converts:TotalBuyResellCommissionConverter x:Key="TotalBuyResellCommissionConverter"/>
+        <converts:TotalCommissionConverter x:Key="TotalCommissionConverter"/>
+        <converts:TotalPOValueConverter x:Key="TotalPOValueConverter"/>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- 頁首控制區域 -->
+        <Grid Grid.Row="0" 
+              Padding="20,10"
+              BackgroundColor="White"
+              ColumnDefinitions="Auto,*,Auto"
+              RowDefinitions="Auto,Auto">
+
+            <!-- 視圖類型切換 (Summary/Detailed) -->
+            <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+                <Border Stroke="#FF3B30"
+                        StrokeThickness="1"
+                        BackgroundColor="Transparent"
+                        StrokeShape="RoundRectangle 4,0,0,4"
+                        HeightRequest="36">
+                    <Label Text="Summary"
+                           TextColor="#FF3B30"
+                           VerticalOptions="Center"
+                           Margin="20,0"/>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding NavigateToSummaryCommand}"/>
+                    </Border.GestureRecognizers>
+                </Border>
+                <Border Stroke="#FF3B30"
+                        StrokeThickness="1"
+                        BackgroundColor="#FF3B30"
+                        StrokeShape="RoundRectangle 0,4,4,0"
+                        HeightRequest="36">
+                    <Label Text="Detailed"
+                           TextColor="White"
+                           VerticalOptions="Center"
+                           Margin="20,0"/>
+                </Border>
+            </HorizontalStackLayout>
+
+            <!-- 日期範圍選擇器 -->
+            <controls:CustomDatePicker Grid.Row="0" Grid.Column="2"
+                                       StartDate="{Binding StartDate, Mode=TwoWay}" 
+                                       EndDate="{Binding EndDate, Mode=TwoWay}"/>
+
+            <!-- 產品/銷售代表切換 -->
+            <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0">
+                <Border Stroke="#E2E8F0"
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,White'}"
+            StrokeShape="RoundRectangle 4,0,0,4"
+            HeightRequest="36">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByProduct"/>
+                    </Border.GestureRecognizers>
+                    <Label Text="By Product"
+               TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+               VerticalOptions="Center"
+               FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
+                </Border>
+                <Border Stroke="#E2E8F0"
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,White'}"
+            StrokeShape="RoundRectangle 0,4,4,0"
+            HeightRequest="36">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByRep"/>
+                    </Border.GestureRecognizers>
+                    <Label Text="By Rep"
+               TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+               VerticalOptions="Center"
+               FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
+                </Border>
+            </HorizontalStackLayout>
+
+
+            <!-- 匯出按鈕和銷售代表篩選器 -->
+            <Grid Grid.Row="1" Grid.Column="2" ColumnDefinitions="Auto,*">
+                <!-- 匯出按鈕 -->
+                <Border Grid.Column="0"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 4"
+                        HeightRequest="36">
+                    <Grid ColumnDefinitions="Auto,Auto" Margin="12,0">
+                        <Label Grid.Column="0"
+                               Text="↓"
+                               FontSize="16"
+                               VerticalOptions="Center"/>
+                        <Label Grid.Column="1"
+                               Text="Export"
+                               Margin="6,0,0,0"
+                               VerticalOptions="Center"/>
+                    </Grid>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ToggleExportOptionsCommand}"/>
+                    </Border.GestureRecognizers>
+                </Border>
+
+                <!-- 銷售代表篩選器 -->
+                <Border Grid.Column="1"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 4"
+                        HeightRequest="36"
+                        Margin="10,0,0,0">
+                    <HorizontalStackLayout>
+                        <Picker Title="Select Sales Rep"
+                                ItemsSource="{Binding SalesReps}"
+                                SelectedItem="{Binding SelectedSalesRep}"
+                                WidthRequest="200"
+                                Margin="10,0"/>
+                    </HorizontalStackLayout>
+                </Border>
+
+                <!-- 匯出選項彈出視窗 -->
+                <Border Grid.Column="0" Grid.ColumnSpan="2"
+                        IsVisible="{Binding IsExportOptionsVisible}"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="White"
+                        StrokeShape="RoundRectangle 4"
+                        VerticalOptions="Start"
+                        HorizontalOptions="Start"
+                        Margin="0,40,0,0"
+                        ZIndex="100">
+                    <VerticalStackLayout WidthRequest="200">
+                        <!-- Excel 匯出 -->
+                        <Border BackgroundColor="Transparent"
+                                StrokeShape="Rectangle">
+                            <Grid ColumnDefinitions="Auto,*" Padding="12">
+                                <Label Grid.Column="0"
+                                       Text="E"
+                                       FontSize="16"
+                                       TextColor="#217346"
+                                       VerticalOptions="Center"/>
+                                <VerticalStackLayout Grid.Column="1" Margin="10,0,0,0">
+                                    <Label Text="Export to Excel"
+                                           FontSize="14"/>
+                                    <Label Text="Download as .xlsx file"
+                                           FontSize="12"
+                                           TextColor="#666666"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ExportCommand}" CommandParameter="Excel"/>
+                            </Border.GestureRecognizers>
+                        </Border>
+
+                        <!-- PDF 匯出 -->
+                        <Border BackgroundColor="Transparent"
+                                StrokeShape="Rectangle">
+                            <Grid ColumnDefinitions="Auto,*" Padding="12">
+                                <Label Grid.Column="0"
+                                       Text="P"
+                                       FontSize="16"
+                                       TextColor="#F40F02"
+                                       VerticalOptions="Center"/>
+                                <VerticalStackLayout Grid.Column="1" Margin="10,0,0,0">
+                                    <Label Text="Export to PDF"
+                                           FontSize="14"/>
+                                    <Label Text="Download as .pdf file"
+                                           FontSize="12"
+                                           TextColor="#666666"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ExportCommand}" CommandParameter="PDF"/>
+                            </Border.GestureRecognizers>
+                        </Border>
+
+                        <!-- CSV 匯出 -->
+                        <Border BackgroundColor="Transparent"
+                                StrokeShape="Rectangle">
+                            <Grid ColumnDefinitions="Auto,*" Padding="12">
+                                <Label Grid.Column="0"
+                                       Text="C"
+                                       FontSize="16"
+                                       TextColor="#00A14B"
+                                       VerticalOptions="Center"/>
+                                <VerticalStackLayout Grid.Column="1" Margin="10,0,0,0">
+                                    <Label Text="Export to CSV"
+                                           FontSize="14"/>
+                                    <Label Text="Download as .csv file"
+                                           FontSize="12"
+                                           TextColor="#666666"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ExportCommand}" CommandParameter="CSV"/>
+                            </Border.GestureRecognizers>
+                        </Border>
+
+                        <!-- 列印選項 -->
+                        <Border BackgroundColor="Transparent"
+                                StrokeShape="Rectangle">
+                            <Grid ColumnDefinitions="Auto,*" Padding="12">
+                                <Label Grid.Column="0"
+                                       Text="🖨️"
+                                       FontSize="16"
+                                       VerticalOptions="Center"/>
+                                <VerticalStackLayout Grid.Column="1" Margin="10,0,0,0">
+                                    <Label Text="Print"
+                                           FontSize="14"/>
+                                    <Label Text="Print current report"
+                                           FontSize="12"
+                                           TextColor="#666666"/>
+                                </VerticalStackLayout>
+                            </Grid>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ExportCommand}" CommandParameter="Print"/>
+                            </Border.GestureRecognizers>
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- 主要內容區域 -->
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20" Spacing="20">
+                <!-- 標題和銷售報表 -->
+                <VerticalStackLayout Spacing="20">
+                    <!-- 標題 -->
+                    <Label Text="Sales Analysis"
+                           FontSize="24"
+                           FontAttributes="Bold"/>
+
+                    <!-- F25 - 銷售代表按產品類型的傭金 -->
+                    <Border Stroke="#E5E7EB"
+                            StrokeThickness="1"
+                            BackgroundColor="White">
+                        <VerticalStackLayout>
+                            <Label Text="F25 - Sales Rep Commission by Product Type (Margin Achieved)"
+                                   Padding="15"
+                                   FontSize="16"
+                                   FontAttributes="Bold"/>
+
+                            <!-- 產品視圖 -->
+                            <VerticalStackLayout IsVisible="{Binding IsProductView}">
+                                <!-- 表格標題 -->
+                                <Grid ColumnDefinitions="3*,2*,2*,2*,2*" 
+                                      BackgroundColor="#F9FAFB"
+                                      Padding="15,10">
+                                    <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="Agency Comm." FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="Buy Resell Comm." FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="Total Commission" FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="% of Grand Total" FontAttributes="Bold"/>
+                                </Grid>
+
+                                <!-- 產品數據 -->
+                                <CollectionView ItemsSource="{Binding ProductSalesData}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ProductSalesData">
+                                            <!-- 添加獨特識別鍵 -->
+                                            <Grid x:Name="ProductRow" 
+                  AutomationId="{Binding ProductType}"
+                  ColumnDefinitions="3*,2*,2*,2*,2*" 
+                  Padding="15,12">
+                                                <Label Grid.Column="0" Text="{Binding ProductType}"/>
+                                                <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="3" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="4" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+
+                                <!-- 總計行 -->
+                                <Grid ColumnDefinitions="3*,2*,2*,2*,2*" 
+                                      BackgroundColor="#F0F9FF"
+                                      Padding="15,12">
+                                    <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="$1,560,638.91" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="$133,267.32" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="$1,693,966.23" FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="100.00%" FontAttributes="Bold"/>
+                                </Grid>
+                            </VerticalStackLayout>
+
+                            <!-- 銷售代表視圖 -->
+                            <VerticalStackLayout IsVisible="{Binding IsRepView}">
+                                <!-- 表格標題 -->
+                                <Grid ColumnDefinitions="60,3*,2*,2*,2*" 
+                                      BackgroundColor="#F9FAFB"
+                                      Padding="15,10">
+                                    <Label Grid.Column="0" Text="Rank" FontAttributes="Bold" HorizontalOptions="Center"/>
+                                    <Label Grid.Column="1" Text="Sales Rep" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="Agency Comm." FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="Buy Resell Comm." FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="Total Commission" FontAttributes="Bold"/>
+                                </Grid>
+
+                                <!-- 銷售代表數據 -->
+                                <CollectionView ItemsSource="{Binding SalesRepData}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:SalesLeaderboardItem">
+                                            <Grid ColumnDefinitions="60,3*,2*,2*,2*" Padding="15,12">
+                                                <Label Grid.Column="0" Text="{Binding Rank}" HorizontalOptions="Center"/>
+                                                <Label Grid.Column="1" Text="{Binding SalesRep}"/>
+                                                <Label Grid.Column="2" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="3" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="4" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+
+                                <!-- 總計行 -->
+                                <Grid ColumnDefinitions="60,3*,2*,2*,2*" 
+                                      BackgroundColor="#F0F9FF"
+                                      Padding="15,12">
+                                    <Label Grid.Column="1" Text="Grand Total" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="$183,839.95" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="$3,816.57" FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="$187,656.52" FontAttributes="Bold"/>
+                                </Grid>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <!-- Sexy Report - Who's POs are bigger -->
+                    <Border Stroke="#E5E7EB"
+                            StrokeThickness="1"
+                            BackgroundColor="White">
+                        <VerticalStackLayout>
+                            <Label Text="Sexy Report - Who's POs are bigger"
+                                   Padding="15"
+                                   FontSize="16"
+                                   FontAttributes="Bold"/>
+
+                            <!-- 產品視圖 -->
+                            <VerticalStackLayout IsVisible="{Binding IsProductView}">
+                                <!-- 表格標題 -->
+                                <Grid ColumnDefinitions="3*,2*,2*" 
+                                      BackgroundColor="#F9FAFB"
+                                      Padding="15,10">
+                                    <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="PO Value" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="% of Grand Total" FontAttributes="Bold"/>
+                                </Grid>
+
+                                <!-- 產品數據 -->
+                                <CollectionView ItemsSource="{Binding ProductSalesData}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ProductSalesData">
+                                            <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
+                                                <Label Grid.Column="0" Text="{Binding ProductType}"/>
+                                                <Label Grid.Column="1" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="2" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
+
+                                <!-- 總計行 -->
+                                <Grid ColumnDefinitions="3*,2*,2*" 
+                                      BackgroundColor="#F0F9FF"
+                                      Padding="15,12">
+                                    <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="$17,758,397.94" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="100.00%" FontAttributes="Bold"/>
+                                </Grid>
+                            </VerticalStackLayout>
+
+                            <!-- 銷售代表視圖 -->
+                            <VerticalStackLayout IsVisible="{Binding IsRepView}">
+                                <!-- 表格標題 -->
+                                <Grid ColumnDefinitions="3*,2*,2*" 
+                                      BackgroundColor="#F9FAFB"
+                                      Padding="15,10">
+                                    <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="Sum of PO Value" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="% of PO Value" FontAttributes="Bold"/>
+                                </Grid>
+
+                                <!-- 銷售代表 PO 數據 -->
+                                <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
+                                    <Label Grid.Column="0" Text="Channel"/>
+                                    <Label Grid.Column="1" Text="$70,124.50"/>
+                                    <Label Grid.Column="2" Text="3.52%"/>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
+                                    <Label Grid.Column="0" Text="Thermal"/>
+                                    <Label Grid.Column="1" Text="$1,324,853.30"/>
+                                    <Label Grid.Column="2" Text="96.48%"/>
+                                </Grid>
+
+                                <!-- 總計行 -->
+                                <Grid ColumnDefinitions="3*,2*,2*" 
+                                      BackgroundColor="#F0F9FF"
+                                      Padding="15,12">
+                                    <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="$1,394,384.40" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="100.00%" FontAttributes="Bold"/>
+                                </Grid>
+                            </VerticalStackLayout>
+                        </VerticalStackLayout>
+                    </Border>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- 加載指示器 -->
+        <Grid Grid.RowSpan="2" 
+              BackgroundColor="#80000000"
+              IsVisible="{Binding IsLoading}">
+            <ActivityIndicator IsRunning="{Binding IsLoading}"
+                             HorizontalOptions="Center" 
+                             VerticalOptions="Center"/>
+        </Grid>
+    </Grid>
+</ContentPage>

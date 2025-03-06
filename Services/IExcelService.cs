@@ -1,15 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using ScoreCard.Services;
 using ScoreCard.Models;
-using ScoreCard.Views;
-
-
 
 namespace ScoreCard.Services
 {
@@ -17,8 +9,13 @@ namespace ScoreCard.Services
     {
         Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME);
         Task<bool> UpdateDataAsync(string filePath = Constants.EXCEL_FILE_NAME, List<SalesData> data = null);
-        Task<bool> MonitorFileChangesAsync(CancellationToken token);  // 簡化參數
+        Task<bool> MonitorFileChangesAsync(CancellationToken token);
+
+        // 新增獲取摘要數據的方法
+        List<ProductSalesData> GetProductSalesData();
+        List<SalesLeaderboardItem> GetSalesLeaderboardData();
+        List<DepartmentLobData> GetDepartmentLobData();
+
         event EventHandler<DateTime> DataUpdated;
     }
 }
-
