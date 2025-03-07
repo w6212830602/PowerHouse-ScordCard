@@ -10,6 +10,7 @@ namespace ScoreCard.Services
         Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME);
         Task<bool> UpdateDataAsync(string filePath = Constants.EXCEL_FILE_NAME, List<SalesData> data = null);
         Task<bool> MonitorFileChangesAsync(CancellationToken token);
+        void ClearCache();
 
         // 新增獲取摘要數據的方法
         List<ProductSalesData> GetProductSalesData();

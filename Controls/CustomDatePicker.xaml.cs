@@ -20,14 +20,12 @@ namespace ScoreCard.Controls
         private DateTime _displayMonth;
         private bool _isStartDateActive;
         private bool _isInternalChange; // 標記內部變更，避免循環觸發
+        private bool _isInitialized = false; // 新增：追蹤控件是否已初始化
 
         // 日期變更事件
         public event EventHandler<DateTime> StartDateChanged;
         public event EventHandler<DateTime> EndDateChanged;
         public new event PropertyChangedEventHandler PropertyChanged;
-
-
-
 
         protected override void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
@@ -79,6 +77,9 @@ namespace ScoreCard.Controls
             Calendar.GestureRecognizers.Add(calendarTapGesture);
 
             UpdateCalendarDisplay();
+
+            // 標記初始化完成
+            _isInitialized = true;
         }
 
         public DateTime StartDate
@@ -90,7 +91,14 @@ namespace ScoreCard.Controls
                 {
                     _isInternalChange = true;
                     SetValue(StartDateProperty, value);
-                    StartDateChanged?.Invoke(this, value);  // 確保事件被觸發
+
+                    // 僅在控件初始化後才觸發事件
+                    if (_isInitialized)
+                    {
+                        StartDateChanged?.Invoke(this, value);  // 確保事件被觸發
+                        Debug.WriteLine($"[CustomDatePicker] StartDateChanged 事件已觸發: {value:yyyy-MM-dd}");
+                    }
+
                     OnPropertyChanged(nameof(StartDate));
                     Debug.WriteLine($"[CustomDatePicker] StartDate set to: {value:yyyy-MM-dd}");
                     _isInternalChange = false;
@@ -107,68 +115,20 @@ namespace ScoreCard.Controls
                 {
                     _isInternalChange = true;
                     SetValue(EndDateProperty, value);
-                    EndDateChanged?.Invoke(this, value);  // 確保事件被觸發
+
+                    // 僅在控件初始化後才觸發事件
+                    if (_isInitialized)
+                    {
+                        EndDateChanged?.Invoke(this, value);  // 確保事件被觸發
+                        Debug.WriteLine($"[CustomDatePicker] EndDateChanged 事件已觸發: {value:yyyy-MM-dd}");
+                    }
+
                     OnPropertyChanged(nameof(EndDate));
                     Debug.WriteLine($"[CustomDatePicker] EndDate set to: {value:yyyy-MM-dd}");
                     _isInternalChange = false;
                 }
             }
         }
-
-        private void OnDateDayClicked(object sender, EventArgs e)
-        {
-            var dateButton = sender as Button;
-            if (dateButton?.BindingContext is DateTime dateForHandler)
-            {
-                Debug.WriteLine($"[CustomDatePicker] Date button clicked: {dateForHandler:yyyy-MM-dd}");
-
-                DateTime oldStart = StartDate;
-                DateTime oldEnd = EndDate;
-
-                if (_isStartDateActive)
-                {
-                    // 設置起始日期
-                    StartDate = dateForHandler;
-                    _isStartDateActive = false;
-
-                    // 若選擇的起始日期比當前結束日期晚，則同時設置結束日期
-                    if (dateForHandler > EndDate)
-                    {
-                        EndDate = dateForHandler;
-                    }
-                }
-                else
-                {
-                    // 若選擇的結束日期比起始日期早，則交換順序
-                    if (dateForHandler < StartDate)
-                    {
-                        EndDate = StartDate;
-                        StartDate = dateForHandler;
-                    }
-                    else
-                    {
-                        EndDate = dateForHandler;
-                        Calendar.IsVisible = false;  // 選擇完結束日期後自動關閉日曆
-                    }
-                }
-
-                // 手動觸發事件，確保 ViewModel 接收到變更
-                if (StartDate != oldStart)
-                {
-                    Debug.WriteLine($"[CustomDatePicker] Explicitly triggering StartDateChanged: {oldStart:yyyy-MM-dd} -> {StartDate:yyyy-MM-dd}");
-                    StartDateChanged?.Invoke(this, StartDate);
-                }
-
-                if (EndDate != oldEnd)
-                {
-                    Debug.WriteLine($"[CustomDatePicker] Explicitly triggering EndDateChanged: {oldEnd:yyyy-MM-dd} -> {EndDate:yyyy-MM-dd}");
-                    EndDateChanged?.Invoke(this, EndDate);
-                }
-
-                UpdateCalendarDisplay();
-            }
-        }
-
 
         private static void OnDateChanged(BindableObject bindable, object oldValue, object newValue)
         {
@@ -182,7 +142,7 @@ namespace ScoreCard.Controls
             picker.UpdateCalendarDisplay();
 
             // 確保組件在繫結的屬性變更時，主動通知 ViewModel
-            if (oldValue is DateTime oldDate && newValue is DateTime newDate && oldDate != newDate)
+            if (oldValue is DateTime oldDate && newValue is DateTime newDate && oldDate != newDate && picker._isInitialized)
             {
                 string propertyName = null;
 
@@ -275,62 +235,68 @@ namespace ScoreCard.Controls
                         dateButton.TextColor = Colors.White;
                     }
 
-                    var dateForHandler = currentDate;
-                    dateButton.Clicked += (s, e) =>
-                    {
-                        Debug.WriteLine($"[CustomDatePicker] Date button clicked: {dateForHandler:yyyy-MM-dd}");
-
-                        DateTime oldStart = StartDate;
-                        DateTime oldEnd = EndDate;
-
-                        if (_isStartDateActive)
-                        {
-                            // 設置起始日期
-                            StartDate = dateForHandler;
-                            _isStartDateActive = false;
-
-                            // 若選擇的起始日期比當前結束日期晚，則同時設置結束日期
-                            if (dateForHandler > EndDate)
-                            {
-                                EndDate = dateForHandler;
-                            }
-                        }
-                        else
-                        {
-                            // 若選擇的結束日期比起始日期早，則交換順序
-                            if (dateForHandler < StartDate)
-                            {
-                                EndDate = StartDate;
-                                StartDate = dateForHandler;
-                            }
-                            else
-                            {
-                                EndDate = dateForHandler;
-                                Calendar.IsVisible = false;
-                            }
-                        }
-
-                        // 手動觸發事件，確保 ViewModel 能接收到變更
-                        MainThread.BeginInvokeOnMainThread(() =>
-                        {
-                            if (StartDate != oldStart)
-                            {
-                                Debug.WriteLine($"[CustomDatePicker] Explicitly triggering StartDateChanged: {oldStart:yyyy-MM-dd} -> {StartDate:yyyy-MM-dd}");
-                                StartDateChanged?.Invoke(this, StartDate);
-                            }
-
-                            if (EndDate != oldEnd)
-                            {
-                                Debug.WriteLine($"[CustomDatePicker] Explicitly triggering EndDateChanged: {oldEnd:yyyy-MM-dd} -> {EndDate:yyyy-MM-dd}");
-                                EndDateChanged?.Invoke(this, EndDate);
-                            }
-
-                            UpdateCalendarDisplay();
-                        });
-                    };
+                    dateButton.BindingContext = currentDate;
+                    dateButton.Clicked += OnDateButtonClicked;  // 統一使用這個處理方法
 
                     grid.Add(dateButton, i % 7, i / 7);
                 }
+            }
+        }
+
+        // 統一的日期按鈕點擊處理方法
+        private void OnDateButtonClicked(object sender, EventArgs e)
+        {
+            if (sender is Button dateButton && dateButton.BindingContext is DateTime dateForHandler)
+            {
+                Debug.WriteLine($"[CustomDatePicker] Date button clicked: {dateForHandler:yyyy-MM-dd}");
+
+                DateTime oldStart = StartDate;
+                DateTime oldEnd = EndDate;
+
+                if (_isStartDateActive)
+                {
+                    // 設置起始日期
+                    StartDate = dateForHandler;
+                    _isStartDateActive = false;
+
+                    // 若選擇的起始日期比當前結束日期晚，則同時設置結束日期
+                    if (dateForHandler > EndDate)
+                    {
+                        EndDate = dateForHandler;
+                    }
+                }
+                else
+                {
+                    // 若選擇的結束日期比起始日期早，則交換順序
+                    if (dateForHandler < StartDate)
+                    {
+                        EndDate = StartDate;
+                        StartDate = dateForHandler;
+                    }
+                    else
+                    {
+                        EndDate = dateForHandler;
+                        Calendar.IsVisible = false;  // 選擇完結束日期後自動關閉日曆
+                    }
+                }
+
+                // 確保手動觸發事件，以通知ViewModel
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    if (StartDate != oldStart)
+                    {
+                        Debug.WriteLine($"[CustomDatePicker] Explicitly triggering StartDateChanged: {oldStart:yyyy-MM-dd} -> {StartDate:yyyy-MM-dd}");
+                        StartDateChanged?.Invoke(this, StartDate);
+                    }
+
+                    if (EndDate != oldEnd)
+                    {
+                        Debug.WriteLine($"[CustomDatePicker] Explicitly triggering EndDateChanged: {oldEnd:yyyy-MM-dd} -> {EndDate:yyyy-MM-dd}");
+                        EndDateChanged?.Invoke(this, EndDate);
+                    }
+
+                    UpdateCalendarDisplay();
+                });
             }
         }
     }

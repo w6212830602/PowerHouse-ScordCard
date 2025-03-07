@@ -605,41 +605,56 @@ namespace ScoreCard.Services
             }
         }
 
+        public void ClearCache()
+        {
+            _productSalesCache = new List<ProductSalesData>();
+            _salesLeaderboardCache = new List<SalesLeaderboardItem>();
+            _departmentLobCache = new List<DepartmentLobData>();
+
+            // 記錄緩存清除
+            Debug.WriteLine("緩存已完全清除");
+        }
+
+
+        private DateTime _lastCacheUpdate = DateTime.MinValue;
 
         // 獲取產品銷售數據（從緩存）
         public List<ProductSalesData> GetProductSalesData()
         {
-            if (_productSalesCache.Any())
+            // 檢查緩存是否為空
+            if (!_productSalesCache.Any())
+            {
+                Debug.WriteLine("產品數據緩存為空");
+
+                // 添加測試數據
+                var testData = new List<ProductSalesData>();
+                AddHardcodedTestData(testData, new List<SalesLeaderboardItem>(), new List<DepartmentLobData>());
+                _productSalesCache = testData;
+            }
+            else
             {
                 Debug.WriteLine($"從緩存返回 {_productSalesCache.Count} 條產品數據");
-                return _productSalesCache;
             }
-
-            Debug.WriteLine("產品數據緩存為空");
-
-            // 如果緩存為空，創建一些測試數據
-            var testData = new List<ProductSalesData>();
-            AddHardcodedTestData(testData, new List<SalesLeaderboardItem>(), new List<DepartmentLobData>());
-            _productSalesCache = testData;
 
             return _productSalesCache;
         }
-
         // 獲取銷售代表排行榜數據
         public List<SalesLeaderboardItem> GetSalesLeaderboardData()
         {
-            if (_salesLeaderboardCache.Any())
+            // 檢查緩存是否為空
+            if (!_salesLeaderboardCache.Any())
+            {
+                Debug.WriteLine("銷售代表數據緩存為空");
+
+                // 添加測試數據
+                var testData = new List<SalesLeaderboardItem>();
+                AddHardcodedTestData(new List<ProductSalesData>(), testData, new List<DepartmentLobData>());
+                _salesLeaderboardCache = testData;
+            }
+            else
             {
                 Debug.WriteLine($"從緩存返回 {_salesLeaderboardCache.Count} 條銷售代表數據");
-                return _salesLeaderboardCache;
             }
-
-            Debug.WriteLine("銷售代表數據緩存為空");
-
-            // 如果緩存為空，創建一些測試數據
-            var testData = new List<SalesLeaderboardItem>();
-            AddHardcodedTestData(new List<ProductSalesData>(), testData, new List<DepartmentLobData>());
-            _salesLeaderboardCache = testData;
 
             return _salesLeaderboardCache;
         }
@@ -647,18 +662,20 @@ namespace ScoreCard.Services
         // 獲取部門/LOB數據
         public List<DepartmentLobData> GetDepartmentLobData()
         {
-            if (_departmentLobCache.Any())
+            // 檢查緩存是否為空
+            if (!_departmentLobCache.Any())
             {
-                Debug.WriteLine($"從緩存返回 {_departmentLobCache.Count} 條部門/LOB數據");
-                return _departmentLobCache;
+                Debug.WriteLine("部門數據緩存為空");
+
+                // 添加測試數據
+                var testData = new List<DepartmentLobData>();
+                AddHardcodedTestData(new List<ProductSalesData>(), new List<SalesLeaderboardItem>(), testData);
+                _departmentLobCache = testData;
             }
-
-            Debug.WriteLine("部門/LOB數據緩存為空");
-
-            // 如果緩存為空，創建一些測試數據
-            var testData = new List<DepartmentLobData>();
-            AddHardcodedTestData(new List<ProductSalesData>(), new List<SalesLeaderboardItem>(), testData);
-            _departmentLobCache = testData;
+            else
+            {
+                Debug.WriteLine($"從緩存返回 {_departmentLobCache.Count} 條部門數據");
+            }
 
             return _departmentLobCache;
         }
