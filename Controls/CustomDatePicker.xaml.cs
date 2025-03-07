@@ -8,6 +8,7 @@ namespace ScoreCard.Controls
 {
     public partial class CustomDatePicker : ContentView, INotifyPropertyChanged
     {
+
         public static readonly BindableProperty StartDateProperty =
             BindableProperty.Create(nameof(StartDate), typeof(DateTime), typeof(CustomDatePicker),
                 DateTime.Now, BindingMode.TwoWay, propertyChanged: OnDateChanged);
@@ -23,10 +24,14 @@ namespace ScoreCard.Controls
         // 日期變更事件
         public event EventHandler<DateTime> StartDateChanged;
         public event EventHandler<DateTime> EndDateChanged;
-        public event PropertyChangedEventHandler PropertyChanged;
+        public new event PropertyChangedEventHandler PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+
+
+
+        protected override void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
+            base.OnPropertyChanged(propertyName);
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
@@ -85,7 +90,7 @@ namespace ScoreCard.Controls
                 {
                     _isInternalChange = true;
                     SetValue(StartDateProperty, value);
-                    StartDateChanged?.Invoke(this, value);
+                    StartDateChanged?.Invoke(this, value);  // 確保事件被觸發
                     OnPropertyChanged(nameof(StartDate));
                     Debug.WriteLine($"[CustomDatePicker] StartDate set to: {value:yyyy-MM-dd}");
                     _isInternalChange = false;
@@ -102,13 +107,68 @@ namespace ScoreCard.Controls
                 {
                     _isInternalChange = true;
                     SetValue(EndDateProperty, value);
-                    EndDateChanged?.Invoke(this, value);
+                    EndDateChanged?.Invoke(this, value);  // 確保事件被觸發
                     OnPropertyChanged(nameof(EndDate));
                     Debug.WriteLine($"[CustomDatePicker] EndDate set to: {value:yyyy-MM-dd}");
                     _isInternalChange = false;
                 }
             }
         }
+
+        private void OnDateDayClicked(object sender, EventArgs e)
+        {
+            var dateButton = sender as Button;
+            if (dateButton?.BindingContext is DateTime dateForHandler)
+            {
+                Debug.WriteLine($"[CustomDatePicker] Date button clicked: {dateForHandler:yyyy-MM-dd}");
+
+                DateTime oldStart = StartDate;
+                DateTime oldEnd = EndDate;
+
+                if (_isStartDateActive)
+                {
+                    // 設置起始日期
+                    StartDate = dateForHandler;
+                    _isStartDateActive = false;
+
+                    // 若選擇的起始日期比當前結束日期晚，則同時設置結束日期
+                    if (dateForHandler > EndDate)
+                    {
+                        EndDate = dateForHandler;
+                    }
+                }
+                else
+                {
+                    // 若選擇的結束日期比起始日期早，則交換順序
+                    if (dateForHandler < StartDate)
+                    {
+                        EndDate = StartDate;
+                        StartDate = dateForHandler;
+                    }
+                    else
+                    {
+                        EndDate = dateForHandler;
+                        Calendar.IsVisible = false;  // 選擇完結束日期後自動關閉日曆
+                    }
+                }
+
+                // 手動觸發事件，確保 ViewModel 接收到變更
+                if (StartDate != oldStart)
+                {
+                    Debug.WriteLine($"[CustomDatePicker] Explicitly triggering StartDateChanged: {oldStart:yyyy-MM-dd} -> {StartDate:yyyy-MM-dd}");
+                    StartDateChanged?.Invoke(this, StartDate);
+                }
+
+                if (EndDate != oldEnd)
+                {
+                    Debug.WriteLine($"[CustomDatePicker] Explicitly triggering EndDateChanged: {oldEnd:yyyy-MM-dd} -> {EndDate:yyyy-MM-dd}");
+                    EndDateChanged?.Invoke(this, EndDate);
+                }
+
+                UpdateCalendarDisplay();
+            }
+        }
+
 
         private static void OnDateChanged(BindableObject bindable, object oldValue, object newValue)
         {

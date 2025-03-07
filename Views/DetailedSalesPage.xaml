@@ -28,30 +28,30 @@
               ColumnDefinitions="Auto,*,Auto"
               RowDefinitions="Auto,Auto">
 
-            <!-- 視圖類型切換 (Summary/Detailed) -->
+            <!-- 詳細頁面的視圖類型切換 (Summary/Detailed) -->
             <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
                 <Border Stroke="#FF3B30"
-                        StrokeThickness="1"
-                        BackgroundColor="Transparent"
-                        StrokeShape="RoundRectangle 4,0,0,4"
-                        HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="#F0F0F0"
+            StrokeShape="RoundRectangle 4,0,0,4"
+            HeightRequest="36">
                     <Label Text="Summary"
-                           TextColor="#FF3B30"
-                           VerticalOptions="Center"
-                           Margin="20,0"/>
+               TextColor="#333333"
+               VerticalOptions="Center"
+               Margin="20,0"/>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding NavigateToSummaryCommand}"/>
                     </Border.GestureRecognizers>
                 </Border>
                 <Border Stroke="#FF3B30"
-                        StrokeThickness="1"
-                        BackgroundColor="#FF3B30"
-                        StrokeShape="RoundRectangle 0,4,4,0"
-                        HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="#FF3B30"
+            StrokeShape="RoundRectangle 0,4,4,0"
+            HeightRequest="36">
                     <Label Text="Detailed"
-                           TextColor="White"
-                           VerticalOptions="Center"
-                           Margin="20,0"/>
+               TextColor="White"
+               VerticalOptions="Center"
+               Margin="20,0"/>
                 </Border>
             </HorizontalStackLayout>
 
@@ -59,33 +59,32 @@
             <controls:CustomDatePicker Grid.Row="0" Grid.Column="2"
                                        StartDate="{Binding StartDate, Mode=TwoWay}" 
                                        EndDate="{Binding EndDate, Mode=TwoWay}"/>
-
             <!-- 產品/銷售代表切換 -->
             <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0">
                 <Border Stroke="#E2E8F0"
             StrokeThickness="1"
-            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,White'}"
+            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
             StrokeShape="RoundRectangle 4,0,0,4"
             HeightRequest="36">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByProduct"/>
                     </Border.GestureRecognizers>
                     <Label Text="By Product"
-               TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+               TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                VerticalOptions="Center"
                FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
                Margin="15,0"/>
                 </Border>
                 <Border Stroke="#E2E8F0"
             StrokeThickness="1"
-            BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,White'}"
+            BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
             StrokeShape="RoundRectangle 0,4,4,0"
             HeightRequest="36">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByRep"/>
                     </Border.GestureRecognizers>
                     <Label Text="By Rep"
-               TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+               TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                VerticalOptions="Center"
                FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
                Margin="15,0"/>
@@ -118,17 +117,17 @@
 
                 <!-- 銷售代表篩選器 -->
                 <Border Grid.Column="1"
-                        Stroke="#E2E8F0"
-                        StrokeThickness="1"
-                        StrokeShape="RoundRectangle 4"
-                        HeightRequest="36"
-                        Margin="10,0,0,0">
+        Stroke="#E2E8F0"
+        StrokeThickness="1"
+        StrokeShape="RoundRectangle 4"
+        HeightRequest="36"
+        Margin="10,0,0,0">
                     <HorizontalStackLayout>
                         <Picker Title="Select Sales Rep"
-                                ItemsSource="{Binding SalesReps}"
-                                SelectedItem="{Binding SelectedSalesRep}"
-                                WidthRequest="200"
-                                Margin="10,0"/>
+                ItemsSource="{Binding SalesReps}"
+                SelectedItem="{Binding SelectedSalesRep, Mode=TwoWay}"
+                WidthRequest="200"
+                Margin="10,0"/>
                     </HorizontalStackLayout>
                 </Border>
 

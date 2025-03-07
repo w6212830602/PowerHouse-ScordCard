@@ -55,6 +55,45 @@ namespace ScoreCard.ViewModels
             LoadFilteredData();
         }
 
+        // 當 StartDate 變更時觸發的方法
+        partial void OnStartDateChanged(DateTime value)
+        {
+            Debug.WriteLine($"開始日期變更為: {value:yyyy-MM-dd}");
+            // 確保日期範圍有效
+            if (value <= EndDate)
+            {
+                FilterDataAndReload();
+            }
+            else
+            {
+                // 如果開始日期比結束日期晚，自動調整結束日期
+                EndDate = value;
+            }
+        }
+
+        // 當 EndDate 變更時觸發的方法
+        partial void OnEndDateChanged(DateTime value)
+        {
+            Debug.WriteLine($"結束日期變更為: {value:yyyy-MM-dd}");
+            // 確保日期範圍有效
+            if (value >= StartDate)
+            {
+                FilterDataAndReload();
+            }
+            else
+            {
+                // 如果結束日期比開始日期早，自動調整開始日期
+                StartDate = value;
+            }
+        }
+
+        // 當 SelectedSalesRep 變更時觸發的方法
+        partial void OnSelectedSalesRepChanged(string value)
+        {
+            Debug.WriteLine($"選擇的銷售代表變更為: {value}");
+            FilterDataAndReload();
+        }
+
         #endregion
 
         #region Commands
@@ -160,8 +199,12 @@ namespace ScoreCard.ViewModels
                     reps = new List<string> { "Isaac", "Brandon", "Chris", "Mark", "Nathan" };
                 }
 
+                // 添加"全部"選項作為第一個選項
+                reps.Insert(0, "All Reps");
+
                 SalesReps = new ObservableCollection<string>(reps);
-                Debug.WriteLine($"載入了 {SalesReps.Count} 個銷售代表");
+                SelectedSalesRep = "All Reps"; // 設置默認選項為"全部"
+                Debug.WriteLine($"載入了 {SalesReps.Count} 個銷售代表選項");
 
                 // 3. 按日期範圍過濾數據
                 FilterDataByDateRange();
@@ -182,6 +225,21 @@ namespace ScoreCard.ViewModels
             }
         }
 
+        private void FilterDataAndReload()
+        {
+            try
+            {
+                IsLoading = true;
+                FilterDataByDateRange();
+                LoadFilteredData();
+                Debug.WriteLine("根據條件更新了表格數據");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
         private void FilterDataByDateRange()
         {
             if (_allSalesData == null || !_allSalesData.Any())
@@ -193,26 +251,43 @@ namespace ScoreCard.ViewModels
 
             try
             {
+                // 修改日期比較邏輯，改為包含整天
+                var startDateUtc = StartDate.Date;
+                var endDateUtc = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含結束日期的整天
+
+                Debug.WriteLine($"過濾日期範圍: {startDateUtc:yyyy-MM-dd HH:mm:ss} 到 {endDateUtc:yyyy-MM-dd HH:mm:ss}");
+
+                // 輸出幾筆原始數據的日期，用於檢查
+                for (int i = 0; i < Math.Min(_allSalesData.Count, 5); i++)
+                {
+                    Debug.WriteLine($"原始數據 {i}: ReceivedDate={_allSalesData[i].ReceivedDate:yyyy-MM-dd HH:mm:ss}");
+                }
+
                 // 根據日期範圍過濾
                 _filteredSalesData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= StartDate.Date &&
-                               x.ReceivedDate.Date <= EndDate.Date)
+                    .Where(x => x.ReceivedDate >= startDateUtc &&
+                               x.ReceivedDate <= endDateUtc)
                     .ToList();
 
-                // 如果指定了銷售代表，還要根據銷售代表過濾
-                if (!string.IsNullOrEmpty(SelectedSalesRep))
+                Debug.WriteLine($"日期過濾後剩餘 {_filteredSalesData.Count} 條數據");
+
+                // 如果選擇了銷售代表，還要根據銷售代表過濾
+                if (!string.IsNullOrEmpty(SelectedSalesRep) && SelectedSalesRep != "All Reps")
                 {
                     _filteredSalesData = _filteredSalesData
                         .Where(x => x.SalesRep == SelectedSalesRep)
                         .ToList();
+
+                    Debug.WriteLine($"銷售代表過濾後剩餘 {_filteredSalesData.Count} 條數據");
                 }
 
-                Debug.WriteLine($"過濾後剩餘 {_filteredSalesData.Count} 條數據");
-
-                // 如果過濾後沒有數據，可能需要添加示例數據
+                // 如果過濾後沒有數據
                 if (_filteredSalesData.Count == 0)
                 {
-                    Debug.WriteLine("過濾後沒有數據，使用緩存或示例數據");
+                    Debug.WriteLine($"過濾後沒有數據，回退到示例數據");
+
+                    // 使用日期範圍生成合適的示例數據
+                    LoadSampleData();
                 }
             }
             catch (Exception ex)
@@ -246,9 +321,15 @@ namespace ScoreCard.ViewModels
 
                 if (cachedProductData.Any())
                 {
-                    // 如果緩存有數據，直接使用
-                    ProductSalesData = new ObservableCollection<ProductSalesData>(cachedProductData);
-                    Debug.WriteLine($"從緩存載入了 {cachedProductData.Count} 條產品數據");
+                    // 進行去重處理，確保每個產品類型只出現一次
+                    var uniqueProducts = cachedProductData
+                        .GroupBy(p => p.ProductType)
+                        .Select(g => g.First())
+                        .OrderByDescending(p => p.POValue)
+                        .ToList();
+
+                    ProductSalesData = new ObservableCollection<ProductSalesData>(uniqueProducts);
+                    Debug.WriteLine($"從緩存載入了 {uniqueProducts.Count} 條產品數據（已去重）");
                     return;
                 }
 
@@ -290,8 +371,15 @@ namespace ScoreCard.ViewModels
                         product.PercentageOfTotal = totalPO > 0 ? Math.Round((product.POValue / totalPO) * 100, 1) : 0;
                     }
 
-                    ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                    Debug.WriteLine($"從過濾數據計算出 {productData.Count} 條產品數據");
+                    // 去重處理
+                    var uniqueProducts = productData
+                        .GroupBy(p => p.ProductType)
+                        .Select(g => g.First())
+                        .OrderByDescending(p => p.POValue)
+                        .ToList();
+
+                    ProductSalesData = new ObservableCollection<ProductSalesData>(uniqueProducts);
+                    Debug.WriteLine($"從過濾數據計算出 {uniqueProducts.Count} 條產品數據（已去重）");
                 }
                 else
                 {
@@ -317,9 +405,21 @@ namespace ScoreCard.ViewModels
 
                 if (cachedSalesRepData.Any())
                 {
-                    // 使用緩存數據
-                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(cachedSalesRepData);
-                    Debug.WriteLine($"從緩存載入了 {cachedSalesRepData.Count} 條銷售代表數據");
+                    // 確保沒有重複的銷售代表
+                    var repsFromCache = cachedSalesRepData
+                        .GroupBy(r => r.SalesRep)
+                        .Select(g => g.First())
+                        .OrderByDescending(r => r.TotalCommission)
+                        .ToList();
+
+                    // 更新排名
+                    for (int i = 0; i < repsFromCache.Count; i++)
+                    {
+                        repsFromCache[i].Rank = i + 1;
+                    }
+
+                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(repsFromCache);
+                    Debug.WriteLine($"從緩存載入了 {repsFromCache.Count} 條銷售代表數據（已去重）");
                     return;
                 }
 
@@ -351,16 +451,23 @@ namespace ScoreCard.ViewModels
                     .OrderByDescending(x => x.TotalCommission)
                     .ToList();
 
+                // 去重處理
+                var filteredReps = repData
+                    .GroupBy(r => r.SalesRep)
+                    .Select(g => g.First())
+                    .OrderByDescending(r => r.TotalCommission)
+                    .ToList();
+
                 // 更新排名
-                for (int i = 0; i < repData.Count; i++)
+                for (int i = 0; i < filteredReps.Count; i++)
                 {
-                    repData[i].Rank = i + 1;
+                    filteredReps[i].Rank = i + 1;
                 }
 
-                if (repData.Any())
+                if (filteredReps.Any())
                 {
-                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(repData);
-                    Debug.WriteLine($"從過濾數據計算出 {repData.Count} 條銷售代表數據");
+                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(filteredReps);
+                    Debug.WriteLine($"從過濾數據計算出 {filteredReps.Count} 條銷售代表數據（已去重）");
                 }
                 else
                 {
@@ -385,42 +492,60 @@ namespace ScoreCard.ViewModels
         private void LoadSampleProductData()
         {
             var tempData = new List<ProductSalesData>
-    {
-        new ProductSalesData
-        {
-            ProductType = "Batts & Caps",
-            AgencyCommission = 250130.95m,
-            BuyResellCommission = 0.00m,
-            TotalCommission = 250130.95m,
-            POValue = 2061423.30m,
-            PercentageOfTotal = 12.0m
-        },
-        // 其他產品數據...
-    };
-
-            // 關鍵修改：根據 ProductType 進行分組，確保每個產品類型只出現一次
-            var distinctProducts = tempData
-                .GroupBy(p => p.ProductType)
-                .Select(g =>
+            {
+                new ProductSalesData
                 {
-                    var first = g.First();
-                    if (g.Count() > 1)
-                    {
-                        // 如果有多條同類型記錄，合併它們的數據
-                        first.AgencyCommission = g.Sum(p => p.AgencyCommission);
-                        first.BuyResellCommission = g.Sum(p => p.BuyResellCommission);
-                        first.TotalCommission = g.Sum(p => p.TotalCommission);
-                        first.POValue = g.Sum(p => p.POValue);
-                        // 重新計算百分比
-                        first.PercentageOfTotal = first.POValue / tempData.Sum(p => p.POValue) * 100;
-                    }
-                    return first;
-                })
-                .OrderByDescending(p => p.POValue)
-                .ToList();
+                    ProductType = "Thermal",
+                    AgencyCommission = 744855.43m,
+                    BuyResellCommission = 116206.36m,
+                    TotalCommission = 861061.79m,
+                    POValue = 7358201.65m,
+                    PercentageOfTotal = 0.41m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Power",
+                    AgencyCommission = 296743.08m,
+                    BuyResellCommission = 8737.33m,
+                    TotalCommission = 305481.01m,
+                    POValue = 5466144.65m,
+                    PercentageOfTotal = 0.31m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Batts & Caps",
+                    AgencyCommission = 250130.95m,
+                    BuyResellCommission = 0.00m,
+                    TotalCommission = 250130.95m,
+                    POValue = 2061423.30m,
+                    PercentageOfTotal = 0.12m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Channel",
+                    AgencyCommission = 167353.03m,
+                    BuyResellCommission = 8323.03m,
+                    TotalCommission = 175676.06m,
+                    POValue = 1416574.65m,
+                    PercentageOfTotal = 0.08m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Service",
+                    AgencyCommission = 101556.42m,
+                    BuyResellCommission = 0.00m,
+                    TotalCommission = 101556.42m,
+                    POValue = 1272318.58m,
+                    PercentageOfTotal = 0.07m
+                }
+            };
 
-            ProductSalesData = new ObservableCollection<ProductSalesData>(distinctProducts);
-            Debug.WriteLine($"已載入 {distinctProducts.Count} 條去重後的產品數據");
+            // 確保數據不重複 - 將樣本數據直接設置為有序版本
+            ProductSalesData = new ObservableCollection<ProductSalesData>(
+                tempData.OrderByDescending(p => p.POValue)
+            );
+
+            Debug.WriteLine($"已載入 {tempData.Count} 條示例產品數據");
         }
 
         private void LoadSampleSalesRepData()

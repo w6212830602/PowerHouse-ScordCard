@@ -289,16 +289,17 @@
                                 <!-- 視圖類型選擇器 (By Product, By Rep, By Dept-LOB) -->
                                 <HorizontalStackLayout Grid.Column="0" Spacing="0">
                                     <!-- By Product 按鈕 -->
+                                    <!-- By Product 按鈕 -->
                                     <Border Stroke="#E2E8F0"
                 StrokeThickness="1"
-                BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#212121,White'}"
+                BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
                 StrokeShape="RoundRectangle 4,0,0,4"
                 HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Product"
-                   TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                    VerticalOptions="Center"
                    HorizontalOptions="Center"
                    FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}}"
@@ -308,14 +309,14 @@
                                     <!-- By Rep 按鈕 -->
                                     <Border Stroke="#E2E8F0"
                 StrokeThickness="1"
-                BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#212121,White'}"
+                BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
                 StrokeShape="Rectangle"
                 HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByRep"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Rep"
-                   TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                    VerticalOptions="Center"
                    HorizontalOptions="Center"
                    FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}}"
@@ -325,14 +326,14 @@
                                     <!-- By Dept-LOB 按鈕 -->
                                     <Border Stroke="#E2E8F0"
                 StrokeThickness="1"
-                BackgroundColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#212121,White'}"
+                BackgroundColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
                 StrokeShape="RoundRectangle 0,4,4,0"
                 HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByDeptLOB"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Dept-LOB"
-                   TextColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
+                   TextColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                    VerticalOptions="Center"
                    HorizontalOptions="Center"
                    FontAttributes="{Binding IsDeptLobView, Converter={StaticResource BoolToStringConverter}}"
@@ -344,36 +345,36 @@
                                 <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
                                     <!-- Booked 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-                StrokeThickness="1"
-                BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,White'}"
-                StrokeShape="RoundRectangle 4,0,0,4"
-                HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
+            StrokeShape="RoundRectangle 4,0,0,4"
+            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="Booked"
-                   TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#212121'}"
-                   VerticalOptions="Center"
-                   HorizontalOptions="Center"
-                   FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}}"
-                   Margin="15,0"/>
+               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}}"
+               Margin="15,0"/>
                                     </Border>
 
                                     <!-- Completed 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-                StrokeThickness="1"
-                BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='#212121,White'}"
-                StrokeShape="RoundRectangle 0,4,4,0"
-                HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
+            StrokeShape="RoundRectangle 0,4,4,0"
+            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="Completed"
-                   TextColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='White,#212121'}"
-                   VerticalOptions="Center"
-                   HorizontalOptions="Center"
-                   FontAttributes="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToStringConverter}}"
-                   Margin="15,0"/>
+               TextColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToStringConverter}}"
+               Margin="15,0"/>
                                     </Border>
                                 </HorizontalStackLayout>
                             </Grid>
