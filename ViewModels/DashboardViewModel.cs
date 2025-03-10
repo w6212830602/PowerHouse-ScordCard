@@ -4,8 +4,6 @@ using ScoreCard.Services;
 using ScoreCard.Models;
 using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Json;
-
 
 namespace ScoreCard.ViewModels
 {
@@ -82,6 +80,48 @@ namespace ScoreCard.ViewModels
         private readonly TargetSettings _targetSettings;
         private CancellationTokenSource _cancellationTokenSource;
 
+        // 格式化顯示屬性 - 新增
+        public string AnnualTargetDisplay => $"${AnnualTarget:N0}";
+        public string AchievementDisplay => $"{Achievement:0.0}%";
+        public string RemainingDisplay => $"${Remaining:N0}";
+        public string TotalAchievedDisplay => $"${Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved:N0} Achieved";
+        public string RemainingTargetDisplay => $"${Remaining:N0} Remaining";
+
+        // 季度達成率顯示 - 新增
+        public string Q1AchievementDisplay => $"{Q1Achievement:0.0}%";
+        public string Q2AchievementDisplay => $"{Q2Achievement:0.0}%";
+        public string Q3AchievementDisplay => $"{Q3Achievement:0.0}%";
+        public string Q4AchievementDisplay => $"{Q4Achievement:0.0}%";
+
+        // 季度目標和達成值顯示 - 新增
+        public string Q1TargetDisplay => $"${Q1FinalTarget:N0}";
+        public string Q2TargetDisplay => $"${Q2FinalTarget:N0}";
+        public string Q3TargetDisplay => $"${Q3FinalTarget:N0}";
+        public string Q4TargetDisplay => $"${Q4FinalTarget:N0}";
+
+        public string Q1BaseDisplay => $"Base: ${Q1Target:N0}";
+        public string Q2BaseDisplay => $"Base: ${Q2Target:N0}";
+        public string Q3BaseDisplay => $"Base: ${Q3Target:N0}";
+        public string Q4BaseDisplay => $"Base: ${Q4Target:N0}";
+
+        public string Q1AchievedDisplay => $"${Q1Achieved:N0}";
+        public string Q2AchievedDisplay => $"${Q2Achieved:N0}";
+        public string Q3AchievedDisplay => $"${Q3Achieved:N0}";
+        public string Q4AchievedDisplay => $"${Q4Achieved:N0}";
+
+        // 季度轉移顯示 - 新增
+        public string Q1CarriedDisplay => $"Carried: ${Q1Carried:N0} →";
+        public string Q2CarriedDisplay => $"Carried: ${Q2Carried:N0} →";
+        public string Q3CarriedDisplay => $"Carried: ${Q3Carried:N0} →";
+
+        public string Q1CarriedAddedDisplay => $"+${Q1Carried:N0}";
+        public string Q2CarriedAddedDisplay => $"+${Q2Carried:N0}";
+        public string Q3CarriedAddedDisplay => $"+${Q3Carried:N0}";
+
+        public string Q2ExceededDisplay => $"Exceeded: +${Q2Exceeded:N0}";
+        public string Q3ExceededDisplay => $"Exceeded: +${Q3Exceeded:N0}";
+        public string Q4ExceededDisplay => $"Exceeded: +${Q4Exceeded:N0}";
+
         public DashboardViewModel(IExcelService excelService)
         {
             Debug.WriteLine("DashboardViewModel 建構函數開始初始化");
@@ -120,7 +160,7 @@ namespace ScoreCard.ViewModels
 
         private void UpdateTargets(int fiscalYear)
         {
-            var yearTarget = _targetSettings.CompanyTargets
+            var yearTarget = _targetSettings?.CompanyTargets?
                 .FirstOrDefault(t => t.FiscalYear == fiscalYear);
 
             if (yearTarget != null)
@@ -141,6 +181,12 @@ namespace ScoreCard.ViewModels
             else
             {
                 Debug.WriteLine($"警告: 找不到 FY{fiscalYear} 的目標值設定");
+                // 設置默認值避免計算問題
+                AnnualTarget = 100000;
+                Q1Target = 25000;
+                Q2Target = 25000;
+                Q3Target = 25000;
+                Q4Target = 25000;
             }
         }
 
@@ -161,7 +207,14 @@ namespace ScoreCard.ViewModels
                 return currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
             }
 
-            return int.Parse(SelectedOption.Replace("FY", ""));
+            if (int.TryParse(SelectedOption.Replace("FY", ""), out int result))
+            {
+                return result;
+            }
+
+            // 默認返回當前財年
+            var date = DateTime.Now;
+            return date.Month >= 8 ? date.Year + 1 : date.Year;
         }
 
         private async void InitializeAsync()
@@ -256,6 +309,51 @@ namespace ScoreCard.ViewModels
                 Remaining = AnnualTarget - totalAchieved;
                 AchievementProgress = AnnualTarget > 0 ? (double)(totalAchieved / AnnualTarget) : 0;
 
+                // 輸出計算值用於調試
+                Debug.WriteLine($"季度目標值：Q1={Q1Target}, Q2={Q2Target}, Q3={Q3Target}, Q4={Q4Target}");
+                Debug.WriteLine($"季度達成值：Q1={Q1Achieved}, Q2={Q2Achieved}, Q3={Q3Achieved}, Q4={Q4Achieved}");
+                Debug.WriteLine($"最終目標值：Q1={Q1FinalTarget}, Q2={Q2FinalTarget}, Q3={Q3FinalTarget}, Q4={Q4FinalTarget}");
+                Debug.WriteLine($"達成百分比：Q1={Q1Achievement}%, Q2={Q2Achievement}%, Q3={Q3Achievement}%, Q4={Q4Achievement}%");
+
+                // 更新所有顯示屬性
+                OnPropertyChanged(nameof(AnnualTargetDisplay));
+                OnPropertyChanged(nameof(AchievementDisplay));
+                OnPropertyChanged(nameof(RemainingDisplay));
+                OnPropertyChanged(nameof(TotalAchievedDisplay));
+                OnPropertyChanged(nameof(RemainingTargetDisplay));
+
+                OnPropertyChanged(nameof(Q1AchievementDisplay));
+                OnPropertyChanged(nameof(Q2AchievementDisplay));
+                OnPropertyChanged(nameof(Q3AchievementDisplay));
+                OnPropertyChanged(nameof(Q4AchievementDisplay));
+
+                OnPropertyChanged(nameof(Q1TargetDisplay));
+                OnPropertyChanged(nameof(Q2TargetDisplay));
+                OnPropertyChanged(nameof(Q3TargetDisplay));
+                OnPropertyChanged(nameof(Q4TargetDisplay));
+
+                OnPropertyChanged(nameof(Q1BaseDisplay));
+                OnPropertyChanged(nameof(Q2BaseDisplay));
+                OnPropertyChanged(nameof(Q3BaseDisplay));
+                OnPropertyChanged(nameof(Q4BaseDisplay));
+
+                OnPropertyChanged(nameof(Q1AchievedDisplay));
+                OnPropertyChanged(nameof(Q2AchievedDisplay));
+                OnPropertyChanged(nameof(Q3AchievedDisplay));
+                OnPropertyChanged(nameof(Q4AchievedDisplay));
+
+                OnPropertyChanged(nameof(Q1CarriedDisplay));
+                OnPropertyChanged(nameof(Q2CarriedDisplay));
+                OnPropertyChanged(nameof(Q3CarriedDisplay));
+
+                OnPropertyChanged(nameof(Q1CarriedAddedDisplay));
+                OnPropertyChanged(nameof(Q2CarriedAddedDisplay));
+                OnPropertyChanged(nameof(Q3CarriedAddedDisplay));
+
+                OnPropertyChanged(nameof(Q2ExceededDisplay));
+                OnPropertyChanged(nameof(Q3ExceededDisplay));
+                OnPropertyChanged(nameof(Q4ExceededDisplay));
+
                 // 更新通知
                 UpdateNotifications();
                 Debug.WriteLine("儀表板數據更新完成");
@@ -336,6 +434,7 @@ namespace ScoreCard.ViewModels
             });
             Debug.WriteLine("通知列表初始化完成");
         }
+
         // 清理資源
         public void Cleanup()
         {
@@ -358,22 +457,22 @@ namespace ScoreCard.ViewModels
 
         // 計算屬性
         public decimal Q1FinalTarget => Q1Target;
-        public decimal Q2FinalTarget => Q2Target + Q1Carried;  // 改用 Q1Carried 而不是 Q2Added
-        public decimal Q3FinalTarget => Q3Target + Q2Carried;  // 改用 Q2Carried 而不是 Q3Added
-        public decimal Q4FinalTarget => Q4Target + Q3Carried;  // 改用 Q3Carried 而不是 Q4Added
+        public decimal Q2FinalTarget => Q2Target + Q1Carried;
+        public decimal Q3FinalTarget => Q3Target + Q2Carried;
+        public decimal Q4FinalTarget => Q4Target + Q3Carried;
 
-        // Achievement 計算保持不變
-        public decimal Q1Achievement => Q1FinalTarget > 0 ? Math.Round((Q1Achieved / Q1FinalTarget) * 100, 1) : 0;
-        public decimal Q2Achievement => Q2FinalTarget > 0 ? Math.Round((Q2Achieved / Q2FinalTarget) * 100, 1) : 0;
-        public decimal Q3Achievement => Q3FinalTarget > 0 ? Math.Round((Q3Achieved / Q3FinalTarget) * 100, 1) : 0;
-        public decimal Q4Achievement => Q4FinalTarget > 0 ? Math.Round((Q4Achieved / Q4FinalTarget) * 100, 1) : 0;
+        // 達成率計算 - 改為 double 類型
+        public double Q1Achievement => Q1FinalTarget > 0 ? (double)Math.Round((Q1Achieved / Q1FinalTarget) * 100, 1) : 0;
+        public double Q2Achievement => Q2FinalTarget > 0 ? (double)Math.Round((Q2Achieved / Q2FinalTarget) * 100, 1) : 0;
+        public double Q3Achievement => Q3FinalTarget > 0 ? (double)Math.Round((Q3Achieved / Q3FinalTarget) * 100, 1) : 0;
+        public double Q4Achievement => Q4FinalTarget > 0 ? (double)Math.Round((Q4Achieved / Q4FinalTarget) * 100, 1) : 0;
 
-        // Carried 計算保持不變
+        // Carried 計算
         public decimal Q1Carried => Math.Max(0, Q1FinalTarget - Q1Achieved);
         public decimal Q2Carried => Math.Max(0, Q2FinalTarget - Q2Achieved);
         public decimal Q3Carried => Math.Max(0, Q3FinalTarget - Q3Achieved);
 
-        // Exceeded 計算保持不變
+        // Exceeded 計算
         public decimal Q2Exceeded => Math.Max(0, Q2Achieved - Q2FinalTarget);
         public decimal Q3Exceeded => Math.Max(0, Q3Achieved - Q3FinalTarget);
         public decimal Q4Exceeded => Math.Max(0, Q4Achieved - Q4FinalTarget);
@@ -383,6 +482,4 @@ namespace ScoreCard.ViewModels
     {
         public string Message { get; set; }
     }
-
-
 }

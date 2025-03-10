@@ -395,7 +395,6 @@
                                                 <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="3" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
-                                                <Label Grid.Column="4" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
                                             </Grid>
                                         </DataTemplate>
                                     </CollectionView.ItemTemplate>

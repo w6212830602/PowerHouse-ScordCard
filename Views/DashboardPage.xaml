@@ -35,7 +35,7 @@
                         <Label Text="Annual Target" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
-                        <Label Text="{Binding AnnualTarget, StringFormat='${0:N0}'}"
+                        <Label Text="{Binding AnnualTargetDisplay}"
                                FontSize="24"
                                FontAttributes="Bold"/>
                     </VerticalStackLayout>
@@ -45,9 +45,9 @@
                         <Label Text="Achievement" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
-                        <Label Text="{Binding Achievement, StringFormat='{0:F1}%'}"
-                               FontSize="24"
+                        <Label Text="{Binding AchievementDisplay}"
                                TextColor="#EF4444"
+                               FontSize="24"
                                FontAttributes="Bold"/>
                     </VerticalStackLayout>
 
@@ -56,7 +56,7 @@
                         <Label Text="Remaining" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
-                        <Label Text="{Binding Remaining, StringFormat='${0:N0}'}"
+                        <Label Text="{Binding RemainingDisplay}"
                                FontSize="24"
                                FontAttributes="Bold"/>
                     </VerticalStackLayout>
@@ -76,11 +76,11 @@
 
                 <!-- Progress Labels -->
                 <Grid ColumnDefinitions="*,*">
-                    <Label Text="{Binding AchievementProgress, StringFormat='${0:N0} Achieved'}"
+                    <Label Text="{Binding TotalAchievedDisplay}"
                            TextColor="#6B7280"
                            FontSize="12"/>
                     <Label Grid.Column="1" 
-                           Text="{Binding Remaining, StringFormat='${0:N0} Remaining'}"
+                           Text="{Binding RemainingTargetDisplay}"
                            TextColor="#6B7280"
                            FontSize="12"
                            HorizontalOptions="End"/>
@@ -108,7 +108,7 @@
                                        FontAttributes="Bold"
                                        FontSize="16"/>
                                 <Label Grid.Column="1"
-                                       Text="{Binding Q1Achievement, StringFormat='{0:F1}%'}"
+                                       Text="{Binding Q1AchievementDisplay}"
                                        TextColor="#EF4444"
                                        HorizontalOptions="End"
                                        FontSize="16"/>
@@ -118,35 +118,36 @@
                             <VerticalStackLayout Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Label Text="Target:" 
-               FontAttributes="Bold"
-               FontSize="14"/>
+                                           FontAttributes="Bold"
+                                           FontSize="14"/>
                                     <Label Grid.Column="1"
-               Text="{Binding Q1FinalTarget, StringFormat='${0:N0}'}"
-               FontAttributes="Bold"
-               FontSize="14"
-               HorizontalOptions="End"/>
+                                           Text="{Binding Q1TargetDisplay}"
+                                           FontAttributes="Bold"
+                                           FontSize="14"
+                                           HorizontalOptions="End"/>
                                 </Grid>
-                                <Label Text="{Binding Q1Target, StringFormat='Base: ${0:N0}'}"
-           FontSize="12"
-           TextColor="#6B7280"/>
+                                <Label Text="{Binding Q1BaseDisplay}"
+                                       FontSize="12"
+                                       TextColor="#6B7280"/>
                             </VerticalStackLayout>
 
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
                                        FontSize="14"/>
-                                <Label Text="{Binding Q1Achieved, StringFormat='${0:N0}'}"
+                                <Label Text="{Binding Q1AchievedDisplay}"
                                        TextColor="#EF4444"
                                        FontSize="14"/>
                             </VerticalStackLayout>
 
                             <!-- Carried -->
-                            <Label Text="{Binding Q1Carried, StringFormat='Carried: ${0:N0} →'}"
+                            <Label Text="{Binding Q1CarriedDisplay}"
                                    TextColor="#6B7280"
                                    FontSize="12"
                                    IsVisible="{Binding Q1Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
                         </VerticalStackLayout>
                     </Border>
+
                     <!-- Q2 -->
                     <Border Grid.Column="1"
                             Stroke="#E5E7EB"
@@ -159,7 +160,7 @@
                                        FontAttributes="Bold"
                                        FontSize="16"/>
                                 <Label Grid.Column="1"
-                                       Text="{Binding Q2Achievement, StringFormat='{0:F1}%'}"
+                                       Text="{Binding Q2AchievementDisplay}"
                                        TextColor="#10B981"
                                        HorizontalOptions="End"
                                        FontSize="16"/>
@@ -169,34 +170,34 @@
                             <VerticalStackLayout Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Label Text="Target:" 
-               FontAttributes="Bold"
-               FontSize="14"/>
+                                           FontAttributes="Bold"
+                                           FontSize="14"/>
                                     <Label Grid.Column="1"
-               Text="{Binding Q2FinalTarget, StringFormat='${0:N0}'}"
-               FontAttributes="Bold"
-               FontSize="14"
-               HorizontalOptions="End"/>
+                                           Text="{Binding Q2TargetDisplay}"
+                                           FontAttributes="Bold"
+                                           FontSize="14"
+                                           HorizontalOptions="End"/>
                                 </Grid>
-                                <Label Text="{Binding Q2Target, StringFormat='Base: ${0:N0}'}"
-           FontSize="12"
-           TextColor="#6B7280"/>
-                                <Label Text="{Binding Q1Carried, StringFormat='+${0:N0}'}"
-           TextColor="#10B981"
-           FontSize="12"
-           IsVisible="{Binding Q1Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
+                                <Label Text="{Binding Q2BaseDisplay}"
+                                       FontSize="12"
+                                       TextColor="#6B7280"/>
+                                <Label Text="{Binding Q1CarriedAddedDisplay}"
+                                       TextColor="#10B981"
+                                       FontSize="12"
+                                       IsVisible="{Binding Q1Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
                             </VerticalStackLayout>
-                            
+
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
                                        FontSize="14"/>
-                                <Label Text="{Binding Q2Achieved, StringFormat='${0:N0}'}"
+                                <Label Text="{Binding Q2AchievedDisplay}"
                                        TextColor="#10B981"
                                        FontSize="14"/>
                             </VerticalStackLayout>
 
                             <!-- Exceeded -->
-                            <Label Text="{Binding Q2Exceeded, StringFormat='Exceeded: +${0:N0}'}"
+                            <Label Text="{Binding Q2ExceededDisplay}"
                                    TextColor="#10B981"
                                    FontSize="12"
                                    IsVisible="{Binding Q2Exceeded, Converter={StaticResource GreaterThanZeroConverter}}"/>
@@ -215,7 +216,7 @@
                                        FontAttributes="Bold"
                                        FontSize="16"/>
                                 <Label Grid.Column="1"
-                                       Text="{Binding Q3Achievement, StringFormat='{0:F1}%'}"
+                                       Text="{Binding Q3AchievementDisplay}"
                                        TextColor="#EF4444"
                                        HorizontalOptions="End"
                                        FontSize="16"/>
@@ -225,34 +226,34 @@
                             <VerticalStackLayout Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Label Text="Target:" 
-               FontAttributes="Bold"
-               FontSize="14"/>
+                                           FontAttributes="Bold"
+                                           FontSize="14"/>
                                     <Label Grid.Column="1"
-               Text="{Binding Q3FinalTarget, StringFormat='${0:N0}'}"
-               FontAttributes="Bold"
-               FontSize="14"
-               HorizontalOptions="End"/>
+                                           Text="{Binding Q3TargetDisplay}"
+                                           FontAttributes="Bold"
+                                           FontSize="14"
+                                           HorizontalOptions="End"/>
                                 </Grid>
-                                <Label Text="{Binding Q3Target, StringFormat='Base: ${0:N0}'}"
-           FontSize="12"
-           TextColor="#6B7280"/>
-                                <Label Text="{Binding Q2Carried, StringFormat='+${0:N0}'}"
-           TextColor="#10B981"
-           FontSize="12"
-           IsVisible="{Binding Q2Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
+                                <Label Text="{Binding Q3BaseDisplay}"
+                                       FontSize="12"
+                                       TextColor="#6B7280"/>
+                                <Label Text="{Binding Q2CarriedAddedDisplay}"
+                                       TextColor="#10B981"
+                                       FontSize="12"
+                                       IsVisible="{Binding Q2Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
                             </VerticalStackLayout>
-                            
+
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
                                        FontSize="14"/>
-                                <Label Text="{Binding Q3Achieved, StringFormat='${0:N0}'}"
+                                <Label Text="{Binding Q3AchievedDisplay}"
                                        TextColor="#EF4444"
                                        FontSize="14"/>
                             </VerticalStackLayout>
 
                             <!-- Carried -->
-                            <Label Text="{Binding Q3Carried, StringFormat='Carried: ${0:N0} →'}"
+                            <Label Text="{Binding Q3CarriedDisplay}"
                                    TextColor="#6B7280"
                                    FontSize="12"
                                    IsVisible="{Binding Q3Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
@@ -271,7 +272,7 @@
                                        FontAttributes="Bold"
                                        FontSize="16"/>
                                 <Label Grid.Column="1"
-                                       Text="{Binding Q4Achievement, StringFormat='{0:F1}%'}"
+                                       Text="{Binding Q4AchievementDisplay}"
                                        TextColor="#EF4444"
                                        HorizontalOptions="End"
                                        FontSize="16"/>
@@ -281,28 +282,28 @@
                             <VerticalStackLayout Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Label Text="Target:" 
-               FontAttributes="Bold"
-               FontSize="14"/>
+                                           FontAttributes="Bold"
+                                           FontSize="14"/>
                                     <Label Grid.Column="1"
-               Text="{Binding Q4FinalTarget, StringFormat='${0:N0}'}"
-               FontAttributes="Bold"
-               FontSize="14"
-               HorizontalOptions="End"/>
+                                           Text="{Binding Q4TargetDisplay}"
+                                           FontAttributes="Bold"
+                                           FontSize="14"
+                                           HorizontalOptions="End"/>
                                 </Grid>
-                                <Label Text="{Binding Q4Target, StringFormat='Base: ${0:N0}'}"
-           FontSize="12"
-           TextColor="#6B7280"/>
-                                <Label Text="{Binding Q3Carried, StringFormat='+${0:N0}'}"
-           TextColor="#10B981"
-           FontSize="12"
-           IsVisible="{Binding Q3Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
+                                <Label Text="{Binding Q4BaseDisplay}"
+                                       FontSize="12"
+                                       TextColor="#6B7280"/>
+                                <Label Text="{Binding Q3CarriedAddedDisplay}"
+                                       TextColor="#10B981"
+                                       FontSize="12"
+                                       IsVisible="{Binding Q3Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
                             </VerticalStackLayout>
-                            
+
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
                                        FontSize="14"/>
-                                <Label Text="{Binding Q4Achieved, StringFormat='${0:N0}'}"
+                                <Label Text="{Binding Q4AchievedDisplay}"
                                        TextColor="#EF4444"
                                        FontSize="14"/>
                             </VerticalStackLayout>
@@ -318,23 +319,22 @@
                        FontAttributes="Bold"/>
 
                 <CollectionView ItemsSource="{Binding Notifications}"
-                EmptyView="No notifications">
+                                EmptyView="No notifications">
                     <CollectionView.ItemTemplate>
                         <DataTemplate x:DataType="viewmodels:NotificationItem">
                             <Border Margin="0,0,0,8"
-                    Stroke="#E5E7EB"
-                    StrokeThickness="1"
-                    StrokeShape="RoundRectangle 8"
-                    BackgroundColor="#EFF6FF">
+                                    Stroke="#E5E7EB"
+                                    StrokeThickness="1"
+                                    StrokeShape="RoundRectangle 8"
+                                    BackgroundColor="#EFF6FF">
                                 <Label Text="{Binding Message}"
-                       Padding="16"
-                       TextColor="#1D4ED8"/>
+                                       Padding="16"
+                                       TextColor="#1D4ED8"/>
                             </Border>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>
                 </CollectionView>
             </VerticalStackLayout>
-
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

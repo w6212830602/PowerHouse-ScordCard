@@ -10,6 +10,9 @@ namespace ScoreCard.Views
             InitializeComponent();
             BindingContext = viewModel;
 
+            // 新增頁面載入完成事件
+            this.Loaded += SalesAnalysisPage_Loaded;
+
             // 直接修改 ViewModel 屬性，然後調用重載
             DateRangePicker.StartDateChanged += async (s, e) => {
                 Debug.WriteLine($"Page捕獲到StartDate變更: {e:yyyy-MM-dd}");
@@ -27,5 +30,24 @@ namespace ScoreCard.Views
                 await viewModel.ReloadDataAsync();
             };
         }
+        protected override void OnAppearing()
+        {
+            base.OnAppearing();
+            Debug.WriteLine($"SalesAnalysisPage OnAppearing - BindingContext 是否為 null: {BindingContext == null}");
+            if (BindingContext is ViewModels.SalesAnalysisViewModel vm)
+            {
+                Debug.WriteLine($"ViewModel 的圖表數據: {vm.TargetVsAchievementData?.Count ?? 0} 項");
+            }
+        }
+
+
+        private async void SalesAnalysisPage_Loaded(object sender, EventArgs e)
+        {
+            // 延遲初始化圖表數據，給 UI 和控件足夠的時間初始化
+            await Task.Delay(100);
+            var vm = BindingContext as ViewModels.SalesAnalysisViewModel;
+            await vm?.ReloadDataAsync();
+        }
+
     }
 }

@@ -198,10 +198,10 @@
 
                                 <chart:SfCartesianChart.Series>
                                     <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                  XBindingPath="Label"
-                  YBindingPath="Target"
-                  Label="Target"
-                  ShowDataLabels="True">
+                                                        XBindingPath="Label"
+                                                        YBindingPath="Target"
+                                                        Label="Target"
+                                                        ShowDataLabels="True">        
                                         <chart:ColumnSeries.Fill>
                                             <Color>#6B46C1</Color>
                                         </chart:ColumnSeries.Fill>

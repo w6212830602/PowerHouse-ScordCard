@@ -56,6 +56,23 @@ namespace ScoreCard
                 _logger?.LogError(ex, "檔案監控初始化失敗");
             }
         }
+
+        protected override void OnStart()
+        {
+            try
+            {
+                Debug.WriteLine("應用程式啟動: 正在初始化 Syncfusion 許可證...");
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Ngo9BigBOggjHTQxAR8/V1NMaF1cXmhNYVppR2Nbek5xdF9HZlZSTGYuP1ZhSXxWdkZiWX5ecXJRRGZaWEQ=");
+                Debug.WriteLine("Syncfusion 許可證註冊成功");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Syncfusion 許可證錯誤: {ex.Message}");
+                Debug.WriteLine($"堆疊跟踪: {ex.StackTrace}");
+            }
+
+            base.OnStart();
+        }
         protected override Window CreateWindow(IActivationState activationState)
         {
             var window = base.CreateWindow(activationState);
