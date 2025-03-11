@@ -14,6 +14,7 @@
 
     <ContentPage.Resources>
         <converts:BoolToColorConverter x:Key="BoolToColorConverter"/>
+        <converts:BoolToStringConverter x:Key="BoolToStringConverter"/>
         <converts:InverseBoolToColorConverter x:Key="InverseBoolToColorConverter"/>
         <converts:StringEqualsConverter x:Key="StringEqualsConverter"/>
         <converts:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>
@@ -302,7 +303,7 @@
                    TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                    VerticalOptions="Center"
                    HorizontalOptions="Center"
-                   FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}}"
+                   FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
                    Margin="15,0"/>
                                     </Border>
 
