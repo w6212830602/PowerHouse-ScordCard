@@ -34,29 +34,21 @@ namespace ScoreCard.ViewModels
         private ObservableCollection<SalesLeaderboardItem> _salesRepData = new();
 
         [ObservableProperty]
-        private string _selectedSalesRep = "All Reps";
+        private ObservableCollection<string> _selectedSalesReps = new();
 
         [ObservableProperty]
-        private ObservableCollection<string> _salesReps = new();
+        private ObservableCollection<string> _availableSalesReps = new();
 
         [ObservableProperty]
         private bool _isExportOptionsVisible;
 
-        // 新增：已選擇的銷售代表列表（支持複選）
+        // 控制銷售代表選擇彈出視窗的顯示
         [ObservableProperty]
-        private ObservableCollection<string> _selectedSalesReps = new();
-
-        // 新增：是否啟用多選模式
-        [ObservableProperty]
-        private bool _isMultiSelectMode = false;
+        private bool _isRepSelectionPopupVisible = false;
 
         // 新增：跟踪銷售代表選擇狀態
         [ObservableProperty]
         private ObservableCollection<RepSelectionItem> _repSelectionItems = new();
-
-        // 控制銷售代表選擇彈出視窗的顯示
-        [ObservableProperty]
-        private bool _isRepSelectionPopupVisible = false;
 
         // 臨時存儲選擇狀態
         private ObservableCollection<RepSelectionItem> _tempRepSelectionItems = new();
@@ -64,6 +56,12 @@ namespace ScoreCard.ViewModels
         // 計算屬性 - 用於繫結到 UI
         public bool IsProductView => ViewType == "ByProduct";
         public bool IsRepView => ViewType == "ByRep";
+
+        // 显示选中销售代表的文本
+        public string SelectedRepsText => SelectedSalesReps.Count == 0 ||
+                                         (SelectedSalesReps.Count == 1 && SelectedSalesReps[0] == "All Reps")
+                                         ? "All Reps"
+                                         : $"{SelectedSalesReps.Count} selected";
 
         #endregion
 
@@ -116,12 +114,11 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 當 SelectedSalesRep 變更時觸發的方法
-        partial void OnSelectedSalesRepChanged(string value)
+        // 當 SelectedSalesReps 變更時觸發的方法
+        partial void OnSelectedSalesRepsChanged(ObservableCollection<string> value)
         {
-            Debug.WriteLine($"選擇的銷售代表變更為: {value}");
-            // 使用 Task.Run 異步執行，避免阻塞 UI 線程
-            Task.Run(() => FilterDataAndReload());
+            Debug.WriteLine($"選擇的銷售代表變更為: {string.Join(", ", value)}");
+            OnPropertyChanged(nameof(SelectedRepsText));
         }
 
         #endregion
@@ -202,42 +199,6 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 新增命令：切換多選模式
-        [RelayCommand]
-        private void ToggleMultiSelectMode()
-        {
-            IsMultiSelectMode = !IsMultiSelectMode;
-            Debug.WriteLine($"多選模式已{(IsMultiSelectMode ? "啟用" : "禁用")}");
-
-            // 重置選擇
-            if (IsMultiSelectMode)
-            {
-                // 進入多選模式，清空已選項並更新選擇項狀態
-                SelectedSalesReps.Clear();
-
-                foreach (var item in RepSelectionItems)
-                {
-                    item.IsSelected = false;
-                }
-
-                // 默認選中"All Reps"
-                var allRepsItem = RepSelectionItems.FirstOrDefault(x => x.Name == "All Reps");
-                if (allRepsItem != null)
-                {
-                    allRepsItem.IsSelected = true;
-                    SelectedSalesReps.Add("All Reps");
-                }
-            }
-            else
-            {
-                // 退出多選模式，設置單選為第一個選中項或All Reps
-                SelectedSalesRep = SelectedSalesReps.FirstOrDefault() ?? "All Reps";
-            }
-
-            // 重新過濾數據
-            FilterDataAndReload();
-        }
-
         // 新增命令：處理銷售代表選擇變更
         [RelayCommand]
         private void ToggleRepSelection(RepSelectionItem item)
@@ -253,8 +214,6 @@ namespace ScoreCard.ViewModels
                 if (!item.IsSelected)
                 {
                     item.IsSelected = true;
-                    SelectedSalesReps.Clear();
-                    SelectedSalesReps.Add("All Reps");
 
                     // 更新其他項的選中狀態
                     foreach (var otherItem in RepSelectionItems)
@@ -271,38 +230,29 @@ namespace ScoreCard.ViewModels
                 // 切換當前項的選中狀態
                 item.IsSelected = !item.IsSelected;
 
-                // 更新SelectedSalesReps集合
+                // 如果選中了非"All Reps"項，取消選中"All Reps"
                 if (item.IsSelected)
                 {
-                    // 選中當前項，同時取消選中"All Reps"
-                    SelectedSalesReps.Add(item.Name);
-
                     var allRepsItem = RepSelectionItems.FirstOrDefault(x => x.Name == "All Reps");
                     if (allRepsItem != null && allRepsItem.IsSelected)
                     {
                         allRepsItem.IsSelected = false;
-                        SelectedSalesReps.Remove("All Reps");
                     }
                 }
-                else
-                {
-                    // 取消選中當前項
-                    SelectedSalesReps.Remove(item.Name);
 
-                    // 如果沒有選中項，則自動選中"All Reps"
-                    if (!RepSelectionItems.Any(x => x.Name != "All Reps" && x.IsSelected))
+                // 如果沒有選中項，則自動選中"All Reps"
+                if (!RepSelectionItems.Any(x => x.Name != "All Reps" && x.IsSelected))
+                {
+                    var allRepsItem = RepSelectionItems.FirstOrDefault(x => x.Name == "All Reps");
+                    if (allRepsItem != null)
                     {
-                        var allRepsItem = RepSelectionItems.FirstOrDefault(x => x.Name == "All Reps");
-                        if (allRepsItem != null)
-                        {
-                            allRepsItem.IsSelected = true;
-                            SelectedSalesReps.Add("All Reps");
-                        }
+                        allRepsItem.IsSelected = true;
                     }
                 }
             }
 
-            Debug.WriteLine($"已選銷售代表: {string.Join(", ", SelectedSalesReps)}");
+            // 注意：在彈出視窗中，我們不立即過濾數據，而是等待用戶點擊Apply按鈕
+            // 這樣可以避免每次點擊都重新載入數據，提高用戶體驗
         }
 
         // 顯示銷售代表選擇彈出視窗
@@ -372,9 +322,26 @@ namespace ScoreCard.ViewModels
 
             IsRepSelectionPopupVisible = false;
             Debug.WriteLine($"應用選擇，已選: {string.Join(", ", SelectedSalesReps)}");
+            OnPropertyChanged(nameof(SelectedRepsText));
 
-            // 重新過濾數據
-            FilterDataAndReload();
+            // 清除緩存並重新過濾數據
+            _excelService.ClearCache();
+            MainThread.BeginInvokeOnMainThread(async () => {
+                try
+                {
+                    IsLoading = true;
+                    await FilterDataCommand.ExecuteAsync(null);
+                    Debug.WriteLine($"過濾完成，已選: {string.Join(", ", SelectedSalesReps)}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"過濾發生錯誤: {ex.Message}");
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
+            });
         }
 
         #endregion
@@ -383,6 +350,9 @@ namespace ScoreCard.ViewModels
         {
             _excelService = excelService;
             Debug.WriteLine("DetailedSalesViewModel 已初始化");
+
+            // 初始化已選擇的銷售代表列表
+            SelectedSalesReps = new ObservableCollection<string> { "All Reps" };
 
             // 避免在構造函數中使用異步方法
             // 而是在事件循環的下一個循環執行初始化
@@ -419,8 +389,7 @@ namespace ScoreCard.ViewModels
                 reps.Insert(0, "All Reps");
 
                 await MainThread.InvokeOnMainThreadAsync(() => {
-                    SalesReps = new ObservableCollection<string>(reps);
-                    SelectedSalesRep = "All Reps"; // 設置默認選項為"全部"
+                    AvailableSalesReps = new ObservableCollection<string>(reps);
 
                     // 初始化銷售代表選擇項
                     RepSelectionItems = new ObservableCollection<RepSelectionItem>();
@@ -435,9 +404,10 @@ namespace ScoreCard.ViewModels
 
                     // 初始化選中項
                     SelectedSalesReps = new ObservableCollection<string> { "All Reps" };
+                    OnPropertyChanged(nameof(SelectedRepsText));
                 });
 
-                Debug.WriteLine($"載入了 {SalesReps.Count} 個銷售代表選項");
+                Debug.WriteLine($"載入了 {AvailableSalesReps.Count} 個銷售代表選項");
 
                 // 3. 按日期範圍過濾數據
                 FilterDataByDateRange();
@@ -458,28 +428,55 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        private void FilterDataAndReload()
+        private async void FilterDataAndReload()
         {
             try
             {
                 MainThread.BeginInvokeOnMainThread(() => IsLoading = true);
 
-                // 清除緩存
+                // 清除緩存，確保數據重新載入
                 _excelService.ClearCache();
 
+                // 過濾數據
                 FilterDataByDateRange();
 
-                MainThread.BeginInvokeOnMainThread(() => {
-                    // 在主線程上載入過濾後的數據到 UI
-                    LoadFilteredData();
-                    IsLoading = false;
-                    Debug.WriteLine("根據條件更新了表格數據");
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    try
+                    {
+                        // 在主線程上載入過濾後的數據到 UI
+                        LoadFilteredData();
+                        Debug.WriteLine("已根據條件更新表格數據");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"加載過濾數據到UI時發生錯誤: {ex.Message}");
+                    }
+                    finally
+                    {
+                        IsLoading = false;
+                    }
                 });
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"過濾和重新載入數據時發生錯誤: {ex.Message}");
-                MainThread.BeginInvokeOnMainThread(() => IsLoading = false);
+                Debug.WriteLine(ex.StackTrace);
+
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    try
+                    {
+                        // 發生錯誤時，嘗試載入樣本數據
+                        LoadSampleData();
+                    }
+                    catch
+                    {
+                        // 最後的保險措施
+                    }
+                    finally
+                    {
+                        IsLoading = false;
+                    }
+                });
             }
         }
 
@@ -489,6 +486,15 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("沒有原始數據可以過濾");
                 _filteredSalesData = new List<SalesData>();
+
+                // 顯示警告訊息給用戶
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "無可用數據",
+                        "無法從Excel檔案讀取銷售數據。請確認檔案存在且可訪問。",
+                        "確定");
+                });
                 return;
             }
 
@@ -500,12 +506,6 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"過濾日期範圍: {currentStartDate:yyyy-MM-dd HH:mm:ss} 到 {currentEndDate:yyyy-MM-dd HH:mm:ss}");
 
-                // 輸出幾筆原始數據的日期，用於檢查
-                for (int i = 0; i < Math.Min(_allSalesData.Count, 5); i++)
-                {
-                    Debug.WriteLine($"原始數據 {i}: ReceivedDate={_allSalesData[i].ReceivedDate:yyyy-MM-dd HH:mm:ss}");
-                }
-
                 // 根據日期範圍過濾
                 _filteredSalesData = _allSalesData
                     .Where(x => x.ReceivedDate >= currentStartDate &&
@@ -514,52 +514,223 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"日期過濾後剩餘 {_filteredSalesData.Count} 條數據");
 
-                // 根據銷售代表過濾
-                if (IsMultiSelectMode && SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
-                {
-                    // 多選模式，過濾符合任一選定代表的記錄
-                    _filteredSalesData = _filteredSalesData
-                        .Where(x => SelectedSalesReps.Contains(x.SalesRep))
-                        .ToList();
-
-                    Debug.WriteLine($"多選銷售代表過濾後剩餘 {_filteredSalesData.Count} 條數據，已選: {string.Join(", ", SelectedSalesReps)}");
-                }
-                else if (!IsMultiSelectMode && !string.IsNullOrEmpty(SelectedSalesRep) && SelectedSalesRep != "All Reps")
-                {
-                    // 單選模式，過濾符合所選代表的記錄
-                    _filteredSalesData = _filteredSalesData
-                        .Where(x => x.SalesRep == SelectedSalesRep)
-                        .ToList();
-
-                    Debug.WriteLine($"單選銷售代表過濾後剩餘 {_filteredSalesData.Count} 條數據，已選: {SelectedSalesRep}");
-                }
-
-                // 如果過濾後沒有數據
+                // 檢查日期範圍內是否有任何數據
                 if (_filteredSalesData.Count == 0)
                 {
-                    Debug.WriteLine($"過濾後沒有數據，回退到示例數據");
+                    Debug.WriteLine("選擇的日期範圍內沒有數據");
 
-                    // 使用日期範圍生成合適的示例數據
-                    LoadSampleData();
+                    // 顯示警告訊息給用戶
+                    MainThread.BeginInvokeOnMainThread(async () =>
+                    {
+                        await Application.Current.MainPage.DisplayAlert(
+                            "無數據",
+                            $"在 {currentStartDate:yyyy-MM-dd} 至 {currentEndDate:yyyy-MM-dd} 期間沒有找到任何銷售數據。",
+                            "確定");
+                    });
+
+                    // 保持_filteredSalesData為空列表，這樣UI將顯示無數據狀態
+                    return;
+                }
+
+                // 記錄過濾前的數據，用於檢查特定銷售代表是否有數據
+                var preFilterSalesReps = _filteredSalesData
+                    .Select(x => x.SalesRep)
+                    .Where(x => !string.IsNullOrEmpty(x))
+                    .Distinct()
+                    .ToList();
+
+                Debug.WriteLine($"日期範圍內的銷售代表: {string.Join(", ", preFilterSalesReps)}");
+
+                // 根據銷售代表過濾
+                if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
+                {
+                    var beforeCount = _filteredSalesData.Count;
+
+                    // 找出選擇的哪些代表在當前日期範圍內沒有數據
+                    var missingReps = SelectedSalesReps
+                        .Where(rep => !preFilterSalesReps.Any(x =>
+                            string.Equals(x, rep, StringComparison.OrdinalIgnoreCase) ||
+                            x.Contains(rep, StringComparison.OrdinalIgnoreCase) ||
+                            rep.Contains(x, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    if (missingReps.Any())
+                    {
+                        Debug.WriteLine($"警告: 以下選中的銷售代表在當前日期範圍內沒有數據: {string.Join(", ", missingReps)}");
+
+                        // 顯示警告訊息給用戶
+                        MainThread.BeginInvokeOnMainThread(async () =>
+                        {
+                            await Application.Current.MainPage.DisplayAlert(
+                                "部分代表無數據",
+                                $"以下選中的銷售代表在選定日期範圍內沒有數據記錄: {string.Join(", ", missingReps)}",
+                                "確定");
+                        });
+                    }
+
+                    // 只過濾存在的代表的數據
+                    _filteredSalesData = _filteredSalesData
+                        .Where(x => !string.IsNullOrEmpty(x.SalesRep) &&
+                                SelectedSalesReps.Any(r =>
+                                    string.Equals(x.SalesRep, r, StringComparison.OrdinalIgnoreCase) ||
+                                    x.SalesRep.Contains(r, StringComparison.OrdinalIgnoreCase) ||
+                                    r.Contains(x.SalesRep, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    Debug.WriteLine($"銷售代表過濾: 從 {beforeCount} 條記錄中篩選，" +
+                                   $"剩餘 {_filteredSalesData.Count} 條數據，已選: {string.Join(", ", SelectedSalesReps)}");
+
+                    // 打印一些匹配到的記錄，幫助調試
+                    if (_filteredSalesData.Any())
+                    {
+                        Debug.WriteLine("匹配的記錄示例:");
+                        foreach (var record in _filteredSalesData.Take(Math.Min(3, _filteredSalesData.Count)))
+                        {
+                            Debug.WriteLine($"  SalesRep: {record.SalesRep}, ProductType: {record.ProductType}");
+                        }
+                    }
+
+                    // 如果過濾後沒有任何數據
+                    if (_filteredSalesData.Count == 0)
+                    {
+                        Debug.WriteLine("過濾後沒有任何匹配的數據");
+
+                        // 顯示警告訊息給用戶
+                        MainThread.BeginInvokeOnMainThread(async () =>
+                        {
+                            await Application.Current.MainPage.DisplayAlert(
+                                "無匹配數據",
+                                $"選中的銷售代表在當前日期範圍內沒有匹配的數據記錄。",
+                                "確定");
+                        });
+                    }
+                }
+                else
+                {
+                    Debug.WriteLine("使用All Reps設置，顯示所有符合日期範圍的數據");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"過濾數據時發生錯誤: {ex.Message}");
                 _filteredSalesData = new List<SalesData>();
+
+                // 顯示錯誤訊息給用戶
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "過濾錯誤",
+                        $"處理數據時發生錯誤: {ex.Message}",
+                        "確定");
+                });
             }
         }
 
+        // 新增方法 - 生成適合當前選擇的示例數據
+        private List<SalesData> GenerateMatchingTestData()
+        {
+            var testData = new List<SalesData>();
+
+            // 確定要生成數據的銷售代表列表
+            List<string> repsToGenerate;
+            if (SelectedSalesReps.Contains("All Reps") || !SelectedSalesReps.Any())
+            {
+                // 如果選擇了All Reps或沒有選擇任何代表，為所有可能的銷售代表生成數據
+                repsToGenerate = new List<string> { "Isaac", "Brandon", "Chris", "Mark", "Nathan" };
+            }
+            else
+            {
+                // 僅為選中的銷售代表生成數據
+                repsToGenerate = SelectedSalesReps.ToList();
+            }
+
+            Debug.WriteLine($"為以下銷售代表生成示例數據: {string.Join(", ", repsToGenerate)}");
+
+            // 針對每個銷售代表生成數據
+            foreach (var rep in repsToGenerate)
+            {
+                // 生成不同產品類型的數據
+                foreach (var product in new[] { "Power", "Thermal", "Channel", "Service", "Batts & Caps" })
+                {
+                    // 根據不同代表和產品類型設置不同的基準金額
+                    decimal baseAmount = rep switch
+                    {
+                        "Isaac" => 30000m,
+                        "Brandon" => 25000m,
+                        "Chris" => 20000m,
+                        "Mark" => 18000m,
+                        "Nathan" => 15000m,
+                        _ => 10000m
+                    };
+
+                    // 根據產品類型調整基準金額
+                    decimal productMultiplier = product switch
+                    {
+                        "Thermal" => 2.5m,
+                        "Power" => 2.0m,
+                        "Channel" => 1.5m,
+                        "Batts & Caps" => 1.2m,
+                        "Service" => 1.0m,
+                        _ => 1.0m
+                    };
+
+                    decimal finalAmount = baseAmount * productMultiplier;
+
+                    // 為每個月份生成一條數據
+                    for (int month = 1; month <= 12; month++)
+                    {
+                        // 生成一個在日期範圍內的日期
+                        var year = (month >= 8) ? 2023 : 2024;
+                        var date = new DateTime(year, month, 15);
+
+                        // 如果日期在過濾範圍內才添加
+                        if (date >= StartDate && date <= EndDate)
+                        {
+                            testData.Add(new SalesData
+                            {
+                                ReceivedDate = date,
+                                SalesRep = rep,
+                                Status = month % 2 == 0 ? "Booked" : "Completed",
+                                ProductType = product,
+                                POValue = finalAmount,
+                                VertivValue = finalAmount * 0.85m,
+                                TotalCommission = finalAmount * 0.1m,
+                                CommissionPercentage = 0.1m
+                            });
+                        }
+                    }
+                }
+            }
+
+            Debug.WriteLine($"已生成 {testData.Count} 條匹配當前選擇的示例數據");
+            return testData;
+        }
+
+
+
         private void LoadFilteredData()
         {
-            // 根據當前視圖類型載入相應數據
-            if (ViewType == "ByProduct")
+            try
             {
-                LoadProductData();
+                Debug.WriteLine($"載入已過濾數據，當前視圖類型: {ViewType}");
+                Debug.WriteLine($"過濾條件 - 開始日期: {StartDate:yyyy-MM-dd}, 結束日期: {EndDate:yyyy-MM-dd}");
+                Debug.WriteLine($"已選銷售代表: {string.Join(", ", SelectedSalesReps)}");
+
+                // 根據當前視圖類型載入相應數據
+                if (ViewType == "ByProduct")
+                {
+                    LoadProductData();
+                }
+                else if (ViewType == "ByRep")
+                {
+                    LoadSalesRepData();
+                }
+
+                Debug.WriteLine("數據載入完成");
             }
-            else if (ViewType == "ByRep")
+            catch (Exception ex)
             {
-                LoadSalesRepData();
+                Debug.WriteLine($"載入已過濾數據時發生錯誤: {ex.Message}");
             }
         }
 
@@ -569,84 +740,148 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("載入產品視圖數據");
 
-                // 優先使用過濾後的數據
-                if (_filteredSalesData != null && _filteredSalesData.Any())
+                // 如果沒有過濾後的數據
+                if (_filteredSalesData == null || !_filteredSalesData.Any())
                 {
-                    var productData = _filteredSalesData
-                        .GroupBy(x => x.ProductType)
-                        .Where(g => !string.IsNullOrEmpty(g.Key))
-                        .Select(g =>
-                        {
-                            var product = new ProductSalesData
-                            {
-                                ProductType = g.Key,
-                                AgencyCommission = g.Sum(x => x.TotalCommission * 0.7m),  // 假設 70% 為代理傭金
-                                BuyResellCommission = g.Sum(x => x.TotalCommission * 0.3m),  // 假設 30% 為買賣傭金
-                                POValue = g.Sum(x => x.POValue)
-                            };
+                    Debug.WriteLine("沒有過濾後的數據可用");
 
-                            // 明確設置 TotalCommission
-                            product.TotalCommission = product.AgencyCommission + product.BuyResellCommission;
-                            return product;
-                        })
-                        .OrderByDescending(x => x.POValue)
-                        .ToList();
+                    // 創建空的產品數據列表（所有值為0）
+                    var emptyProductData = new List<ProductSalesData>();
 
-                    // 計算百分比
-                    if (productData.Any())
+                    // 為常見產品類型添加空記錄
+                    foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
                     {
-                        decimal totalPO = productData.Sum(p => p.POValue);
-
-                        foreach (var product in productData)
+                        emptyProductData.Add(new ProductSalesData
                         {
-                            product.PercentageOfTotal = totalPO > 0 ? Math.Round((product.POValue / totalPO) * 100, 1) : 0;
-                        }
-
-                        // 去重處理
-                        var uniqueProducts = productData
-                            .GroupBy(p => p.ProductType)
-                            .Select(g => g.First())
-                            .OrderByDescending(p => p.POValue)
-                            .ToList();
-
-                        MainThread.BeginInvokeOnMainThread(() => {
-                            ProductSalesData = new ObservableCollection<ProductSalesData>(uniqueProducts);
+                            ProductType = productType,
+                            AgencyCommission = 0,
+                            BuyResellCommission = 0,
+                            TotalCommission = 0,
+                            POValue = 0,
+                            PercentageOfTotal = 0
                         });
-
-                        Debug.WriteLine($"從過濾數據計算出 {uniqueProducts.Count} 條產品數據（已去重）");
-                        return;
                     }
-                }
-
-                // 如果過濾數據為空，嘗試從緩存獲取
-                var cachedProductData = _excelService.GetProductSalesData();
-
-                if (cachedProductData.Any())
-                {
-                    // 進行去重處理，確保每個產品類型只出現一次
-                    var uniqueProducts = cachedProductData
-                        .GroupBy(p => p.ProductType)
-                        .Select(g => g.First())
-                        .OrderByDescending(p => p.POValue)
-                        .ToList();
 
                     MainThread.BeginInvokeOnMainThread(() => {
-                        ProductSalesData = new ObservableCollection<ProductSalesData>(uniqueProducts);
+                        ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
                     });
 
-                    Debug.WriteLine($"從緩存載入了 {uniqueProducts.Count} 條產品數據（已去重）");
+                    Debug.WriteLine("已載入空產品數據（所有值為0）");
                     return;
                 }
 
-                // 如果緩存也沒有數據，載入示例數據
-                Debug.WriteLine("過濾後的數據和緩存都為空，載入示例產品數據");
-                LoadSampleProductData();
+                // 使用過濾後的數據
+                var productData = _filteredSalesData
+                    .GroupBy(x => NormalizeProductType(x.ProductType))
+                    .Where(g => !string.IsNullOrEmpty(g.Key))
+                    .Select(g =>
+                    {
+                        var product = new ProductSalesData
+                        {
+                            ProductType = g.Key,
+                            AgencyCommission = g.Sum(x => x.TotalCommission * 0.7m),
+                            BuyResellCommission = g.Sum(x => x.TotalCommission * 0.3m),
+                            POValue = g.Sum(x => x.POValue)
+                        };
+
+                        // 明確設置 TotalCommission
+                        product.TotalCommission = product.AgencyCommission + product.BuyResellCommission;
+                        return product;
+                    })
+                    .OrderByDescending(x => x.POValue)
+                    .ToList();
+
+                // 計算百分比
+                if (productData.Any())
+                {
+                    decimal totalPO = productData.Sum(p => p.POValue);
+
+                    foreach (var product in productData)
+                    {
+                        product.PercentageOfTotal = totalPO > 0 ? Math.Round((product.POValue / totalPO) * 100, 1) : 0;
+                    }
+
+                    MainThread.BeginInvokeOnMainThread(() => {
+                        ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
+                    });
+
+                    Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
+                    return;
+                }
+                else
+                {
+                    // 如果沒有計算出產品數據
+                    Debug.WriteLine("沒有產品數據可顯示");
+
+                    // 創建空的產品數據
+                    var emptyProductData = new List<ProductSalesData>();
+                    foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
+                    {
+                        emptyProductData.Add(new ProductSalesData
+                        {
+                            ProductType = productType,
+                            AgencyCommission = 0,
+                            BuyResellCommission = 0,
+                            TotalCommission = 0,
+                            POValue = 0,
+                            PercentageOfTotal = 0
+                        });
+                    }
+
+                    MainThread.BeginInvokeOnMainThread(() => {
+                        ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
+                    });
+
+                    Debug.WriteLine("已載入空產品數據（所有值為0）");
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
-                LoadSampleProductData();
+
+                // 發生錯誤時顯示空數據
+                var emptyProductData = new List<ProductSalesData>();
+                foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
+                {
+                    emptyProductData.Add(new ProductSalesData
+                    {
+                        ProductType = productType,
+                        AgencyCommission = 0,
+                        BuyResellCommission = 0,
+                        TotalCommission = 0,
+                        POValue = 0,
+                        PercentageOfTotal = 0
+                    });
+                }
+
+                MainThread.BeginInvokeOnMainThread(() => {
+                    ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
+                });
             }
+        }
+
+        // 標準化產品類型名稱，處理可能的大小寫或拼寫差異
+        private string NormalizeProductType(string productType)
+        {
+            if (string.IsNullOrEmpty(productType))
+                return "Other";
+
+            // 轉為小寫以便比較
+            string lowercaseType = productType.ToLowerInvariant();
+
+            if (lowercaseType.Contains("thermal"))
+                return "Thermal";
+            if (lowercaseType.Contains("power"))
+                return "Power";
+            if (lowercaseType.Contains("channel"))
+                return "Channel";
+            if (lowercaseType.Contains("service"))
+                return "Service";
+            if (lowercaseType.Contains("batts") || lowercaseType.Contains("caps") || lowercaseType.Contains("batt"))
+                return "Batts & Caps";
+
+            // 如果沒有匹配，返回原始名稱
+            return productType;
         }
 
         private void LoadSalesRepData()
@@ -655,88 +890,174 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("載入銷售代表視圖數據");
 
-                // 優先使用過濾後的數據
-                if (_filteredSalesData != null && _filteredSalesData.Any())
+                // 如果沒有過濾後的數據
+                if (_filteredSalesData == null || !_filteredSalesData.Any())
                 {
-                    var repData = _filteredSalesData
-                        .GroupBy(x => x.SalesRep)
-                        .Where(g => !string.IsNullOrEmpty(g.Key))
-                        .Select((g, index) =>
-                        {
-                            var rep = new SalesLeaderboardItem
-                            {
-                                Rank = index + 1,
-                                SalesRep = g.Key,
-                                AgencyCommission = g.Sum(x => x.TotalCommission * 0.7m),
-                                BuyResellCommission = g.Sum(x => x.TotalCommission * 0.3m)
-                            };
+                    Debug.WriteLine("沒有過濾後的數據可用");
 
-                            // 明確設置 TotalCommission
-                            rep.TotalCommission = rep.AgencyCommission + rep.BuyResellCommission;
-                            return rep;
-                        })
-                        .OrderByDescending(x => x.TotalCommission)
-                        .ToList();
-
-                    // 去重處理
-                    var filteredReps = repData
-                        .GroupBy(r => r.SalesRep)
-                        .Select(g => g.First())
-                        .OrderByDescending(r => r.TotalCommission)
-                        .ToList();
-
-                    // 更新排名
-                    for (int i = 0; i < filteredReps.Count; i++)
-                    {
-                        filteredReps[i].Rank = i + 1;
-                    }
-
-                    if (filteredReps.Any())
-                    {
-                        MainThread.BeginInvokeOnMainThread(() => {
-                            SalesRepData = new ObservableCollection<SalesLeaderboardItem>(filteredReps);
-                        });
-
-                        Debug.WriteLine($"從過濾數據計算出 {filteredReps.Count} 條銷售代表數據（已去重）");
-                        return;
-                    }
-                }
-
-                // 如果過濾數據為空，嘗試從緩存獲取
-                var cachedSalesRepData = _excelService.GetSalesLeaderboardData();
-
-                if (cachedSalesRepData.Any())
-                {
-                    // 確保沒有重複的銷售代表
-                    var repsFromCache = cachedSalesRepData
-                        .GroupBy(r => r.SalesRep)
-                        .Select(g => g.First())
-                        .OrderByDescending(r => r.TotalCommission)
-                        .ToList();
-
-                    // 更新排名
-                    for (int i = 0; i < repsFromCache.Count; i++)
-                    {
-                        repsFromCache[i].Rank = i + 1;
-                    }
+                    // 創建空的銷售代表數據
+                    var emptyRepData = CreateEmptySalesRepData();
 
                     MainThread.BeginInvokeOnMainThread(() => {
-                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(repsFromCache);
+                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
                     });
 
-                    Debug.WriteLine($"從緩存載入了 {repsFromCache.Count} 條銷售代表數據（已去重）");
+                    Debug.WriteLine("已載入空銷售代表數據（所有值為0）");
                     return;
                 }
 
-                // 如果緩存也沒有數據，載入示例數據
-                Debug.WriteLine("過濾後的數據和緩存都為空，載入示例銷售代表數據");
-                LoadSampleSalesRepData();
+                // 使用過濾後的數據
+                var repData = _filteredSalesData
+                    .GroupBy(x => NormalizeSalesRep(x.SalesRep))
+                    .Where(g => !string.IsNullOrEmpty(g.Key))
+                    .Select(g =>
+                    {
+                        var rep = new SalesLeaderboardItem
+                        {
+                            SalesRep = g.Key,
+                            AgencyCommission = g.Sum(x => x.TotalCommission * 0.7m),
+                            BuyResellCommission = g.Sum(x => x.TotalCommission * 0.3m)
+                        };
+
+                        // 明確設置 TotalCommission
+                        rep.TotalCommission = rep.AgencyCommission + rep.BuyResellCommission;
+                        return rep;
+                    })
+                    .OrderByDescending(x => x.TotalCommission)
+                    .ToList();
+
+                if (repData.Any())
+                {
+                    // 更新排名
+                    for (int i = 0; i < repData.Count; i++)
+                    {
+                        repData[i].Rank = i + 1;
+                    }
+
+                    // 處理選中但在數據中不存在的銷售代表（在已選擇銷售代表模式下）
+                    if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
+                    {
+                        var existingReps = repData.Select(r => r.SalesRep).ToList();
+
+                        // 為不存在於數據中但已選擇的代表創建空記錄
+                        foreach (var selectedRep in SelectedSalesReps)
+                        {
+                            // 檢查該代表是否已存在於結果中（考慮標準化名稱）
+                            bool exists = existingReps.Any(r =>
+                                string.Equals(r, selectedRep, StringComparison.OrdinalIgnoreCase) ||
+                                r.Contains(selectedRep, StringComparison.OrdinalIgnoreCase) ||
+                                selectedRep.Contains(r, StringComparison.OrdinalIgnoreCase));
+
+                            if (!exists)
+                            {
+                                // 添加一條空記錄
+                                repData.Add(new SalesLeaderboardItem
+                                {
+                                    Rank = repData.Count + 1,
+                                    SalesRep = selectedRep,
+                                    AgencyCommission = 0,
+                                    BuyResellCommission = 0,
+                                    TotalCommission = 0
+                                });
+
+                                Debug.WriteLine($"為已選擇但無數據的銷售代表添加空記錄: {selectedRep}");
+                            }
+                        }
+
+                        // 重新排序
+                        repData = repData.OrderByDescending(x => x.TotalCommission).ToList();
+
+                        // 重新設置排名
+                        for (int i = 0; i < repData.Count; i++)
+                        {
+                            repData[i].Rank = i + 1;
+                        }
+                    }
+
+                    MainThread.BeginInvokeOnMainThread(() => {
+                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(repData);
+                    });
+
+                    Debug.WriteLine($"已載入 {repData.Count} 條銷售代表數據");
+                    return;
+                }
+                else
+                {
+                    // 如果沒有銷售代表數據
+                    Debug.WriteLine("沒有銷售代表數據可顯示");
+
+                    // 創建空的銷售代表數據
+                    var emptyRepData = CreateEmptySalesRepData();
+
+                    MainThread.BeginInvokeOnMainThread(() => {
+                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
+                    });
+
+                    Debug.WriteLine("已載入空銷售代表數據（所有值為0）");
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入銷售代表數據時發生錯誤: {ex.Message}");
-                LoadSampleSalesRepData();
+
+                // 發生錯誤時顯示空數據
+                var emptyRepData = CreateEmptySalesRepData();
+
+                MainThread.BeginInvokeOnMainThread(() => {
+                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
+                });
             }
+        }
+
+        // 標準化銷售代表名稱
+        private string NormalizeSalesRep(string salesRep)
+        {
+            if (string.IsNullOrEmpty(salesRep))
+                return "Unknown";
+
+            return salesRep.Trim();
+        }
+
+        // 創建空的銷售代表數據
+        private List<SalesLeaderboardItem> CreateEmptySalesRepData()
+        {
+            var emptyData = new List<SalesLeaderboardItem>();
+
+            // 如果有選擇特定的銷售代表
+            if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
+            {
+                // 為每個選中的銷售代表創建空記錄
+                for (int i = 0; i < SelectedSalesReps.Count; i++)
+                {
+                    emptyData.Add(new SalesLeaderboardItem
+                    {
+                        Rank = i + 1,
+                        SalesRep = SelectedSalesReps[i],
+                        AgencyCommission = 0,
+                        BuyResellCommission = 0,
+                        TotalCommission = 0
+                    });
+                }
+            }
+            else
+            {
+                // 如果選擇了"All Reps"或沒有選擇，則創建常見銷售代表的空記錄
+                var commonReps = new[] { "Isaac", "Brandon", "Chris", "Mark", "Nathan" };
+
+                for (int i = 0; i < commonReps.Length; i++)
+                {
+                    emptyData.Add(new SalesLeaderboardItem
+                    {
+                        Rank = i + 1,
+                        SalesRep = commonReps[i],
+                        AgencyCommission = 0,
+                        BuyResellCommission = 0,
+                        TotalCommission = 0
+                    });
+                }
+            }
+
+            return emptyData;
         }
 
         // 當所有其他方法都失敗時，載入固定的示例數據

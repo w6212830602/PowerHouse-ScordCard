@@ -18,6 +18,23 @@
         <converts:TotalBuyResellCommissionConverter x:Key="TotalBuyResellCommissionConverter"/>
         <converts:TotalCommissionConverter x:Key="TotalCommissionConverter"/>
         <converts:TotalPOValueConverter x:Key="TotalPOValueConverter"/>
+
+        <!-- 無數據提示模板 -->
+        <DataTemplate x:Key="NoDataTemplate">
+            <Grid Padding="20" HeightRequest="100">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="暫無匹配數據" 
+                           FontSize="16" 
+                           TextColor="#666666" 
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"/>
+                    <Label Text="請嘗試調整日期範圍或選擇其他銷售代表" 
+                           FontSize="14" 
+                           TextColor="#888888"
+                           HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Grid>
+        </DataTemplate>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*">
@@ -31,67 +48,67 @@
             <!-- 詳細頁面的視圖類型切換 (Summary/Detailed) -->
             <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
                 <Border Stroke="#FF3B30"
-            StrokeThickness="1"
-            BackgroundColor="#F0F0F0"
-            StrokeShape="RoundRectangle 4,0,0,4"
-            HeightRequest="36">
+                        StrokeThickness="1"
+                        BackgroundColor="#F0F0F0"
+                        StrokeShape="RoundRectangle 4,0,0,4"
+                        HeightRequest="36">
                     <Label Text="Summary"
-               TextColor="#333333"
-               VerticalOptions="Center"
-               Margin="20,0"/>
+                           TextColor="#333333"
+                           VerticalOptions="Center"
+                           Margin="20,0"/>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding NavigateToSummaryCommand}"/>
                     </Border.GestureRecognizers>
                 </Border>
                 <Border Stroke="#FF3B30"
-            StrokeThickness="1"
-            BackgroundColor="#FF3B30"
-            StrokeShape="RoundRectangle 0,4,4,0"
-            HeightRequest="36">
+                        StrokeThickness="1"
+                        BackgroundColor="#FF3B30"
+                        StrokeShape="RoundRectangle 0,4,4,0"
+                        HeightRequest="36">
                     <Label Text="Detailed"
-               TextColor="White"
-               VerticalOptions="Center"
-               Margin="20,0"/>
+                           TextColor="White"
+                           VerticalOptions="Center"
+                           Margin="20,0"/>
                 </Border>
             </HorizontalStackLayout>
 
             <!-- 日期範圍選擇器 -->
             <controls:CustomDatePicker Grid.Column="2"
-                           x:Name="DateRangePicker"
-                           StartDate="{Binding StartDate, Mode=TwoWay}" 
-                           EndDate="{Binding EndDate, Mode=TwoWay}"/>
+                                       x:Name="DateRangePicker"
+                                       StartDate="{Binding StartDate, Mode=TwoWay}" 
+                                       EndDate="{Binding EndDate, Mode=TwoWay}"/>
+
             <!-- 產品/銷售代表切換 -->
             <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0">
                 <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-            StrokeShape="RoundRectangle 4,0,0,4"
-            HeightRequest="36">
+                        StrokeThickness="1"
+                        BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                        StrokeShape="RoundRectangle 4,0,0,4"
+                        HeightRequest="36">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByProduct"/>
                     </Border.GestureRecognizers>
                     <Label Text="By Product"
-               TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-               Margin="15,0"/>
+                           TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                           VerticalOptions="Center"
+                           FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                           Margin="15,0"/>
                 </Border>
                 <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-            StrokeShape="RoundRectangle 0,4,4,0"
-            HeightRequest="36">
+                        StrokeThickness="1"
+                        BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                        StrokeShape="RoundRectangle 0,4,4,0"
+                        HeightRequest="36">
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByRep"/>
                     </Border.GestureRecognizers>
                     <Label Text="By Rep"
-               TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-               Margin="15,0"/>
+                           TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                           VerticalOptions="Center"
+                           FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                           Margin="15,0"/>
                 </Border>
             </HorizontalStackLayout>
-
 
             <!-- 匯出按鈕和銷售代表篩選器 -->
             <Grid Grid.Row="1" Grid.Column="2" ColumnDefinitions="Auto,*">
@@ -116,68 +133,28 @@
                     </Border.GestureRecognizers>
                 </Border>
 
-                <!-- 銷售代表選擇區域，替換原有的簡單下拉框 -->
+                <!-- 銷售代表選擇區域 -->
                 <Border Grid.Column="1"
-        Stroke="#E2E8F0"
-        StrokeThickness="1"
-        StrokeShape="RoundRectangle 4"
-        HeightRequest="36"
-        Margin="10,0,0,0">
-                    <Grid ColumnDefinitions="Auto,*,Auto" Padding="2,0">
-                        <!-- 切換多選模式的按鈕 -->
-                        <Border Grid.Column="0"
-        BackgroundColor="{Binding IsMultiSelectMode, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#444444'}"
-        StrokeShape="RoundRectangle 3"
-        Stroke="#777777"
-        StrokeThickness="1"
-        Margin="4,0"
-        Padding="4,0"
-        HeightRequest="30">
-                            <HorizontalStackLayout VerticalOptions="Center">
-                                <Label Text="☰"
-               TextColor="White"
-               VerticalOptions="Center"
-               FontSize="16"/>
-                                <Label Text="Multiple"
-               Margin="5,0,0,0"
-               TextColor="White"
-               VerticalOptions="Center"
-               FontSize="14"/>
-                            </HorizontalStackLayout>
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleMultiSelectModeCommand}"/>
-                            </Border.GestureRecognizers>
-                        </Border>
-                        <!-- 單選模式下的下拉選單 -->
-                        <Picker Grid.Column="1"
-                Title="Select Sales Rep"
-                ItemsSource="{Binding SalesReps}"
-                SelectedItem="{Binding SelectedSalesRep, Mode=TwoWay}"
-                WidthRequest="180"
-                IsVisible="{Binding IsMultiSelectMode, Converter={StaticResource InverseBoolToStringConverter}}"/>
-
-                        <!-- 多選模式下的選中項顯示 -->
-                        <Border Grid.Column="1"
-                IsVisible="{Binding IsMultiSelectMode}"
-                BackgroundColor="Transparent"
-                Padding="5,0">
-                            <HorizontalStackLayout VerticalOptions="Center">
-                                <Label Text="{Binding SelectedSalesReps.Count, StringFormat='{0} selected'}"
-                       TextColor="#666666"
-                       VerticalOptions="Center"/>
-                            </HorizontalStackLayout>
-                            <Border.GestureRecognizers>
-                                <TapGestureRecognizer Command="{Binding ToggleRepSelectionPopupCommand}"/>
-                            </Border.GestureRecognizers>
-                        </Border>
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 4"
+                        HeightRequest="36"
+                        Margin="10,0,0,0">
+                    <Grid ColumnDefinitions="*,Auto" Padding="2,0">
+                        <!-- 顯示選中項文本 -->
+                        <Label Grid.Column="0"
+                               Text="{Binding SelectedRepsText}"
+                               Margin="10,0"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Start"/>
 
                         <!-- 下拉箭頭 -->
-                        <Label Grid.Column="2"
-               Text="▼"
-               Margin="0,0,10,0"
-               FontSize="12"
-               TextColor="#666666"
-               VerticalOptions="Center"/>
+                        <Label Grid.Column="1"
+                               Text="▼"
+                               Margin="0,0,10,0"
+                               FontSize="12"
+                               TextColor="#666666"
+                               VerticalOptions="Center"/>
                     </Grid>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding ToggleRepSelectionPopupCommand}"/>
@@ -186,42 +163,47 @@
 
                 <!-- 多選彈出視窗 -->
                 <Border x:Name="RepSelectionPopup"
-        IsVisible="{Binding IsRepSelectionPopupVisible}"
-        Stroke="#E2E8F0"
-        StrokeThickness="1"
-        BackgroundColor="White"
-        StrokeShape="RoundRectangle 4"
-        Margin="0,40,0,0"
-        Padding="10"
-        WidthRequest="250"
-        HeightRequest="300"
-        VerticalOptions="Start"
-        HorizontalOptions="End"
-        ZIndex="100">
+                        IsVisible="{Binding IsRepSelectionPopupVisible}"
+                        Stroke="#E2E8F0"
+                        StrokeThickness="1"
+                        BackgroundColor="White"
+                        StrokeShape="RoundRectangle 4"
+                        Margin="0,40,0,0"
+                        Padding="10"
+                        WidthRequest="250"
+                        HeightRequest="300"
+                        VerticalOptions="Start"
+                        HorizontalOptions="End"
+                        ZIndex="100">
                     <Grid RowDefinitions="Auto,*,Auto">
                         <!-- 標題 -->
-                        <Label Grid.Row="0"
-               Text="Select Sales Representatives"
-               FontAttributes="Bold"
-               Margin="0,0,0,10"/>
+                        <VerticalStackLayout Grid.Row="0" Spacing="4">
+                            <Label Text="Select Sales Representatives"
+                                   FontAttributes="Bold"
+                                   FontSize="16"
+                                   Margin="0,0,0,4"/>
+                            <Label Text="Select one or more representatives to filter data"
+                                   TextColor="#666666"
+                                   FontSize="12"/>
+                        </VerticalStackLayout>
 
                         <!-- 選項列表 -->
-                        <ScrollView Grid.Row="1" Margin="0,0,0,10">
+                        <ScrollView Grid.Row="1" Margin="0,8,0,8">
                             <VerticalStackLayout BindableLayout.ItemsSource="{Binding RepSelectionItems}">
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="viewmodels:RepSelectionItem">
                                         <Border Padding="10,8"
-        Margin="0,2"
-        BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#F0F9FF,#F5F5F5'}"
-        StrokeShape="RoundRectangle 3">
+                                                Margin="0,2"
+                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#F0F9FF,#F5F5F5'}"
+                                                StrokeShape="RoundRectangle 3">
                                             <Grid ColumnDefinitions="Auto,*">
                                                 <CheckBox Grid.Column="0"
-                 IsChecked="{Binding IsSelected}"
-                 Color="#FF3B30"/>
+                                                          IsChecked="{Binding IsSelected}"
+                                                          Color="#FF3B30"/>
                                                 <Label Grid.Column="1"
-               Text="{Binding Name}"
-               TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#333333,#333333'}"
-               VerticalOptions="Center"/>
+                                                       Text="{Binding Name}"
+                                                       TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#333333,#333333'}"
+                                                       VerticalOptions="Center"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -231,21 +213,22 @@
 
                         <!-- 按鈕區域 -->
                         <Grid Grid.Row="2"
-              ColumnDefinitions="*,*"
-              ColumnSpacing="10">
+                              ColumnDefinitions="*,*"
+                              ColumnSpacing="10">
                             <Button Grid.Column="0"
-                    Text="Cancel"
-                    BackgroundColor="#F1F5F9"
-                    TextColor="#64748B"
-                    Command="{Binding CloseRepSelectionPopupCommand}"/>
+                                    Text="Cancel"
+                                    BackgroundColor="#F1F5F9"
+                                    TextColor="#64748B"
+                                    Command="{Binding CloseRepSelectionPopupCommand}"/>
                             <Button Grid.Column="1"
-                    Text="Apply"
-                    BackgroundColor="#FF3B30"
-                    TextColor="White"
-                    Command="{Binding ApplyRepSelectionCommand}"/>
+                                    Text="Apply"
+                                    BackgroundColor="#FF3B30"
+                                    TextColor="White"
+                                    Command="{Binding ApplyRepSelectionCommand}"/>
                         </Grid>
                     </Grid>
                 </Border>
+
                 <!-- 匯出選項彈出視窗 -->
                 <Border Grid.Column="0" Grid.ColumnSpan="2"
                         IsVisible="{Binding IsExportOptionsVisible}"
@@ -383,18 +366,20 @@
                                 </Grid>
 
                                 <!-- 產品數據 -->
-                                <CollectionView ItemsSource="{Binding ProductSalesData}">
+                                <CollectionView ItemsSource="{Binding ProductSalesData}"
+                                                EmptyView="{StaticResource NoDataTemplate}">
                                     <CollectionView.ItemTemplate>
                                         <DataTemplate x:DataType="models:ProductSalesData">
                                             <!-- 添加獨特識別鍵 -->
                                             <Grid x:Name="ProductRow" 
-                  AutomationId="{Binding ProductType}"
-                  ColumnDefinitions="3*,2*,2*,2*,2*" 
-                  Padding="15,12">
+                                                  AutomationId="{Binding ProductType}"
+                                                  ColumnDefinitions="3*,2*,2*,2*,2*" 
+                                                  Padding="15,12">
                                                 <Label Grid.Column="0" Text="{Binding ProductType}"/>
                                                 <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="3" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="4" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
                                             </Grid>
                                         </DataTemplate>
                                     </CollectionView.ItemTemplate>
@@ -405,9 +390,9 @@
                                       BackgroundColor="#F0F9FF"
                                       Padding="15,12">
                                     <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="$1,560,638.91" FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="$133,267.32" FontAttributes="Bold"/>
-                                    <Label Grid.Column="3" Text="$1,693,966.23" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalAgencyCommissionConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="{Binding ProductSalesData, Converter={StaticResource TotalBuyResellCommissionConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="{Binding ProductSalesData, Converter={StaticResource TotalCommissionConverter}}" FontAttributes="Bold"/>
                                     <Label Grid.Column="4" Text="100.00%" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>
@@ -425,8 +410,11 @@
                                     <Label Grid.Column="4" Text="Total Commission" FontAttributes="Bold"/>
                                 </Grid>
 
+                                
+                    
                                 <!-- 銷售代表數據 -->
-                                <CollectionView ItemsSource="{Binding SalesRepData}">
+                                <CollectionView ItemsSource="{Binding SalesRepData}"
+                                                EmptyView="{StaticResource NoDataTemplate}">
                                     <CollectionView.ItemTemplate>
                                         <DataTemplate x:DataType="models:SalesLeaderboardItem">
                                             <Grid ColumnDefinitions="60,3*,2*,2*,2*" Padding="15,12">
@@ -445,9 +433,9 @@
                                       BackgroundColor="#F0F9FF"
                                       Padding="15,12">
                                     <Label Grid.Column="1" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="$183,839.95" FontAttributes="Bold"/>
-                                    <Label Grid.Column="3" Text="$3,816.57" FontAttributes="Bold"/>
-                                    <Label Grid.Column="4" Text="$187,656.52" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="{Binding SalesRepData, Converter={StaticResource TotalAgencyCommissionConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="{Binding SalesRepData, Converter={StaticResource TotalBuyResellCommissionConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="{Binding SalesRepData, Converter={StaticResource TotalCommissionConverter}}" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>
                         </VerticalStackLayout>
@@ -475,7 +463,8 @@
                                 </Grid>
 
                                 <!-- 產品數據 -->
-                                <CollectionView ItemsSource="{Binding ProductSalesData}">
+                                <CollectionView ItemsSource="{Binding ProductSalesData}"
+                                                EmptyView="{StaticResource NoDataTemplate}">
                                     <CollectionView.ItemTemplate>
                                         <DataTemplate x:DataType="models:ProductSalesData">
                                             <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
@@ -492,7 +481,7 @@
                                       BackgroundColor="#F0F9FF"
                                       Padding="15,12">
                                     <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="$17,758,397.94" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalPOValueConverter}}" FontAttributes="Bold"/>
                                     <Label Grid.Column="2" Text="100.00%" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>
@@ -541,8 +530,8 @@
               BackgroundColor="#80000000"
               IsVisible="{Binding IsLoading}">
             <ActivityIndicator IsRunning="{Binding IsLoading}"
-                             HorizontalOptions="Center" 
-                             VerticalOptions="Center"/>
+                               HorizontalOptions="Center" 
+                               VerticalOptions="Center"/>
         </Grid>
     </Grid>
 </ContentPage>
