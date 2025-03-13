@@ -1,15 +1,18 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using Android.Content.Res;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ScoreCard.Models;
 using ScoreCard.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using static Android.Icu.Text.CaseMap;
 
 namespace ScoreCard.ViewModels
 {
     public partial class DetailedSalesViewModel : ObservableObject
     {
         private readonly IExcelService _excelService;
+        private readonly IExportService _exportService;
         private List<SalesData> _allSalesData;
         private List<SalesData> _filteredSalesData;
 
@@ -168,17 +171,142 @@ namespace ScoreCard.ViewModels
             Debug.WriteLine($"匯出選項顯示狀態: {IsExportOptionsVisible}");
         }
 
+        public List<ProductSalesData> GetProductDataForExport()
+        {
+            // 不管當前視圖是什麼，總是返回產品數據
+            return ProductSalesData.ToList();
+        }
+
+
         [RelayCommand]
         private async Task Export(string format)
         {
             IsExportOptionsVisible = false;
             Debug.WriteLine($"匯出格式: {format}");
 
-            // 簡單訊息提示
-            await Application.Current.MainPage.DisplayAlert(
-                "匯出",
-                $"正在將數據匯出為 {format} 格式",
-                "確定");
+            // 獲取要匯出的主數據
+            var dataToExport = GetDataToExport();
+
+            // 同時獲取產品數據用於 Sexy Report
+            var productData = GetProductDataForExport();
+
+
+            try
+            {
+                IsLoading = true;
+                await Task.Delay(300); // 添加短暫延遲以顯示載入效果
+
+                // 準備要匯出的數據
+                var dataToExport = GetDataToExport();
+                if (dataToExport == null || !dataToExport.Any())
+                {
+                    await Application.Current.MainPage.DisplayAlert("無數據", "沒有可匯出的數據", "確定");
+                    return;
+                }
+
+                // 生成適當的文件名
+                string fileName = GenerateFileName();
+                string title = GenerateReportTitle();
+
+                bool success = false;
+                switch (format.ToLower())
+                {
+                    case "excel":
+                        success = await _exportService.ExportToExcelAsync(dataToExport, fileName, title);
+                        break;
+                    case "pdf":
+                        success = await _exportService.ExportToPdfAsync(dataToExport, fileName, title);
+                        break;
+                    case "csv":
+                        success = await _exportService.ExportToCsvAsync(dataToExport, fileName);
+                        break;
+                    case "print":
+                        success = await _exportService.PrintReportAsync(dataToExport, title);
+                        break;
+                    default:
+                        await Application.Current.MainPage.DisplayAlert("不支持的格式", $"不支持的匯出格式: {format}", "確定");
+                        break;
+                }
+
+                if (success)
+                {
+                    Debug.WriteLine($"成功匯出為 {format} 格式");
+                }
+                else
+                {
+                    Debug.WriteLine($"匯出 {format} 格式失敗");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"匯出時發生錯誤: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("匯出錯誤", $"匯出時發生錯誤: {ex.Message}", "確定");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+            // 在調用匯出方法時傳遞產品數據
+            success = await _exportService.ExportToExcelAsync(dataToExport, fileName, title, productData);
+
+        }
+
+        /// <summary>
+        /// 獲取要匯出的數據
+        /// </summary>
+        private IEnumerable<object> GetDataToExport()
+        {
+            Debug.WriteLine($"準備匯出數據，當前視圖類型: {ViewType}");
+
+            // 根據當前視圖類型返回相應的數據
+            if (IsProductView && ProductSalesData.Any())
+            {
+                var data = ProductSalesData.ToList();
+                Debug.WriteLine($"匯出產品視圖數據，共 {data.Count} 項");
+
+                // 打印出前幾條數據的內容進行檢查
+                for (int i = 0; i < Math.Min(data.Count, 3); i++)
+                {
+                    var item = data[i];
+                    Debug.WriteLine($"樣本數據 {i + 1}: " +
+                        $"ProductType={item.ProductType}, " +
+                        $"AgencyCommission={item.AgencyCommission}, " +
+                        $"BuyResellCommission={item.BuyResellCommission}, " +
+                        $"TotalCommission={item.TotalCommission}, " +
+                        $"POValue={item.POValue}, " +
+                        $"PercentageOfTotal={item.PercentageOfTotal}");
+                }
+                return data;
+            }
+            else if (IsRepView && SalesRepData.Any())
+            {
+                var data = SalesRepData.ToList();
+                Debug.WriteLine($"匯出銷售代表視圖數據，共 {data.Count} 項");
+                return data;
+            }
+
+            Debug.WriteLine("沒有找到可匯出的數據");
+            return new List<object>();
+        }
+        
+        /// <summary>
+          /// 生成匯出的文件名
+          /// </summary>
+        private string GenerateFileName()
+        {
+            string viewTypeText = IsProductView ? "ByProduct" : "ByRep";
+            string dateRangeText = $"{StartDate:yyyyMMdd}_to_{EndDate:yyyyMMdd}";
+            return $"SalesAnalysis_{viewTypeText}_{dateRangeText}";
+        }
+
+        /// <summary>
+        /// 生成報表標題
+        /// </summary>
+        private string GenerateReportTitle()
+        {
+            string viewTypeText = IsProductView ? "By Product" : "By Sales Rep";
+            string dateRangeText = $"{StartDate:yyyy-MM-dd} to {EndDate:yyyy-MM-dd}";
+            return $"Sales Analysis Report - {viewTypeText} ({dateRangeText})";
         }
 
         [RelayCommand]
@@ -346,9 +474,10 @@ namespace ScoreCard.ViewModels
 
         #endregion
 
-        public DetailedSalesViewModel(IExcelService excelService)
+        public DetailedSalesViewModel(IExcelService excelService, IExportService exportService)
         {
             _excelService = excelService;
+            _exportService = exportService;
             Debug.WriteLine("DetailedSalesViewModel 已初始化");
 
             // 初始化已選擇的銷售代表列表
@@ -1012,7 +1141,7 @@ namespace ScoreCard.ViewModels
         // 標準化銷售代表名稱
         private string NormalizeSalesRep(string salesRep)
         {
-            if (string.IsNullOrEmpty(salesRep))
+            if (string.IsNullOrWhiteSpace(salesRep))
                 return "Unknown";
 
             return salesRep.Trim();

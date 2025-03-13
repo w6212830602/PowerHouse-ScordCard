@@ -35,17 +35,18 @@ namespace ScoreCard
 
             // Register Services
             builder.Services.AddSingleton<IExcelService, ExcelService>();
+            builder.Services.AddSingleton<IExportService, ExportService>(); // 新增匯出服務
 
             // Register ViewModels
             builder.Services.AddTransient<DashboardViewModel>();
             builder.Services.AddTransient<SalesAnalysisViewModel>();
-            builder.Services.AddTransient<SettingsViewModel>();  // 确保已注册 SettingsViewModel
+            builder.Services.AddTransient<SettingsViewModel>();
             builder.Services.AddTransient<DetailedSalesViewModel>();
 
             // Register Pages
             builder.Services.AddTransient<DashboardPage>();
             builder.Services.AddTransient<SalesAnalysisPage>();
-            builder.Services.AddTransient<SettingsPage>();      // 确保已注册 SettingsPage
+            builder.Services.AddTransient<SettingsPage>();
             builder.Services.AddTransient<DetailedSalesPage>();
 
 
