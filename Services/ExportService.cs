@@ -20,8 +20,6 @@ namespace ScoreCard.Services
     {
 
         private readonly IExcelService _excelService;
-
-
         public ExportService(IExcelService excelService)
         {
             _excelService = excelService;

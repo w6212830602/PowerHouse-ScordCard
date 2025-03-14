@@ -1,11 +1,9 @@
-﻿using Android.Content.Res;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ScoreCard.Models;
 using ScoreCard.Services;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using static Android.Icu.Text.CaseMap;
 
 namespace ScoreCard.ViewModels
 {
@@ -184,51 +182,44 @@ namespace ScoreCard.ViewModels
             IsExportOptionsVisible = false;
             Debug.WriteLine($"匯出格式: {format}");
 
-            // 獲取要匯出的主數據
-            var dataToExport = GetDataToExport();
-
-            // 同時獲取產品數據用於 Sexy Report
-            var productData = GetProductDataForExport();
-
-
             try
             {
                 IsLoading = true;
                 await Task.Delay(300); // 添加短暫延遲以顯示載入效果
 
                 // 準備要匯出的數據
-                var dataToExport = GetDataToExport();
-                if (dataToExport == null || !dataToExport.Any())
+                var exportData = GetDataToExport();
+                if (exportData == null || !exportData.Any())
                 {
                     await Application.Current.MainPage.DisplayAlert("無數據", "沒有可匯出的數據", "確定");
                     return;
                 }
 
                 // 生成適當的文件名
-                string fileName = GenerateFileName();
-                string title = GenerateReportTitle();
+                string exportFileName = GenerateFileName();
+                string exportTitle = GenerateReportTitle();
 
-                bool success = false;
+                bool exportSuccess = false;
                 switch (format.ToLower())
                 {
                     case "excel":
-                        success = await _exportService.ExportToExcelAsync(dataToExport, fileName, title);
+                        exportSuccess = await _exportService.ExportToExcelAsync(exportData, exportFileName, exportTitle);
                         break;
                     case "pdf":
-                        success = await _exportService.ExportToPdfAsync(dataToExport, fileName, title);
+                        exportSuccess = await _exportService.ExportToPdfAsync(exportData, exportFileName, exportTitle);
                         break;
                     case "csv":
-                        success = await _exportService.ExportToCsvAsync(dataToExport, fileName);
+                        exportSuccess = await _exportService.ExportToCsvAsync(exportData, exportFileName);
                         break;
                     case "print":
-                        success = await _exportService.PrintReportAsync(dataToExport, title);
+                        exportSuccess = await _exportService.PrintReportAsync(exportData, exportTitle);
                         break;
                     default:
                         await Application.Current.MainPage.DisplayAlert("不支持的格式", $"不支持的匯出格式: {format}", "確定");
                         break;
                 }
 
-                if (success)
+                if (exportSuccess)
                 {
                     Debug.WriteLine($"成功匯出為 {format} 格式");
                 }
@@ -246,9 +237,6 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = false;
             }
-            // 在調用匯出方法時傳遞產品數據
-            success = await _exportService.ExportToExcelAsync(dataToExport, fileName, title, productData);
-
         }
 
         /// <summary>
