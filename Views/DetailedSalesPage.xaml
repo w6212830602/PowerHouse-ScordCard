@@ -376,9 +376,9 @@
       ColumnDefinitions="3*,2*,2*,2*,2*" 
       Padding="15,12">
                                                 <Label Grid.Column="0" Text="{Binding ProductType}"/>
-                                                <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
-                                                <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
-                                                <Label Grid.Column="3" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="1" Text="{Binding AgencyMargin, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="2" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="3" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="4" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
                                             </Grid>
                                         </DataTemplate>
@@ -420,9 +420,9 @@
                                             <Grid ColumnDefinitions="60,3*,2*,2*,2*" Padding="15,12">
                                                 <Label Grid.Column="0" Text="{Binding Rank}" HorizontalOptions="Center"/>
                                                 <Label Grid.Column="1" Text="{Binding SalesRep}"/>
-                                                <Label Grid.Column="2" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
-                                                <Label Grid.Column="3" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
-                                                <Label Grid.Column="4" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="2" Text="{Binding AgencyMargin, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="3" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="4" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
                                             </Grid>
                                         </DataTemplate>
                                     </CollectionView.ItemTemplate>

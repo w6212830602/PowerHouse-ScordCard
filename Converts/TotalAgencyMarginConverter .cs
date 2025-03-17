@@ -7,19 +7,19 @@ using ScoreCard.Models;
 
 namespace ScoreCard.Converts
 {
-    // 修正繼續使用原始屬性名稱
-    public class TotalAgencyCommissionConverter : IValueConverter
+    // 更新轉換器名稱及邏輯，從Commission改為Margin
+    public class TotalAgencyMarginConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is ObservableCollection<ProductSalesData> productData)
             {
-                decimal total = productData.Sum(x => x.AgencyCommission);
+                decimal total = productData.Sum(x => x.AgencyMargin);
                 return $"${total:N2}";
             }
             else if (value is ObservableCollection<SalesLeaderboardItem> salesData)
             {
-                decimal total = salesData.Sum(x => x.AgencyCommission);
+                decimal total = salesData.Sum(x => x.AgencyMargin);
                 return $"${total:N2}";
             }
             return "$0.00";
@@ -31,18 +31,18 @@ namespace ScoreCard.Converts
         }
     }
 
-    public class TotalBuyResellCommissionConverter : IValueConverter
+    public class TotalBuyResellMarginConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is ObservableCollection<ProductSalesData> productData)
             {
-                decimal total = productData.Sum(x => x.BuyResellCommission);
+                decimal total = productData.Sum(x => x.BuyResellMargin);
                 return $"${total:N2}";
             }
             else if (value is ObservableCollection<SalesLeaderboardItem> salesData)
             {
-                decimal total = salesData.Sum(x => x.BuyResellCommission);
+                decimal total = salesData.Sum(x => x.BuyResellMargin);
                 return $"${total:N2}";
             }
             return "$0.00";
@@ -54,18 +54,18 @@ namespace ScoreCard.Converts
         }
     }
 
-    public class TotalCommissionConverter : IValueConverter
+    public class TotalMarginConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is ObservableCollection<ProductSalesData> productData)
             {
-                decimal total = productData.Sum(x => x.TotalCommission);
+                decimal total = productData.Sum(x => x.TotalMargin);
                 return $"${total:N2}";
             }
             else if (value is ObservableCollection<SalesLeaderboardItem> salesData)
             {
-                decimal total = salesData.Sum(x => x.TotalCommission);
+                decimal total = salesData.Sum(x => x.TotalMargin);
                 return $"${total:N2}";
             }
             return "$0.00";

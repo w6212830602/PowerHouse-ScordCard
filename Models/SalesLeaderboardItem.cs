@@ -11,10 +11,10 @@ namespace ScoreCard.Models
         public int Rank { get; set; }
         public string SalesRep { get; set; }
 
-        // 保持原始屬性名稱以避免錯誤
-        public decimal AgencyCommission { get; set; }
-        public decimal BuyResellCommission { get; set; }
-        public decimal TotalCommission { get; set; }
+        // 屬性名稱已更改為Margin
+        public decimal AgencyMargin { get; set; }
+        public decimal BuyResellMargin { get; set; }
+        public decimal TotalMargin { get; set; }
     }
 
 }

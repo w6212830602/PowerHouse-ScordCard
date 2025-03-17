@@ -414,9 +414,9 @@
                                             <DataTemplate x:DataType="models:ProductSalesData">
                                                 <Grid ColumnDefinitions="2*,*,*,*,*,*" Padding="15,12">
                                                     <Label Grid.Column="0" Text="{Binding ProductType}"/>
-                                                    <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
-                                                    <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
-                                                    <Label Grid.Column="3" Text="{Binding TotalCommission, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="1" Text="{Binding AgencyMargin, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="2" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
+                                                    <Label Grid.Column="3" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
                                                     <Label Grid.Column="4" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
                                                     <Label Grid.Column="5" Text="{Binding PercentageOfTotal, StringFormat='{0:P1}'}"/>
                                                 </Grid>
@@ -461,11 +461,11 @@
            Text="{Binding SalesRep}"
            Margin="10,0,0,0"/>
                                                     <Label Grid.Column="2" 
-           Text="{Binding AgencyCommission, StringFormat='${0:N0}'}"/>
+           Text="{Binding AgencyMargin, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="3" 
-           Text="{Binding BuyResellCommission, StringFormat='${0:N0}'}"/>
+           Text="{Binding BuyResellMargin, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="4" 
-           Text="{Binding TotalCommission, StringFormat='${0:N0}'}"/>
+           Text="{Binding TotalMargin, StringFormat='${0:N0}'}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>

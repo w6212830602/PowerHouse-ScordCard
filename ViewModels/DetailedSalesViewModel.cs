@@ -58,7 +58,7 @@ namespace ScoreCard.ViewModels
         public bool IsProductView => ViewType == "ByProduct";
         public bool IsRepView => ViewType == "ByRep";
 
-        // 显示选中销售代表的文本
+        // 顯示選中銷售代表的文本
         public string SelectedRepsText => SelectedSalesReps.Count == 0 ||
                                          (SelectedSalesReps.Count == 1 && SelectedSalesReps[0] == "All Reps")
                                          ? "All Reps"
@@ -258,9 +258,9 @@ namespace ScoreCard.ViewModels
                     var item = data[i];
                     Debug.WriteLine($"樣本數據 {i + 1}: " +
                         $"ProductType={item.ProductType}, " +
-                        $"AgencyCommission={item.AgencyCommission}, " +
-                        $"BuyResellCommission={item.BuyResellCommission}, " +
-                        $"TotalCommission={item.TotalCommission}, " +
+                        $"AgencyMargin={item.AgencyMargin}, " +
+                        $"BuyResellMargin={item.BuyResellMargin}, " +
+                        $"TotalMargin={item.TotalMargin}, " +
                         $"POValue={item.POValue}, " +
                         $"PercentageOfTotal={item.PercentageOfTotal}");
                 }
@@ -276,10 +276,10 @@ namespace ScoreCard.ViewModels
             Debug.WriteLine("沒有找到可匯出的數據");
             return new List<object>();
         }
-        
+
         /// <summary>
-          /// 生成匯出的文件名
-          /// </summary>
+        /// 生成匯出的文件名
+        /// </summary>
         private string GenerateFileName()
         {
             string viewTypeText = IsProductView ? "ByProduct" : "ByRep";
@@ -823,8 +823,6 @@ namespace ScoreCard.ViewModels
             return testData;
         }
 
-
-
         private void LoadFilteredData()
         {
             try
@@ -871,9 +869,9 @@ namespace ScoreCard.ViewModels
                         emptyProductData.Add(new ProductSalesData
                         {
                             ProductType = productType,
-                            AgencyCommission = 0,
-                            BuyResellCommission = 0,
-                            TotalCommission = 0,
+                            AgencyMargin = 0,
+                            BuyResellMargin = 0,
+                            TotalMargin = 0,
                             POValue = 0,
                             PercentageOfTotal = 0
                         });
@@ -896,13 +894,13 @@ namespace ScoreCard.ViewModels
                         var product = new ProductSalesData
                         {
                             ProductType = g.Key,
-                            AgencyCommission = g.Sum(x => x.TotalCommission * 0.7m),
-                            BuyResellCommission = g.Sum(x => x.TotalCommission * 0.3m),
+                            AgencyMargin = g.Sum(x => x.TotalCommission * 0.7m),
+                            BuyResellMargin = g.Sum(x => x.TotalCommission * 0.3m),
                             POValue = g.Sum(x => x.POValue)
                         };
 
-                        // 明確設置 TotalCommission
-                        product.TotalCommission = product.AgencyCommission + product.BuyResellCommission;
+                        // 明確設置 TotalMargin
+                        product.TotalMargin = product.AgencyMargin + product.BuyResellMargin;
                         return product;
                     })
                     .OrderByDescending(x => x.POValue)
@@ -937,9 +935,9 @@ namespace ScoreCard.ViewModels
                         emptyProductData.Add(new ProductSalesData
                         {
                             ProductType = productType,
-                            AgencyCommission = 0,
-                            BuyResellCommission = 0,
-                            TotalCommission = 0,
+                            AgencyMargin = 0,
+                            BuyResellMargin = 0,
+                            TotalMargin = 0,
                             POValue = 0,
                             PercentageOfTotal = 0
                         });
@@ -963,9 +961,9 @@ namespace ScoreCard.ViewModels
                     emptyProductData.Add(new ProductSalesData
                     {
                         ProductType = productType,
-                        AgencyCommission = 0,
-                        BuyResellCommission = 0,
-                        TotalCommission = 0,
+                        AgencyMargin = 0,
+                        BuyResellMargin = 0,
+                        TotalMargin = 0,
                         POValue = 0,
                         PercentageOfTotal = 0
                     });
@@ -1001,6 +999,15 @@ namespace ScoreCard.ViewModels
             return productType;
         }
 
+        // 標準化銷售代表名稱
+        private string NormalizeSalesRep(string salesRep)
+        {
+            if (string.IsNullOrWhiteSpace(salesRep))
+                return "Unknown";
+
+            return salesRep.Trim();
+        }
+
         private void LoadSalesRepData()
         {
             try
@@ -1032,15 +1039,16 @@ namespace ScoreCard.ViewModels
                         var rep = new SalesLeaderboardItem
                         {
                             SalesRep = g.Key,
-                            AgencyCommission = g.Sum(x => x.TotalCommission * 0.7m),
-                            BuyResellCommission = g.Sum(x => x.TotalCommission * 0.3m)
+                            // 更新屬性名稱
+                            AgencyMargin = g.Sum(x => x.TotalCommission * 0.7m),
+                            BuyResellMargin = g.Sum(x => x.TotalCommission * 0.3m)
                         };
 
-                        // 明確設置 TotalCommission
-                        rep.TotalCommission = rep.AgencyCommission + rep.BuyResellCommission;
+                        // 明確設置 TotalMargin
+                        rep.TotalMargin = rep.AgencyMargin + rep.BuyResellMargin;
                         return rep;
                     })
-                    .OrderByDescending(x => x.TotalCommission)
+                    .OrderByDescending(x => x.TotalMargin)
                     .ToList();
 
                 if (repData.Any())
@@ -1072,9 +1080,9 @@ namespace ScoreCard.ViewModels
                                 {
                                     Rank = repData.Count + 1,
                                     SalesRep = selectedRep,
-                                    AgencyCommission = 0,
-                                    BuyResellCommission = 0,
-                                    TotalCommission = 0
+                                    AgencyMargin = 0,
+                                    BuyResellMargin = 0,
+                                    TotalMargin = 0
                                 });
 
                                 Debug.WriteLine($"為已選擇但無數據的銷售代表添加空記錄: {selectedRep}");
@@ -1082,7 +1090,7 @@ namespace ScoreCard.ViewModels
                         }
 
                         // 重新排序
-                        repData = repData.OrderByDescending(x => x.TotalCommission).ToList();
+                        repData = repData.OrderByDescending(x => x.TotalMargin).ToList();
 
                         // 重新設置排名
                         for (int i = 0; i < repData.Count; i++)
@@ -1126,15 +1134,6 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 標準化銷售代表名稱
-        private string NormalizeSalesRep(string salesRep)
-        {
-            if (string.IsNullOrWhiteSpace(salesRep))
-                return "Unknown";
-
-            return salesRep.Trim();
-        }
-
         // 創建空的銷售代表數據
         private List<SalesLeaderboardItem> CreateEmptySalesRepData()
         {
@@ -1150,9 +1149,9 @@ namespace ScoreCard.ViewModels
                     {
                         Rank = i + 1,
                         SalesRep = SelectedSalesReps[i],
-                        AgencyCommission = 0,
-                        BuyResellCommission = 0,
-                        TotalCommission = 0
+                        AgencyMargin = 0,
+                        BuyResellMargin = 0,
+                        TotalMargin = 0
                     });
                 }
             }
@@ -1167,9 +1166,9 @@ namespace ScoreCard.ViewModels
                     {
                         Rank = i + 1,
                         SalesRep = commonReps[i],
-                        AgencyCommission = 0,
-                        BuyResellCommission = 0,
-                        TotalCommission = 0
+                        AgencyMargin = 0,
+                        BuyResellMargin = 0,
+                        TotalMargin = 0
                     });
                 }
             }
@@ -1191,45 +1190,45 @@ namespace ScoreCard.ViewModels
                 new ProductSalesData
                 {
                     ProductType = "Thermal",
-                    AgencyCommission = 744855.43m,
-                    BuyResellCommission = 116206.36m,
-                    TotalCommission = 861061.79m,
+                    AgencyMargin = 744855.43m,
+                    BuyResellMargin = 116206.36m,
+                    TotalMargin = 861061.79m,
                     POValue = 7358201.65m,
                     PercentageOfTotal = 41.0m
                 },
                 new ProductSalesData
                 {
                     ProductType = "Power",
-                    AgencyCommission = 296743.08m,
-                    BuyResellCommission = 8737.33m,
-                    TotalCommission = 305481.01m,
+                    AgencyMargin = 296743.08m,
+                    BuyResellMargin = 8737.33m,
+                    TotalMargin = 305481.01m,
                     POValue = 5466144.65m,
                     PercentageOfTotal = 31.0m
                 },
                 new ProductSalesData
                 {
                     ProductType = "Batts & Caps",
-                    AgencyCommission = 250130.95m,
-                    BuyResellCommission = 0.00m,
-                    TotalCommission = 250130.95m,
+                    AgencyMargin = 250130.95m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 250130.95m,
                     POValue = 2061423.30m,
                     PercentageOfTotal = 12.0m
                 },
                 new ProductSalesData
                 {
                     ProductType = "Channel",
-                    AgencyCommission = 167353.03m,
-                    BuyResellCommission = 8323.03m,
-                    TotalCommission = 175676.06m,
+                    AgencyMargin = 167353.03m,
+                    BuyResellMargin = 8323.03m,
+                    TotalMargin = 175676.06m,
                     POValue = 1416574.65m,
                     PercentageOfTotal = 8.0m
                 },
                 new ProductSalesData
                 {
                     ProductType = "Service",
-                    AgencyCommission = 101556.42m,
-                    BuyResellCommission = 0.00m,
-                    TotalCommission = 101556.42m,
+                    AgencyMargin = 101556.42m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 101556.42m,
                     POValue = 1272318.58m,
                     PercentageOfTotal = 7.0m
                 }
@@ -1253,41 +1252,41 @@ namespace ScoreCard.ViewModels
                 {
                     Rank = 1,
                     SalesRep = "Isaac",
-                    AgencyCommission = 350186.00m,
-                    BuyResellCommission = 0.00m,
-                    TotalCommission = 350186.00m
+                    AgencyMargin = 350186.00m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 350186.00m
                 },
                 new SalesLeaderboardItem
                 {
                     Rank = 2,
                     SalesRep = "Brandon",
-                    AgencyCommission = 301802.40m,
-                    BuyResellCommission = 38165.70m,
-                    TotalCommission = 339968.10m
+                    AgencyMargin = 301802.40m,
+                    BuyResellMargin = 38165.70m,
+                    TotalMargin = 339968.10m
                 },
                 new SalesLeaderboardItem
                 {
                     Rank = 3,
                     SalesRep = "Chris",
-                    AgencyCommission = 186411.10m,
-                    BuyResellCommission = 0.00m,
-                    TotalCommission = 186411.10m
+                    AgencyMargin = 186411.10m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 186411.10m
                 },
                 new SalesLeaderboardItem
                 {
                     Rank = 4,
                     SalesRep = "Mark",
-                    AgencyCommission = 124680.50m,
-                    BuyResellCommission = 18920.30m,
-                    TotalCommission = 143600.80m
+                    AgencyMargin = 124680.50m,
+                    BuyResellMargin = 18920.30m,
+                    TotalMargin = 143600.80m
                 },
                 new SalesLeaderboardItem
                 {
                     Rank = 5,
                     SalesRep = "Nathan",
-                    AgencyCommission = 104582.20m,
-                    BuyResellCommission = 21060.80m,
-                    TotalCommission = 125643.00m
+                    AgencyMargin = 104582.20m,
+                    BuyResellMargin = 21060.80m,
+                    TotalMargin = 125643.00m
                 }
             };
 

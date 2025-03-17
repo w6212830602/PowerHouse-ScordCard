@@ -339,9 +339,9 @@ namespace ScoreCard.ViewModels
 
             var defaultProductData = new ObservableCollection<ProductSalesData>
 {
-    new ProductSalesData { ProductType = "Power", AgencyCommission = 296743.08m, BuyResellCommission = 8737.33m, POValue = 5466144.65m, PercentageOfTotal = 0.31m },
-    new ProductSalesData { ProductType = "Thermal", AgencyCommission = 744855.43m, BuyResellCommission = 116206.36m, POValue = 7358201.65m, PercentageOfTotal = 0.41m },
-    new ProductSalesData { ProductType = "Channel", AgencyCommission = 167353.03m, BuyResellCommission = 8323.03m, POValue = 1416574.65m, PercentageOfTotal = 0.08m }
+    new ProductSalesData { ProductType = "Power", AgencyMargin = 296743.08m, BuyResellMargin = 8737.33m, POValue = 5466144.65m, PercentageOfTotal = 0.31m },
+    new ProductSalesData { ProductType = "Thermal", AgencyMargin = 744855.43m, BuyResellMargin = 116206.36m, POValue = 7358201.65m, PercentageOfTotal = 0.41m },
+    new ProductSalesData { ProductType = "Channel", AgencyMargin = 167353.03m, BuyResellMargin = 8323.03m, POValue = 1416574.65m, PercentageOfTotal = 0.08m }
 };
             ProductSalesData = new ObservableCollection<ProductSalesData>(defaultProductData);
 
@@ -850,8 +850,7 @@ namespace ScoreCard.ViewModels
         }
 
 
-        // 載入產品數據
-        // 更新LoadProductData方法
+        // 修改 LoadProductData 方法
         private void LoadProductData(List<SalesData> filteredData)
         {
             try
@@ -871,7 +870,7 @@ namespace ScoreCard.ViewModels
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // 更新字段名稱
+                        // 更新字段名稱 (Commission -> Margin)
                         AgencyMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2), // 假設的分配比例
                         BuyResellMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2), // 假設的分配比例
                         POValue = Math.Round(g.Sum(x => x.POValue), 2),
@@ -885,7 +884,7 @@ namespace ScoreCard.ViewModels
                 // 確保更新TotalMargin
                 foreach (var product in productData)
                 {
-                    product.UpdateTotalMargin();
+                    product.TotalMargin = product.AgencyMargin + product.BuyResellMargin;
                 }
 
                 ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
@@ -906,7 +905,7 @@ namespace ScoreCard.ViewModels
                 // 確保更新TotalMargin
                 foreach (var product in defaultData)
                 {
-                    product.UpdateTotalMargin();
+                    product.TotalMargin = product.AgencyMargin + product.BuyResellMargin;
                 }
 
                 ProductSalesData = defaultData;
@@ -929,7 +928,7 @@ namespace ScoreCard.ViewModels
                         .Select(g => new SalesLeaderboardItem
                         {
                             SalesRep = g.Key,
-                            // 更新字段名稱
+                            // 更新字段名稱 (Commission -> Margin)
                             AgencyMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2),
                             BuyResellMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2)
                         })
@@ -953,7 +952,7 @@ namespace ScoreCard.ViewModels
                     // 確保TotalMargin字段更新
                     foreach (var rep in salesRepData)
                     {
-                        rep.UpdateTotalMargin();
+                        rep.TotalMargin = rep.AgencyMargin + rep.BuyResellMargin;
                     }
                 }
 
@@ -981,7 +980,7 @@ namespace ScoreCard.ViewModels
                 // 確保更新TotalMargin
                 foreach (var rep in sampleData)
                 {
-                    rep.UpdateTotalMargin();
+                    rep.TotalMargin = rep.AgencyMargin + rep.BuyResellMargin;
                 }
 
                 SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(sampleData);

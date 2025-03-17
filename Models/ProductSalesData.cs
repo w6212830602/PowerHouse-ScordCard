@@ -16,10 +16,10 @@ namespace ScoreCard.Models
 
         public string ProductType { get; set; }
 
-        // 屬性名稱，保持原始名稱以避免錯誤
-        public decimal AgencyCommission { get; set; }
-        public decimal BuyResellCommission { get; set; }
-        public decimal TotalCommission { get; set; }
+        // 屬性名稱已更改為Margin
+        public decimal AgencyMargin { get; set; }
+        public decimal BuyResellMargin { get; set; }
+        public decimal TotalMargin { get; set; }
 
         public decimal POValue { get; set; }
         public decimal PercentageOfTotal { get; set; }

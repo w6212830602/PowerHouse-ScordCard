@@ -405,11 +405,11 @@ namespace ScoreCard.Services
                         {
                             if (item is ProductSalesData product)
                             {
-                                await writer.WriteLineAsync($"{product.ProductType}\t${product.AgencyCommission:N2}\t${product.BuyResellCommission:N2}\t${product.TotalCommission:N2}\t${product.POValue:N2}\t{product.PercentageOfTotal:N1}%");
+                                await writer.WriteLineAsync($"{product.ProductType}\t${product.AgencyMargin:N2}\t${product.BuyResellMargin:N2}\t${product.TotalMargin:N2}\t${product.POValue:N2}\t{product.PercentageOfTotal:N1}%");
 
-                                totalAgencyComm += product.AgencyCommission;
-                                totalBuyResellComm += product.BuyResellCommission;
-                                totalComm += product.TotalCommission;
+                                totalAgencyComm += product.AgencyMargin;
+                                totalBuyResellComm += product.BuyResellMargin;
+                                totalComm += product.TotalMargin;
                                 totalPOValue += product.POValue;
                             }
                         }
@@ -441,7 +441,7 @@ namespace ScoreCard.Services
                         {
                             if (item is SalesLeaderboardItem rep)
                             {
-                                await writer.WriteLineAsync($"{rep.Rank}\t{rep.SalesRep}\t${rep.AgencyCommission:N2}\t${rep.BuyResellCommission:N2}\t${rep.TotalCommission:N2}");
+                                await writer.WriteLineAsync($"{rep.Rank}\t{rep.SalesRep}\t${rep.AgencyMargin:N2}\t${rep.BuyResellMargin:N2}\t${rep.TotalMargin:N2}");
                             }
                         }
                     }
