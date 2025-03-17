@@ -18,6 +18,9 @@
         <converts:InverseBoolToColorConverter x:Key="InverseBoolToColorConverter"/>
         <converts:StringEqualsConverter x:Key="StringEqualsConverter"/>
         <converts:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>
+        <converts:TotalAgencyMarginConverter x:Key="TotalAgencyMarginConverter"/>
+        <converts:TotalBuyResellMarginConverter x:Key="TotalBuyResellMarginConverter"/>
+        <converts:TotalMarginConverter x:Key="TotalMarginConverter"/>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*">
@@ -202,7 +205,7 @@
                                                         XBindingPath="Label"
                                                         YBindingPath="Target"
                                                         Label="Target"
-                                                        ShowDataLabels="True">        
+                                                        ShowDataLabels="True">
                                         <chart:ColumnSeries.Fill>
                                             <Color>#6B46C1</Color>
                                         </chart:ColumnSeries.Fill>
@@ -290,55 +293,54 @@
                                 <!-- 視圖類型選擇器 (By Product, By Rep, By Dept-LOB) -->
                                 <HorizontalStackLayout Grid.Column="0" Spacing="0">
                                     <!-- By Product 按鈕 -->
-                                    <!-- By Product 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-                StrokeThickness="1"
-                BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                StrokeShape="RoundRectangle 4,0,0,4"
-                HeightRequest="36">
+                                            StrokeThickness="1"
+                                            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                                            StrokeShape="RoundRectangle 4,0,0,4"
+                                            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Product"
-                   TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                   VerticalOptions="Center"
-                   HorizontalOptions="Center"
-                   FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-                   Margin="15,0"/>
+                                               TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                                               Margin="15,0"/>
                                     </Border>
 
                                     <!-- By Rep 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-                StrokeThickness="1"
-                BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                StrokeShape="Rectangle"
-                HeightRequest="36">
+                                            StrokeThickness="1"
+                                            BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                                            StrokeShape="Rectangle"
+                                            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByRep"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Rep"
-                   TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                   VerticalOptions="Center"
-                   HorizontalOptions="Center"
-                   FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}}"
-                   Margin="15,0"/>
+                                               TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}}"
+                                               Margin="15,0"/>
                                     </Border>
 
                                     <!-- By Dept-LOB 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-                StrokeThickness="1"
-                BackgroundColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                StrokeShape="RoundRectangle 0,4,4,0"
-                HeightRequest="36">
+                                            StrokeThickness="1"
+                                            BackgroundColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                                            StrokeShape="RoundRectangle 0,4,4,0"
+                                            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByDeptLOB"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Dept-LOB"
-                   TextColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                   VerticalOptions="Center"
-                   HorizontalOptions="Center"
-                   FontAttributes="{Binding IsDeptLobView, Converter={StaticResource BoolToStringConverter}}"
-                   Margin="15,0"/>
+                                               TextColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               FontAttributes="{Binding IsDeptLobView, Converter={StaticResource BoolToStringConverter}}"
+                                               Margin="15,0"/>
                                     </Border>
                                 </HorizontalStackLayout>
 
@@ -346,36 +348,36 @@
                                 <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
                                     <!-- Booked 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
-            StrokeShape="RoundRectangle 4,0,0,4"
-            HeightRequest="36">
+                                            StrokeThickness="1"
+                                            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
+                                            StrokeShape="RoundRectangle 4,0,0,4"
+                                            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="Booked"
-               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               HorizontalOptions="Center"
-               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}}"
-               Margin="15,0"/>
+                                               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}}"
+                                               Margin="15,0"/>
                                     </Border>
 
                                     <!-- Completed 按鈕 -->
                                     <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
-            StrokeShape="RoundRectangle 0,4,4,0"
-            HeightRequest="36">
+                                            StrokeThickness="1"
+                                            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
+                                            StrokeShape="RoundRectangle 0,4,4,0"
+                                            HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="Completed"
-               TextColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               HorizontalOptions="Center"
-               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToStringConverter}}"
-               Margin="15,0"/>
+                                               TextColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='White,#333333'}"
+                                               VerticalOptions="Center"
+                                               HorizontalOptions="Center"
+                                               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToStringConverter}}"
+                                               Margin="15,0"/>
                                     </Border>
                                 </HorizontalStackLayout>
                             </Grid>
@@ -391,13 +393,13 @@
                                                Text="Product Type" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="1" 
-                                               Text="Agency Comm." 
+                                               Text="Agency Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="2" 
-                                               Text="Buy Resell Comm." 
+                                               Text="Buy Resell Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="3" 
-                                               Text="Total Commission" 
+                                               Text="Total Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="4" 
                                                Text="PO Value" 
@@ -437,13 +439,13 @@
                                                TextColor="#666666"
                                                Margin="10,0,0,0"/>
                                         <Label Grid.Column="2" 
-                                               Text="Agency Comm." 
+                                               Text="Agency Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="3" 
-                                               Text="Buy Resell Comm." 
+                                               Text="Buy Resell Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="4" 
-                                               Text="Total Commission" 
+                                               Text="Total Margin" 
                                                TextColor="#666666"/>
                                     </Grid>
 
@@ -451,19 +453,19 @@
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="models:SalesLeaderboardItem">
                                                 <Grid ColumnDefinitions="60,2*,*,*,*" 
-                                                      Padding="15,12">
+      Padding="15,12">
                                                     <Label Grid.Column="0" 
-                                                           Text="{Binding Rank}"
-                                                           HorizontalOptions="Center"/>
+           Text="{Binding Rank}"
+           HorizontalOptions="Center"/>
                                                     <Label Grid.Column="1" 
-                                                           Text="{Binding SalesRep}"
-                                                           Margin="10,0,0,0"/>
+           Text="{Binding SalesRep}"
+           Margin="10,0,0,0"/>
                                                     <Label Grid.Column="2" 
-                                                           Text="{Binding AgencyCommission, StringFormat='${0:N0}'}"/>
+           Text="{Binding AgencyCommission, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="3" 
-                                                           Text="{Binding BuyResellCommission, StringFormat='${0:N0}'}"/>
+           Text="{Binding BuyResellCommission, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="4" 
-                                                           Text="{Binding TotalCommission, StringFormat='${0:N0}'}"/>
+           Text="{Binding TotalCommission, StringFormat='${0:N0}'}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>

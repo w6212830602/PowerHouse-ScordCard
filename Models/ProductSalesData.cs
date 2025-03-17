@@ -15,9 +15,12 @@ namespace ScoreCard.Models
         }
 
         public string ProductType { get; set; }
+
+        // 屬性名稱，保持原始名稱以避免錯誤
         public decimal AgencyCommission { get; set; }
         public decimal BuyResellCommission { get; set; }
         public decimal TotalCommission { get; set; }
+
         public decimal POValue { get; set; }
         public decimal PercentageOfTotal { get; set; }
     }

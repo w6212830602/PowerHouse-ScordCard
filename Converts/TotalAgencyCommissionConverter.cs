@@ -7,6 +7,7 @@ using ScoreCard.Models;
 
 namespace ScoreCard.Converts
 {
+    // 修正繼續使用原始屬性名稱
     public class TotalAgencyCommissionConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -76,6 +77,7 @@ namespace ScoreCard.Converts
         }
     }
 
+    // 其他轉換器保持不變
     public class TotalPOValueConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

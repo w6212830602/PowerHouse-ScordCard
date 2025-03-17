@@ -851,6 +851,7 @@ namespace ScoreCard.ViewModels
 
 
         // 載入產品數據
+        // 更新LoadProductData方法
         private void LoadProductData(List<SalesData> filteredData)
         {
             try
@@ -870,8 +871,9 @@ namespace ScoreCard.ViewModels
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        AgencyCommission = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2), // 假設的分配比例
-                        BuyResellCommission = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2), // 假設的分配比例
+                        // 更新字段名稱
+                        AgencyMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2), // 假設的分配比例
+                        BuyResellMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2), // 假設的分配比例
                         POValue = Math.Round(g.Sum(x => x.POValue), 2),
                         PercentageOfTotal = filteredData.Sum(x => x.POValue) > 0
                             ? g.Sum(x => x.POValue) / filteredData.Sum(x => x.POValue)
@@ -879,6 +881,12 @@ namespace ScoreCard.ViewModels
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
+
+                // 確保更新TotalMargin
+                foreach (var product in productData)
+                {
+                    product.UpdateTotalMargin();
+                }
 
                 ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
                 Debug.WriteLine($"Loaded {productData.Count} product records");
@@ -890,16 +898,22 @@ namespace ScoreCard.ViewModels
                 // 錯誤時顯示一些默認數據
                 var defaultData = new ObservableCollection<ProductSalesData>
         {
-            new ProductSalesData { ProductType = "Thermal", AgencyCommission = 629681.95m, BuyResellCommission = 269863.69m, POValue = 8058197.44m, PercentageOfTotal = 0.398m },
-            new ProductSalesData { ProductType = "Power", AgencyCommission = 213836.71m, BuyResellCommission = 91644.30m, POValue = 5857870.43m, PercentageOfTotal = 0.289m },
-            new ProductSalesData { ProductType = "Batts & Caps", AgencyCommission = 241225.60m, BuyResellCommission = 103382.40m, POValue = 2169156.88m, PercentageOfTotal = 0.107m }
+            new ProductSalesData { ProductType = "Thermal", AgencyMargin = 629681.95m, BuyResellMargin = 269863.69m, POValue = 8058197.44m, PercentageOfTotal = 0.398m },
+            new ProductSalesData { ProductType = "Power", AgencyMargin = 213836.71m, BuyResellMargin = 91644.30m, POValue = 5857870.43m, PercentageOfTotal = 0.289m },
+            new ProductSalesData { ProductType = "Batts & Caps", AgencyMargin = 241225.60m, BuyResellMargin = 103382.40m, POValue = 2169156.88m, PercentageOfTotal = 0.107m }
         };
+
+                // 確保更新TotalMargin
+                foreach (var product in defaultData)
+                {
+                    product.UpdateTotalMargin();
+                }
 
                 ProductSalesData = defaultData;
             }
         }
 
-        // 載入銷售代表數據
+        // 更新LoadSalesRepData方法
         private void LoadSalesRepData(List<SalesData> filteredData)
         {
             try
@@ -915,10 +929,11 @@ namespace ScoreCard.ViewModels
                         .Select(g => new SalesLeaderboardItem
                         {
                             SalesRep = g.Key,
-                            AgencyCommission = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2),
-                            BuyResellCommission = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2)
+                            // 更新字段名稱
+                            AgencyMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2),
+                            BuyResellMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2)
                         })
-                        .OrderByDescending(x => x.TotalCommission)
+                        .OrderByDescending(x => x.TotalMargin)
                         .ToList();
                 }
 
@@ -928,13 +943,19 @@ namespace ScoreCard.ViewModels
                     Debug.WriteLine("使用樣本銷售代表數據");
                     salesRepData = new List<SalesLeaderboardItem>
             {
-                new SalesLeaderboardItem { SalesRep = "Isaac", AgencyCommission = 22467, BuyResellCommission = 9629 },
-                new SalesLeaderboardItem { SalesRep = "Terry SK", AgencyCommission = 14092, BuyResellCommission = 6040 },
-                new SalesLeaderboardItem { SalesRep = "Tracy", AgencyCommission = 11303, BuyResellCommission = 4844 },
-                new SalesLeaderboardItem { SalesRep = "Terry MB", AgencyCommission = 4868, BuyResellCommission = 2086 },
-                new SalesLeaderboardItem { SalesRep = "Nathan", AgencyCommission = 3457, BuyResellCommission = 1482 }
+                new SalesLeaderboardItem { SalesRep = "Mark", AgencyMargin = 2956m, BuyResellMargin = 1267m },
+                new SalesLeaderboardItem { SalesRep = "Nathan", AgencyMargin = 1282181m, BuyResellMargin = 549506m },
+                new SalesLeaderboardItem { SalesRep = "Brandon", AgencyMargin = 240792m, BuyResellMargin = 103197m },
+                new SalesLeaderboardItem { SalesRep = "Tania", AgencyMargin = 261620m, BuyResellMargin = 112123m },
+                new SalesLeaderboardItem { SalesRep = "Pourya", AgencyMargin = 91512m, BuyResellMargin = 39219m }
             };
-                } 
+
+                    // 確保TotalMargin字段更新
+                    foreach (var rep in salesRepData)
+                    {
+                        rep.UpdateTotalMargin();
+                    }
+                }
 
                 // 添加排名
                 for (int i = 0; i < salesRepData.Count; i++)
@@ -944,7 +965,7 @@ namespace ScoreCard.ViewModels
 
                 SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(salesRepData);
                 Debug.WriteLine($"已加載 {salesRepData.Count} 條銷售代表數據");
-            } 
+            }
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入銷售代表數據錯誤: {ex.Message}");
@@ -952,14 +973,21 @@ namespace ScoreCard.ViewModels
                 // 確保在錯誤情況下也有數據顯示
                 var sampleData = new List<SalesLeaderboardItem>
         {
-            new SalesLeaderboardItem { Rank = 1, SalesRep = "Isaac", AgencyCommission = 22467, BuyResellCommission = 9629 },
-            new SalesLeaderboardItem { Rank = 2, SalesRep = "Terry SK", AgencyCommission = 14092, BuyResellCommission = 6040 },
-            new SalesLeaderboardItem { Rank = 3, SalesRep = "Tracy", AgencyCommission = 11303, BuyResellCommission = 4844 }
+            new SalesLeaderboardItem { Rank = 1, SalesRep = "Isaac", AgencyMargin = 22467m, BuyResellMargin = 9629m },
+            new SalesLeaderboardItem { Rank = 2, SalesRep = "Terry SK", AgencyMargin = 14092m, BuyResellMargin = 6040m },
+            new SalesLeaderboardItem { Rank = 3, SalesRep = "Tracy", AgencyMargin = 11303m, BuyResellMargin = 4844m }
         };
+
+                // 確保更新TotalMargin
+                foreach (var rep in sampleData)
+                {
+                    rep.UpdateTotalMargin();
+                }
 
                 SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(sampleData);
             }
         }
+
 
         // 載入部門/LOB數據
         private void LoadDeptLobData(List<SalesData> filteredData)

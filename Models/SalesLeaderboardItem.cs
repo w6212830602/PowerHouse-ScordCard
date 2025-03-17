@@ -10,10 +10,11 @@ namespace ScoreCard.Models
     {
         public int Rank { get; set; }
         public string SalesRep { get; set; }
+
+        // 保持原始屬性名稱以避免錯誤
         public decimal AgencyCommission { get; set; }
         public decimal BuyResellCommission { get; set; }
-
-        // 將 TotalCommission 從計算屬性改為一般可讀寫屬性
         public decimal TotalCommission { get; set; }
     }
+
 }

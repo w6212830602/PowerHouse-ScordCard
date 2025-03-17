@@ -14,9 +14,9 @@
         <converts:BoolToColorConverter x:Key="BoolToColorConverter"/>
         <converts:BoolToStringConverter x:Key="BoolToStringConverter"/>
         <converts:CurrencyConverter x:Key="CurrencyConverter"/>
-        <converts:TotalAgencyCommissionConverter x:Key="TotalAgencyCommissionConverter"/>
-        <converts:TotalBuyResellCommissionConverter x:Key="TotalBuyResellCommissionConverter"/>
-        <converts:TotalCommissionConverter x:Key="TotalCommissionConverter"/>
+        <converts:TotalAgencyMarginConverter x:Key="TotalAgencyMarginConverter"/>
+        <converts:TotalBuyResellMarginConverter x:Key="TotalBuyResellMarginConverter"/>
+        <converts:TotalMarginConverter x:Key="TotalMarginConverter"/>
         <converts:TotalPOValueConverter x:Key="TotalPOValueConverter"/>
 
         <!-- 無數據提示模板 -->
@@ -347,7 +347,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <Label Text="F25 - Sales Rep Commission by Product Type (Margin Achieved)"
+                            <Label Text="Sales Rep Margin by Product Type"
                                    Padding="15"
                                    FontSize="16"
                                    FontAttributes="Bold"/>
@@ -359,9 +359,9 @@
                                       BackgroundColor="#F9FAFB"
                                       Padding="15,10">
                                     <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="Agency Comm." FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="Buy Resell Comm." FontAttributes="Bold"/>
-                                    <Label Grid.Column="3" Text="Total Commission" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="Agency Margin" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="Buy Resell Margin" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="Total Margin" FontAttributes="Bold"/>
                                     <Label Grid.Column="4" Text="% of Grand Total" FontAttributes="Bold"/>
                                 </Grid>
 
@@ -372,9 +372,9 @@
                                         <DataTemplate x:DataType="models:ProductSalesData">
                                             <!-- 添加獨特識別鍵 -->
                                             <Grid x:Name="ProductRow" 
-                                                  AutomationId="{Binding ProductType}"
-                                                  ColumnDefinitions="3*,2*,2*,2*,2*" 
-                                                  Padding="15,12">
+      AutomationId="{Binding ProductType}"
+      ColumnDefinitions="3*,2*,2*,2*,2*" 
+      Padding="15,12">
                                                 <Label Grid.Column="0" Text="{Binding ProductType}"/>
                                                 <Label Grid.Column="1" Text="{Binding AgencyCommission, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="2" Text="{Binding BuyResellCommission, StringFormat='${0:N2}'}"/>
@@ -390,9 +390,9 @@
                                       BackgroundColor="#F0F9FF"
                                       Padding="15,12">
                                     <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalAgencyCommissionConverter}}" FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="{Binding ProductSalesData, Converter={StaticResource TotalBuyResellCommissionConverter}}" FontAttributes="Bold"/>
-                                    <Label Grid.Column="3" Text="{Binding ProductSalesData, Converter={StaticResource TotalCommissionConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalAgencyMarginConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="{Binding ProductSalesData, Converter={StaticResource TotalBuyResellMarginConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="{Binding ProductSalesData, Converter={StaticResource TotalMarginConverter}}" FontAttributes="Bold"/>
                                     <Label Grid.Column="4" Text="100.00%" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>
@@ -405,13 +405,13 @@
                                       Padding="15,10">
                                     <Label Grid.Column="0" Text="Rank" FontAttributes="Bold" HorizontalOptions="Center"/>
                                     <Label Grid.Column="1" Text="Sales Rep" FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="Agency Comm." FontAttributes="Bold"/>
-                                    <Label Grid.Column="3" Text="Buy Resell Comm." FontAttributes="Bold"/>
-                                    <Label Grid.Column="4" Text="Total Commission" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="Agency Margin" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="Buy Resell Margin" FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="Total Margin" FontAttributes="Bold"/>
                                 </Grid>
 
-                                
-                    
+
+
                                 <!-- 銷售代表數據 -->
                                 <CollectionView ItemsSource="{Binding SalesRepData}"
                                                 EmptyView="{StaticResource NoDataTemplate}">
@@ -433,9 +433,9 @@
                                       BackgroundColor="#F0F9FF"
                                       Padding="15,12">
                                     <Label Grid.Column="1" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="{Binding SalesRepData, Converter={StaticResource TotalAgencyCommissionConverter}}" FontAttributes="Bold"/>
-                                    <Label Grid.Column="3" Text="{Binding SalesRepData, Converter={StaticResource TotalBuyResellCommissionConverter}}" FontAttributes="Bold"/>
-                                    <Label Grid.Column="4" Text="{Binding SalesRepData, Converter={StaticResource TotalCommissionConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="{Binding SalesRepData, Converter={StaticResource TotalAgencyMarginConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="3" Text="{Binding SalesRepData, Converter={StaticResource TotalBuyResellMarginConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="4" Text="{Binding SalesRepData, Converter={StaticResource TotalMarginConverter}}" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>
                         </VerticalStackLayout>

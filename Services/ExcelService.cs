@@ -443,6 +443,7 @@ namespace ScoreCard.Services
         }
 
         // 創建測試數據
+
         private void AddHardcodedTestData(
             List<ProductSalesData> productSalesCache,
             List<SalesLeaderboardItem> salesLeaderboardCache,
@@ -455,60 +456,54 @@ namespace ScoreCard.Services
                 {
                     ProductType = "Batts & Caps",
                     AgencyCommission = 250130.95m,
-                    BuyResellCommission = 0.00m,
-                    TotalCommission = 250130.95m,
-                    POValue = 2061423.30m,
-                    PercentageOfTotal = 12.0m
+                    BuyResellCommission = 128579.27m,
+                    TotalCommission = 378710.22m, // 確保明確設置TotalCommission
+                    POValue = 2613217.44m,
+                    PercentageOfTotal = 10.9m
                 });
 
                 productSalesCache.Add(new ProductSalesData
                 {
                     ProductType = "Channel",
-                    AgencyCommission = 167353.03m,
-                    BuyResellCommission = 8323.03m,
-                    TotalCommission = 175676.06m,
-                    POValue = 1416574.65m,
-                    PercentageOfTotal = 8.0m
+                    AgencyCommission = 197891.28m,
+                    BuyResellCommission = 84810.55m,
+                    TotalCommission = 282701.83m, // 確保明確設置TotalCommission
+                    POValue = 2171448.99m,
+                    PercentageOfTotal = 9.1m
                 });
 
                 productSalesCache.Add(new ProductSalesData
                 {
                     ProductType = "Power",
-                    AgencyCommission = 296743.08m,
-                    BuyResellCommission = 8737.33m,
-                    TotalCommission = 305481.01m,
-                    POValue = 5466144.65m,
-                    PercentageOfTotal = 31.0m
+                    AgencyCommission = 464443.29m,
+                    BuyResellCommission = 199047.13m,
+                    TotalCommission = 663490.42m, // 確保明確設置TotalCommission
+                    POValue = 6047766.13m,
+                    PercentageOfTotal = 25.3m
                 });
 
                 productSalesCache.Add(new ProductSalesData
                 {
                     ProductType = "Service",
-                    AgencyCommission = 101556.42m,
-                    BuyResellCommission = 0.00m,
-                    TotalCommission = 101556.42m,
-                    POValue = 1272318.58m,
-                    PercentageOfTotal = 7.0m
+                    AgencyCommission = 193152.77m,
+                    BuyResellCommission = 82779.76m,
+                    TotalCommission = 275932.53m, // 確保明確設置TotalCommission
+                    POValue = 2621449.84m,
+                    PercentageOfTotal = 11.0m
                 });
 
                 productSalesCache.Add(new ProductSalesData
                 {
                     ProductType = "Thermal",
-                    AgencyCommission = 744855.43m,
-                    BuyResellCommission = 116206.36m,
-                    TotalCommission = 861061.79m,
-                    POValue = 7358201.65m,
-                    PercentageOfTotal = 41.0m
+                    AgencyCommission = 67776.55m,
+                    BuyResellCommission = 29047.09m,
+                    TotalCommission = 96823.64m, // 確保明確設置TotalCommission
+                    POValue = 10067770.58m,
+                    PercentageOfTotal = 42.2m
                 });
-
-
 
                 Debug.WriteLine($"已添加 {productSalesCache.Count} 條硬編碼產品數據");
             }
-
-
-
-
 
             // 銷售代表數據
             if (!salesLeaderboardCache.Any())
@@ -516,42 +511,109 @@ namespace ScoreCard.Services
                 salesLeaderboardCache.Add(new SalesLeaderboardItem
                 {
                     Rank = 1,
-                    SalesRep = "Isaac",
-                    AgencyCommission = 35018.60m,
-                    BuyResellCommission = 0.00m,
-                    // TotalCommission 會自動計算
+                    SalesRep = "Mark",
+                    AgencyCommission = 2956m,
+                    BuyResellCommission = 1267m,
+                    TotalCommission = 4223m // 確保明確設置TotalCommission
                 });
 
                 salesLeaderboardCache.Add(new SalesLeaderboardItem
                 {
                     Rank = 2,
-                    SalesRep = "Brandon",
-                    AgencyCommission = 130180.24m,
-                    BuyResellCommission = 3816.57m,
-                    // TotalCommission 會自動計算
+                    SalesRep = "Nathan",
+                    AgencyCommission = 1282181m,
+                    BuyResellCommission = 549506m,
+                    TotalCommission = 1831687m // 確保明確設置TotalCommission
                 });
 
                 salesLeaderboardCache.Add(new SalesLeaderboardItem
                 {
                     Rank = 3,
-                    SalesRep = "Chris",
-                    AgencyCommission = 18641.11m,
-                    BuyResellCommission = 0.00m,
-                    // TotalCommission 會自動計算
+                    SalesRep = "Brandon",
+                    AgencyCommission = 240792m,
+                    BuyResellCommission = 103197m,
+                    TotalCommission = 343989m // 確保明確設置TotalCommission
                 });
 
-                // 更新總傭金
-                foreach (var item in salesLeaderboardCache)
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
                 {
-                    item.TotalCommission = item.AgencyCommission + item.BuyResellCommission;
-                }
+                    Rank = 4,
+                    SalesRep = "Tania",
+                    AgencyCommission = 261620m,
+                    BuyResellCommission = 112123m,
+                    TotalCommission = 373743m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 5,
+                    SalesRep = "Pourya",
+                    AgencyCommission = 91512m,
+                    BuyResellCommission = 39219m,
+                    TotalCommission = 130731m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 6,
+                    SalesRep = "Terry SK",
+                    AgencyCommission = 149800m,
+                    BuyResellCommission = 64200m,
+                    TotalCommission = 214000m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 7,
+                    SalesRep = "Terry MB",
+                    AgencyCommission = 66396m,
+                    BuyResellCommission = 28455m,
+                    TotalCommission = 94851m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 8,
+                    SalesRep = "Isaac",
+                    AgencyCommission = 435086m,
+                    BuyResellCommission = 186465m,
+                    TotalCommission = 621551m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 9,
+                    SalesRep = "Chris",
+                    AgencyCommission = 0m,
+                    BuyResellCommission = 0m,
+                    TotalCommission = 0m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 10,
+                    SalesRep = "Tracy",
+                    AgencyCommission = 191126m,
+                    BuyResellCommission = 81911m,
+                    TotalCommission = 273037m // 確保明確設置TotalCommission
+                });
+
+                salesLeaderboardCache.Add(new SalesLeaderboardItem
+                {
+                    Rank = 11,
+                    SalesRep = "Terry",
+                    AgencyCommission = 583m,
+                    BuyResellCommission = 250m,
+                    TotalCommission = 833m // 確保明確設置TotalCommission
+                });
 
                 Debug.WriteLine($"已添加 {salesLeaderboardCache.Count} 條硬編碼銷售代表數據");
             }
 
-            // 部門/LOB數據
+            // 部門/LOB數據保持不變
             if (!departmentLobCache.Any())
             {
+                // 保持原始的LOB數據...
                 departmentLobCache.Add(new DepartmentLobData
                 {
                     Rank = 1,

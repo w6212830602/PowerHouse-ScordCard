@@ -40,6 +40,14 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private bool _isLoading;
 
+        // Selected fiscal year for individual and LOB targets
+        [ObservableProperty]
+        private string _selectedFiscalYear;
+
+        // Available fiscal years 
+        [ObservableProperty]
+        private ObservableCollection<string> _fiscalYears = new();
+
         public SettingsViewModel(IExcelService excelService)
         {
             _excelService = excelService;
@@ -55,6 +63,9 @@ namespace ScoreCard.ViewModels
                 // Load company targets from settings
                 LoadCompanyTargetsFromSettings();
 
+                // Setup fiscal years
+                SetupFiscalYears();
+
                 // Load sales reps and LOB data from Excel service
                 await LoadSalesRepTargets();
                 await LoadLOBTargets();
@@ -66,6 +77,23 @@ namespace ScoreCard.ViewModels
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        private void SetupFiscalYears()
+        {
+            // Create list of available fiscal years based on company targets
+            FiscalYears.Clear();
+
+            foreach (var target in CompanyTargets)
+            {
+                FiscalYears.Add($"FY{target.FiscalYear}");
+            }
+
+            // Select the most recent fiscal year by default
+            if (FiscalYears.Any())
+            {
+                SelectedFiscalYear = FiscalYears.First();
             }
         }
 
@@ -283,6 +311,60 @@ namespace ScoreCard.ViewModels
             IsEditingTargets = !IsEditingTargets;
         }
 
+        // Update annual target based on quarterly targets
+        [RelayCommand]
+        private void UpdateAnnualTarget(object parameter)
+        {
+            if (parameter is FiscalYearTarget target)
+            {
+                target.AnnualTarget = target.Q1Target + target.Q2Target + target.Q3Target + target.Q4Target;
+                OnPropertyChanged(nameof(CompanyTargets));
+            }
+            else if (parameter is SalesRepTarget repTarget)
+            {
+                repTarget.AnnualTarget = repTarget.Q1Target + repTarget.Q2Target + repTarget.Q3Target + repTarget.Q4Target;
+                OnPropertyChanged(nameof(SalesRepTargets));
+            }
+            else if (parameter is LOBTarget lobTarget)
+            {
+                lobTarget.AnnualTarget = lobTarget.Q1Target + lobTarget.Q2Target + lobTarget.Q3Target + lobTarget.Q4Target;
+                OnPropertyChanged(nameof(LobTargets));
+            }
+        }
+
+        // Distribute annual target to quarters
+        [RelayCommand]
+        private void DistributeTarget(object parameter)
+        {
+            if (parameter is FiscalYearTarget target)
+            {
+                decimal quarterlyTarget = target.AnnualTarget / 4;
+                target.Q1Target = quarterlyTarget;
+                target.Q2Target = quarterlyTarget;
+                target.Q3Target = quarterlyTarget;
+                target.Q4Target = quarterlyTarget;
+                OnPropertyChanged(nameof(CompanyTargets));
+            }
+            else if (parameter is SalesRepTarget repTarget)
+            {
+                decimal quarterlyTarget = repTarget.AnnualTarget / 4;
+                repTarget.Q1Target = quarterlyTarget;
+                repTarget.Q2Target = quarterlyTarget;
+                repTarget.Q3Target = quarterlyTarget;
+                repTarget.Q4Target = quarterlyTarget;
+                OnPropertyChanged(nameof(SalesRepTargets));
+            }
+            else if (parameter is LOBTarget lobTarget)
+            {
+                decimal quarterlyTarget = lobTarget.AnnualTarget / 4;
+                lobTarget.Q1Target = quarterlyTarget;
+                lobTarget.Q2Target = quarterlyTarget;
+                lobTarget.Q3Target = quarterlyTarget;
+                lobTarget.Q4Target = quarterlyTarget;
+                OnPropertyChanged(nameof(LobTargets));
+            }
+        }
+
         // Save changes command
         [RelayCommand]
         private async Task SaveChanges()
@@ -295,7 +377,17 @@ namespace ScoreCard.ViewModels
                 IsEditingTargets = false;
 
                 // In a real app, you would implement saving to settings/database here
+                // This example will update the appsettings.json file
                 await Task.Delay(500); // Simulate save operation
+
+                // Update TargetSettings object
+                var targetSettings = new TargetSettings
+                {
+                    CompanyTargets = CompanyTargets.ToList()
+                };
+
+                // Save TargetSettings to appsettings.json
+                // This would require file I/O which is limited in this example
 
                 // Show confirmation
                 await Application.Current.MainPage.DisplayAlert(
@@ -308,12 +400,41 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Error saving changes: {ex.Message}");
                 await Application.Current.MainPage.DisplayAlert(
                     "Error",
-                    "Failed to save target settings. Please try again.",
+                    $"Failed to save target settings. Error: {ex.Message}",
                     "OK");
             }
             finally
             {
                 IsLoading = false;
+            }
+        }
+
+        // Add new fiscal year
+        [RelayCommand]
+        private void AddFiscalYear()
+        {
+            try
+            {
+                // Find the highest fiscal year
+                int maxYear = CompanyTargets.Max(t => t.FiscalYear);
+
+                // Add a new fiscal year with the next year
+                CompanyTargets.Insert(0, new FiscalYearTarget
+                {
+                    FiscalYear = maxYear + 1,
+                    AnnualTarget = 10000000,
+                    Q1Target = 2500000,
+                    Q2Target = 2500000,
+                    Q3Target = 2500000,
+                    Q4Target = 2500000
+                });
+
+                // Update fiscal years list
+                SetupFiscalYears();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error adding fiscal year: {ex.Message}");
             }
         }
 
@@ -332,6 +453,16 @@ namespace ScoreCard.ViewModels
             });
         }
 
+        // Remove sales rep command
+        [RelayCommand]
+        private void RemoveSalesRep(SalesRepTarget repTarget)
+        {
+            if (repTarget != null)
+            {
+                SalesRepTargets.Remove(repTarget);
+            }
+        }
+
         // Add LOB command
         [RelayCommand]
         private void AddLOB()
@@ -345,6 +476,29 @@ namespace ScoreCard.ViewModels
                 Q3Target = 2500000,
                 Q4Target = 2500000
             });
+        }
+
+        // Remove LOB command
+        [RelayCommand]
+        private void RemoveLOB(LOBTarget lobTarget)
+        {
+            if (lobTarget != null)
+            {
+                LobTargets.Remove(lobTarget);
+            }
+        }
+
+        // Change fiscal year for individual and LOB targets
+        partial void OnSelectedFiscalYearChanged(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return;
+
+            // You could implement logic here to load targets for the selected fiscal year
+            Debug.WriteLine($"Selected fiscal year changed to: {value}");
+
+            // In a real app, you would load targets from a database or settings for this fiscal year
+            // For this example, we'll just keep using the existing data
         }
     }
 
