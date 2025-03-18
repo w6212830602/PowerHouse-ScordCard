@@ -623,13 +623,21 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"過濾日期範圍: {currentStartDate:yyyy-MM-dd HH:mm:ss} 到 {currentEndDate:yyyy-MM-dd HH:mm:ss}");
 
+                // 輸出原始數據中的日期範圍，幫助確認有效數據
+                var allDates = _allSalesData.Select(x => x.ReceivedDate.Date).Distinct().OrderBy(d => d).ToList();
+                Debug.WriteLine($"原始數據中的所有不同日期 ({allDates.Count}個): {string.Join(", ", allDates.Take(10))}...");
+
                 // 根據日期範圍過濾
                 _filteredSalesData = _allSalesData
-                    .Where(x => x.ReceivedDate >= currentStartDate &&
-                               x.ReceivedDate <= currentEndDate)
+                    .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                               x.ReceivedDate.Date <= currentEndDate.Date)
                     .ToList();
 
                 Debug.WriteLine($"日期過濾後剩餘 {_filteredSalesData.Count} 條數據");
+
+                // 輸出過濾後的所有日期，確認過濾是否正確
+                var filteredDates = _filteredSalesData.Select(x => x.ReceivedDate.Date).Distinct().OrderBy(d => d).ToList();
+                Debug.WriteLine($"過濾後數據中的所有不同日期 ({filteredDates.Count}個): {string.Join(", ", filteredDates)}");
 
                 // 檢查日期範圍內是否有任何數據
                 if (_filteredSalesData.Count == 0)
@@ -725,6 +733,30 @@ namespace ScoreCard.ViewModels
                 else
                 {
                     Debug.WriteLine("使用All Reps設置，顯示所有符合日期範圍的數據");
+                }
+
+                // 輸出最終過濾結果的詳細信息
+                Debug.WriteLine("最終過濾後的數據結果:");
+                foreach (var item in _filteredSalesData.Take(Math.Min(10, _filteredSalesData.Count)))
+                {
+                    Debug.WriteLine($"日期: {item.ReceivedDate:yyyy-MM-dd}, 產品: {item.ProductType}, PO值: ${item.POValue:N2}, 銷售代表: {item.SalesRep}");
+                }
+
+                // 按產品類型分組統計
+                var productStats = _filteredSalesData
+                    .GroupBy(x => x.ProductType)
+                    .Select(g => new {
+                        ProductType = g.Key,
+                        Count = g.Count(),
+                        TotalPOValue = g.Sum(x => x.POValue)
+                    })
+                    .OrderByDescending(x => x.TotalPOValue)
+                    .ToList();
+
+                Debug.WriteLine("產品類型統計:");
+                foreach (var stat in productStats)
+                {
+                    Debug.WriteLine($"產品類型: {stat.ProductType}, 數量: {stat.Count}, 總PO值: ${stat.TotalPOValue:N2}");
                 }
             }
             catch (Exception ex)
@@ -855,100 +887,42 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("載入產品視圖數據");
 
-                // 如果沒有過濾後的數據
+                // 這裡錯誤使用了filteredData，應改為_filteredSalesData
                 if (_filteredSalesData == null || !_filteredSalesData.Any())
                 {
                     Debug.WriteLine("沒有過濾後的數據可用");
-
-                    // 創建空的產品數據列表（所有值為0）
-                    var emptyProductData = new List<ProductSalesData>();
-
-                    // 為常見產品類型添加空記錄
-                    foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
-                    {
-                        emptyProductData.Add(new ProductSalesData
-                        {
-                            ProductType = productType,
-                            AgencyMargin = 0,
-                            BuyResellMargin = 0,
-                            TotalMargin = 0,
-                            POValue = 0,
-                            PercentageOfTotal = 0
-                        });
-                    }
-
-                    MainThread.BeginInvokeOnMainThread(() => {
-                        ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
-                    });
-
-                    Debug.WriteLine("已載入空產品數據（所有值為0）");
+                    ProductSalesData = new ObservableCollection<ProductSalesData>();
                     return;
                 }
 
-                // 使用過濾後的數據
+                // 按產品類型（AD列）分組，並計算每個類型的PO Value（G列）總和
                 var productData = _filteredSalesData
-                    .GroupBy(x => NormalizeProductType(x.ProductType))
-                    .Where(g => !string.IsNullOrEmpty(g.Key))
-                    .Select(g =>
+                    .GroupBy(x => x.ProductType)
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new ProductSalesData
                     {
-                        var product = new ProductSalesData
-                        {
-                            ProductType = g.Key,
-                            AgencyMargin = g.Sum(x => x.TotalCommission * 0.7m),
-                            BuyResellMargin = g.Sum(x => x.TotalCommission * 0.3m),
-                            POValue = g.Sum(x => x.POValue)
-                        };
-
-                        // 明確設置 TotalMargin
-                        product.TotalMargin = product.AgencyMargin + product.BuyResellMargin;
-                        return product;
+                        ProductType = g.Key,
+                        // 直接從Excel的相應列獲取數值
+                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        // TotalMargin是兩個Margin的總和
+                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // 計算百分比
-                if (productData.Any())
+                // 計算PO Value百分比
+                decimal totalPOValue = productData.Sum(p => p.POValue);
+                foreach (var product in productData)
                 {
-                    decimal totalPO = productData.Sum(p => p.POValue);
-
-                    foreach (var product in productData)
-                    {
-                        product.PercentageOfTotal = totalPO > 0 ? Math.Round((product.POValue / totalPO) * 100, 1) : 0;
-                    }
-
-                    MainThread.BeginInvokeOnMainThread(() => {
-                        ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                    });
-
-                    Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
-                    return;
+                    product.PercentageOfTotal = totalPOValue > 0
+                        ? Math.Round((product.POValue / totalPOValue) * 100, 2)
+                        : 0;
                 }
-                else
-                {
-                    // 如果沒有計算出產品數據
-                    Debug.WriteLine("沒有產品數據可顯示");
 
-                    // 創建空的產品數據
-                    var emptyProductData = new List<ProductSalesData>();
-                    foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
-                    {
-                        emptyProductData.Add(new ProductSalesData
-                        {
-                            ProductType = productType,
-                            AgencyMargin = 0,
-                            BuyResellMargin = 0,
-                            TotalMargin = 0,
-                            POValue = 0,
-                            PercentageOfTotal = 0
-                        });
-                    }
-
-                    MainThread.BeginInvokeOnMainThread(() => {
-                        ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
-                    });
-
-                    Debug.WriteLine("已載入空產品數據（所有值為0）");
-                }
+                ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
+                Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
             }
             catch (Exception ex)
             {
@@ -1012,23 +986,28 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                Debug.WriteLine("載入銷售代表視圖數據");
+                var salesRepData = new List<SalesLeaderboardItem>();
 
-                // 如果沒有過濾後的數據
-                if (_filteredSalesData == null || !_filteredSalesData.Any())
+                // 處理實際數據
+                if (_filteredSalesData?.Any() == true)
                 {
-                    Debug.WriteLine("沒有過濾後的數據可用");
-
-                    // 創建空的銷售代表數據
-                    var emptyRepData = CreateEmptySalesRepData();
-
-                    MainThread.BeginInvokeOnMainThread(() => {
-                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
-                    });
-
-                    Debug.WriteLine("已載入空銷售代表數據（所有值為0）");
-                    return;
+                    salesRepData = _filteredSalesData
+                        .GroupBy(x => x.SalesRep)
+                        .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                        .Select(g => new SalesLeaderboardItem
+                        {
+                            SalesRep = g.Key,
+                            // 直接從Excel的M列獲取Agency Margin
+                            AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                            // 直接從Excel的J列獲取Buy Resell
+                            BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                            // Total Margin是兩者之和
+                            TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
+                        })
+                        .OrderByDescending(x => x.TotalMargin)
+                        .ToList();
                 }
+
 
                 // 使用過濾後的數據
                 var repData = _filteredSalesData

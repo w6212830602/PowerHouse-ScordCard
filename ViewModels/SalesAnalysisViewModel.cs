@@ -928,15 +928,18 @@ namespace ScoreCard.ViewModels
                         .Select(g => new SalesLeaderboardItem
                         {
                             SalesRep = g.Key,
-                            // 更新字段名稱 (Commission -> Margin)
-                            AgencyMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2),
-                            BuyResellMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2)
+                            // 直接從Excel的M列獲取Agency Margin
+                            AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                            // 直接從Excel的J列獲取Buy Resell
+                            BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                            // Total Margin仍然是兩者之和
+                            TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
                         })
                         .OrderByDescending(x => x.TotalMargin)
                         .ToList();
                 }
 
-                // 如果沒有數據，添加樣本數據
+                // 如果沒有數據，添加樣本數據（保持不變）
                 if (!salesRepData.Any())
                 {
                     Debug.WriteLine("使用樣本銷售代表數據");

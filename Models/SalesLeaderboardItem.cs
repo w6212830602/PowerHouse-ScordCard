@@ -15,6 +15,11 @@ namespace ScoreCard.Models
         public decimal AgencyMargin { get; set; }
         public decimal BuyResellMargin { get; set; }
         public decimal TotalMargin { get; set; }
+
+
+
     }
+
+
 
 }

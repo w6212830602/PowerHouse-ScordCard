@@ -101,13 +101,15 @@ namespace ScoreCard.Services
                                     var salesData = new SalesData
                                     {
                                         ReceivedDate = receivedDate,
-                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G欄
-                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H欄
-                                        TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]), // N欄
-                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P欄
-                                        Status = worksheet.Cells[row, 18].GetValue<string>(),      // R欄
-                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z欄
-                                        ProductType = worksheet.Cells[row, 30].GetValue<string>()  // AD欄
+                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G列 - PO Value
+                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
+                                        BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J列 - Buy Resell
+                                        AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
+                                        TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]), // N列
+                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
+                                        Status = worksheet.Cells[row, 18].GetValue<string>(),      // R列
+                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
+                                        ProductType = worksheet.Cells[row, 30].GetValue<string>()  // AD列 - Product Type
                                     };
 
                                     if (row <= 5)

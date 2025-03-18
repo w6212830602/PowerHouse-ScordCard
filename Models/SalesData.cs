@@ -14,8 +14,10 @@ namespace ScoreCard.Models
         public string ProductType { get; set; }
         public decimal POValue { get; set; }
         public decimal VertivValue { get; set; }
-        public decimal CommissionPercentage { get; set; }
+        public decimal BuyResellValue { get; set; } // 新增: J列
+        public decimal AgencyMargin { get; set; }   // 新增: M列
         public decimal TotalCommission { get; set; }
+        public decimal CommissionPercentage { get; set; }
 
         // 財年計算 (8月以後為新的一年)
         public int FiscalYear
