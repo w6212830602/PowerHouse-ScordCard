@@ -193,17 +193,17 @@
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="viewmodels:RepSelectionItem">
                                         <Border Padding="10,8"
-                                                Margin="0,2"
-                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#F0F9FF,#F5F5F5'}"
-                                                StrokeShape="RoundRectangle 3">
+            Margin="0,2"
+            BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#F0F9FF,#F5F5F5'}"
+            StrokeShape="RoundRectangle 3">
                                             <Grid ColumnDefinitions="Auto,*">
                                                 <CheckBox Grid.Column="0"
-                                                          IsChecked="{Binding IsSelected}"
-                                                          Color="#FF3B30"/>
+                     IsChecked="{Binding IsSelected}"
+                     Color="#FF3B30"/>
                                                 <Label Grid.Column="1"
-                                                       Text="{Binding Name}"
-                                                       TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#333333,#333333'}"
-                                                       VerticalOptions="Center"/>
+                   Text="{Binding Name}"
+                   TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#333333,#333333'}"
+                   VerticalOptions="Center"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -498,24 +498,25 @@
                                 </Grid>
 
                                 <!-- 銷售代表 PO 數據 -->
-                                <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
-                                    <Label Grid.Column="0" Text="Channel"/>
-                                    <Label Grid.Column="1" Text="$70,124.50"/>
-                                    <Label Grid.Column="2" Text="3.52%"/>
-                                </Grid>
-
-                                <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
-                                    <Label Grid.Column="0" Text="Thermal"/>
-                                    <Label Grid.Column="1" Text="$1,324,853.30"/>
-                                    <Label Grid.Column="2" Text="96.48%"/>
-                                </Grid>
+                                <CollectionView ItemsSource="{Binding SalesRepProductData}"
+                                                EmptyView="{StaticResource NoDataTemplate}">
+                                    <CollectionView.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ProductSalesData">
+                                            <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
+                                                <Label Grid.Column="0" Text="{Binding ProductType}"/>
+                                                <Label Grid.Column="1" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="2" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </CollectionView.ItemTemplate>
+                                </CollectionView>
 
                                 <!-- 總計行 -->
                                 <Grid ColumnDefinitions="3*,2*,2*" 
                                       BackgroundColor="#F0F9FF"
                                       Padding="15,12">
                                     <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="$1,394,384.40" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="{Binding SalesRepProductData, Converter={StaticResource TotalPOValueConverter}}" FontAttributes="Bold"/>
                                     <Label Grid.Column="2" Text="100.00%" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>

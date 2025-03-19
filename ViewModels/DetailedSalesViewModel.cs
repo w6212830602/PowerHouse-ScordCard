@@ -35,6 +35,9 @@ namespace ScoreCard.ViewModels
         private ObservableCollection<SalesLeaderboardItem> _salesRepData = new();
 
         [ObservableProperty]
+        private ObservableCollection<ProductSalesData> _salesRepProductData = new();
+
+        [ObservableProperty]
         private ObservableCollection<string> _selectedSalesReps = new();
 
         [ObservableProperty]
@@ -442,7 +445,16 @@ namespace ScoreCard.ViewModels
 
             // 清除緩存並重新過濾數據
             _excelService.ClearCache();
-            MainThread.BeginInvokeOnMainThread(async () => {
+
+            // 重要：清除現有產品數據，避免在重新加載前顯示舊數據
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                // 清空當前顯示的數據
+                SalesRepProductData = new ObservableCollection<ProductSalesData>();
+            });
+
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
                 try
                 {
                     IsLoading = true;
@@ -505,7 +517,8 @@ namespace ScoreCard.ViewModels
                 // 添加"全部"選項作為第一個選項
                 reps.Insert(0, "All Reps");
 
-                await MainThread.InvokeOnMainThreadAsync(() => {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
                     AvailableSalesReps = new ObservableCollection<string>(reps);
 
                     // 初始化銷售代表選擇項
@@ -557,7 +570,8 @@ namespace ScoreCard.ViewModels
                 // 過濾數據
                 FilterDataByDateRange();
 
-                await MainThread.InvokeOnMainThreadAsync(() => {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
                     try
                     {
                         // 在主線程上載入過濾後的數據到 UI
@@ -579,7 +593,8 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"過濾和重新載入數據時發生錯誤: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
-                await MainThread.InvokeOnMainThreadAsync(() => {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
                     try
                     {
                         // 發生錯誤時，嘗試載入樣本數據
@@ -745,12 +760,12 @@ namespace ScoreCard.ViewModels
                 // 按產品類型分組統計
                 var productStats = _filteredSalesData
                     .GroupBy(x => x.ProductType)
-                    .Select(g => new {
+                    .Select(g => new
+                    {
                         ProductType = g.Key,
                         Count = g.Count(),
                         TotalPOValue = g.Sum(x => x.POValue)
-                    })
-                    .OrderByDescending(x => x.TotalPOValue)
+                    }).OrderByDescending(x => x.TotalPOValue)
                     .ToList();
 
                 Debug.WriteLine("產品類型統計:");
@@ -943,7 +958,8 @@ namespace ScoreCard.ViewModels
                     });
                 }
 
-                MainThread.BeginInvokeOnMainThread(() => {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
                     ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
                 });
             }
@@ -1078,11 +1094,16 @@ namespace ScoreCard.ViewModels
                         }
                     }
 
-                    MainThread.BeginInvokeOnMainThread(() => {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
                         SalesRepData = new ObservableCollection<SalesLeaderboardItem>(repData);
                     });
 
                     Debug.WriteLine($"已載入 {repData.Count} 條銷售代表數據");
+
+                    // 載入銷售代表產品數據（新增）
+                    LoadSalesRepProductData();
+
                     return;
                 }
                 else
@@ -1093,7 +1114,8 @@ namespace ScoreCard.ViewModels
                     // 創建空的銷售代表數據
                     var emptyRepData = CreateEmptySalesRepData();
 
-                    MainThread.BeginInvokeOnMainThread(() => {
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
                         SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
                     });
 
@@ -1107,11 +1129,136 @@ namespace ScoreCard.ViewModels
                 // 發生錯誤時顯示空數據
                 var emptyRepData = CreateEmptySalesRepData();
 
-                MainThread.BeginInvokeOnMainThread(() => {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
                     SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
                 });
             }
         }
+
+        // 新增：載入銷售代表產品數據
+        private void LoadSalesRepProductData()
+        {
+            try
+            {
+                Debug.WriteLine("載入銷售代表產品數據");
+
+                if (_filteredSalesData == null || !_filteredSalesData.Any())
+                {
+                    Debug.WriteLine("沒有過濾後的數據可用於銷售代表產品分析");
+                    // 創建空白數據
+                    var emptyProductData = CreateEmptySalesRepProductData();
+                    MainThread.BeginInvokeOnMainThread(() =>
+                    {
+                        SalesRepProductData = new ObservableCollection<ProductSalesData>(emptyProductData);
+                    });
+                    return;
+                }
+
+                // 確定要處理的數據
+                var dataToProcess = _filteredSalesData;
+
+                // 如果選擇了特定銷售代表（不是All Reps），則按所選代表過濾
+                if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
+                {
+                    dataToProcess = _filteredSalesData
+                        .Where(x => !string.IsNullOrEmpty(x.SalesRep) &&
+                                SelectedSalesReps.Any(r =>
+                                    string.Equals(x.SalesRep, r, StringComparison.OrdinalIgnoreCase) ||
+                                    x.SalesRep.Contains(r, StringComparison.OrdinalIgnoreCase) ||
+                                    r.Contains(x.SalesRep, StringComparison.OrdinalIgnoreCase)))
+                        .ToList();
+
+                    Debug.WriteLine($"按選定的銷售代表過濾後剩餘 {dataToProcess.Count} 條記錄");
+
+                    // 如果過濾後沒有數據，顯示空白數據
+                    if (!dataToProcess.Any())
+                    {
+                        Debug.WriteLine("選定的銷售代表在當前日期範圍內沒有數據");
+                        var emptyProductData = CreateEmptySalesRepProductData();
+                        MainThread.BeginInvokeOnMainThread(() =>
+                        {
+                            SalesRepProductData = new ObservableCollection<ProductSalesData>(emptyProductData);
+                        });
+                        return;
+                    }
+                }
+
+                // 按產品類型分組計算
+                var productData = dataToProcess
+                    .GroupBy(x => NormalizeProductType(x.ProductType))
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new ProductSalesData
+                    {
+                        ProductType = g.Key,
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        PercentageOfTotal = 0  // 先設為0，下面再計算
+                    })
+                    .OrderByDescending(x => x.POValue)
+                    .ToList();
+
+                // 計算百分比
+                decimal totalPOValue = productData.Sum(p => p.POValue);
+                foreach (var product in productData)
+                {
+                    product.PercentageOfTotal = totalPOValue > 0
+                        ? Math.Round((product.POValue / totalPOValue) * 100, 2)
+                        : 0;
+                }
+
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    SalesRepProductData = new ObservableCollection<ProductSalesData>(productData);
+                });
+
+                Debug.WriteLine($"已載入 {productData.Count} 條銷售代表產品數據");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入銷售代表產品數據時發生錯誤: {ex.Message}");
+
+                // 發生錯誤時創建空白數據
+                var emptyProductData = CreateEmptySalesRepProductData();
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    SalesRepProductData = new ObservableCollection<ProductSalesData>(emptyProductData);
+                });
+            }
+        }
+
+        // 新增：創建空白的銷售代表產品數據
+        private List<ProductSalesData> CreateEmptySalesRepProductData()
+        {
+            var emptyData = new List<ProductSalesData>();
+
+            // 為常見產品類型創建空白記錄
+            foreach (var productType in new[] { "Power", "Thermal", "Channel", "Service", "Batts & Caps" })
+            {
+                emptyData.Add(new ProductSalesData
+                {
+                    ProductType = productType,
+                    POValue = 0,
+                    PercentageOfTotal = 0
+                });
+            }
+
+            return emptyData;
+        }
+
+        // 修改：載入樣本銷售代表產品數據（現在不再需要固定示例數據）
+        private void LoadSampleSalesRepProductData()
+        {
+            // Create empty data instead of using hardcoded sample data
+            var emptyData = CreateEmptySalesRepProductData();
+
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                SalesRepProductData = new ObservableCollection<ProductSalesData>(emptyData);
+            });
+
+            Debug.WriteLine("Loaded empty sales rep product data");
+        }
+
 
         // 創建空的銷售代表數據
         private List<SalesLeaderboardItem> CreateEmptySalesRepData()
@@ -1160,6 +1307,7 @@ namespace ScoreCard.ViewModels
         {
             LoadSampleProductData();
             LoadSampleSalesRepData();
+            LoadSampleSalesRepProductData();
         }
 
         private void LoadSampleProductData()
@@ -1171,7 +1319,7 @@ namespace ScoreCard.ViewModels
                     ProductType = "Thermal",
                     AgencyMargin = 744855.43m,
                     BuyResellMargin = 116206.36m,
-                    TotalMargin = 861061.79m,
+                    TotalMargin = 861061.79m, // 確保明確設置TotalCommission
                     POValue = 7358201.65m,
                     PercentageOfTotal = 41.0m
                 },
@@ -1214,7 +1362,8 @@ namespace ScoreCard.ViewModels
             };
 
             // 確保數據不重複 - 將樣本數據直接設置為有序版本
-            MainThread.BeginInvokeOnMainThread(() => {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
                 ProductSalesData = new ObservableCollection<ProductSalesData>(
                     tempData.OrderByDescending(p => p.POValue)
                 );
@@ -1269,20 +1418,13 @@ namespace ScoreCard.ViewModels
                 }
             };
 
-            MainThread.BeginInvokeOnMainThread(() => {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
                 SalesRepData = new ObservableCollection<SalesLeaderboardItem>(sampleData);
             });
 
             Debug.WriteLine($"已載入 {sampleData.Count} 條示例銷售代表數據");
         }
-    }
 
-    // 用於跟踪銷售代表選擇狀態的類
-    public partial class RepSelectionItem : ObservableObject
-    {
-        public string Name { get; set; }
-
-        [ObservableProperty]
-        private bool _isSelected;
     }
 }
