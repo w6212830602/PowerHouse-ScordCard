@@ -275,7 +275,7 @@
                         </Grid>
                     </Border>
                 </Grid>
-
+                
                 <!-- Sales Leaderboard -->
                 <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
@@ -298,7 +298,7 @@
                                             BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
                                             StrokeShape="RoundRectangle 4,0,0,4"
                                             HeightRequest="36">
-                                        <Border.GestureRecognizers>
+                                      <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Product"
@@ -474,52 +474,37 @@
 
                                 <!-- By Department/LOB View -->
                                 <VerticalStackLayout IsVisible="{Binding IsDeptLobView}">
-                                    <Grid ColumnDefinitions="60,2*,*,*,*" 
-                                          Padding="15,10"
-                                          BackgroundColor="#F9FAFB">
-                                        <Label Grid.Column="0" 
-                                               Text="Rank" 
-                                               TextColor="#666666"
-                                               HorizontalOptions="Center"/>
-                                        <Label Grid.Column="1" 
-                                               Text="LOB" 
-                                               TextColor="#666666"
-                                               Margin="10,0,0,0"/>
-                                        <Label Grid.Column="2" 
-                                               Text="F25 Margin Target" 
-                                               TextColor="#666666"/>
-                                        <Label Grid.Column="3" 
-                                               Text="Margin YTD" 
-                                               TextColor="#666666"/>
-                                        <Label Grid.Column="4" 
-                                               Text="% of Margin Target" 
-                                               TextColor="#666666"/>
+                                    <!-- 表格標題 -->
+                                    <Grid ColumnDefinitions="60,2*,2*,2*,2*" 
+          BackgroundColor="#F9FAFB"
+          Padding="15,10">
+                                        <Label Grid.Column="0" Text="Rank" FontAttributes="Bold" HorizontalOptions="Center"/>
+                                        <Label Grid.Column="1" Text="LOB" FontAttributes="Bold"/>
+                                        <Label Grid.Column="2" Text="F25 Margin Target" FontAttributes="Bold"/>
+                                        <Label Grid.Column="3" Text="Margin YTD" FontAttributes="Bold"/>
+                                        <Label Grid.Column="4" Text="% of Margin Target" FontAttributes="Bold"/>
                                     </Grid>
 
-                                    <CollectionView ItemsSource="{Binding DepartmentLobData}">
+                                    <!-- 部門/LOB數據 -->
+                                    <CollectionView ItemsSource="{Binding DepartmentLobData}"
+                    EmptyView="沒有找到數據">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="models:DepartmentLobData">
-                                                <Grid ColumnDefinitions="60,2*,*,*,*" 
-                                                      Padding="15,12"
-                                                      BackgroundColor="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,#F9FAFB,Transparent'}">
+                                                <Grid ColumnDefinitions="60,2*,2*,2*,2*" 
+                      Padding="15,12"
+                      BackgroundColor="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,#F9FAFB,Transparent'}">
                                                     <Label Grid.Column="0" 
-                                                           Text="{Binding Rank}" 
-                                                           IsVisible="{Binding Rank, Converter={StaticResource GreaterThanZeroConverter}}"
-                                                           HorizontalOptions="Center"
-                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                           Text="{Binding Rank}" 
+                           IsVisible="{Binding Rank, Converter={StaticResource GreaterThanZeroConverter}}"
+                           HorizontalOptions="Center"/>
                                                     <Label Grid.Column="1" 
-                                                           Text="{Binding LOB}"
-                                                           Margin="10,0,0,0"
-                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                           Text="{Binding LOB}"/>
                                                     <Label Grid.Column="2" 
-                                                           Text="{Binding MarginTarget, StringFormat='${0:N0}'}"
-                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                           Text="{Binding MarginTarget, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="3" 
-                                                           Text="{Binding MarginYTD, StringFormat='${0:N0}'}"
-                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                           Text="{Binding MarginYTD, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="4" 
-                                                           Text="{Binding MarginPercentage, StringFormat='{0:P0}'}"
-                                                           FontAttributes="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,Bold,Normal'}"/>
+                           Text="{Binding MarginPercentage, StringFormat='{0:P0}'}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>

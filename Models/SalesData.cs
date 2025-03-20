@@ -18,6 +18,8 @@ namespace ScoreCard.Models
         public decimal AgencyMargin { get; set; }   // 新增: M列
         public decimal TotalCommission { get; set; }
         public decimal CommissionPercentage { get; set; }
+        public string Department { get; set; }
+
 
         // 財年計算 (8月以後為新的一年)
         public int FiscalYear

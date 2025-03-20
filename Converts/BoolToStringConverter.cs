@@ -13,33 +13,23 @@ namespace ScoreCard.Converts
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is bool boolValue && parameter is string stringParameter)
+            if (targetType == typeof(FontAttributes))
+            {
+                // 直接返回FontAttributes枚举值
+                if (value is bool boolValue1) // 变量名改为boolValue1
+                {
+                    return boolValue1 ? FontAttributes.Bold : FontAttributes.None;
+                }
+                return FontAttributes.None;
+            }
+
+            if (value is bool boolValue2 && parameter is string stringParameter) // 变量名改为boolValue2
             {
                 var options = stringParameter.Split('|');
                 if (options.Length == 2)
                 {
-                    // 根據目標類型返回適當的值
-                    if (targetType == typeof(FontAttributes))
-                    {
-                        // 特殊處理 FontAttributes 轉換
-                        if (boolValue)
-                        {
-                            return FontAttributes.Bold;
-                        }
-                        else
-                        {
-                            return FontAttributes.None;
-                        }
-                    }
-
-                    return boolValue ? options[0] : options[1];
+                    return boolValue2 ? options[0] : options[1];
                 }
-            }
-
-            // 如果目標類型是 FontAttributes，確保返回有效值
-            if (targetType == typeof(FontAttributes))
-            {
-                return FontAttributes.None;
             }
 
             return value?.ToString() ?? string.Empty;
@@ -47,6 +37,11 @@ namespace ScoreCard.Converts
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
+            if (value is FontAttributes fontAttributes)
+            {
+                return fontAttributes == FontAttributes.Bold;
+            }
+
             if (value is string stringValue && parameter is string stringParameter)
             {
                 var options = stringParameter.Split('|');
@@ -54,12 +49,6 @@ namespace ScoreCard.Converts
                 {
                     return stringValue == options[0];
                 }
-            }
-
-            // 如果值是 FontAttributes.Bold，表示為 true
-            if (value is FontAttributes fontAttributes)
-            {
-                return fontAttributes == FontAttributes.Bold;
             }
 
             return false;

@@ -674,58 +674,21 @@ namespace ScoreCard.ViewModels
                 {
                     var (data, lastUpdated) = await _excelService.LoadDataAsync();
                     _allSalesData = data;
-                    Debug.WriteLine($"從 Excel 加載了 {_allSalesData.Count} 條記錄");
+                    Debug.WriteLine($"已載入 {_allSalesData?.Count ?? 0} 條記錄");
                 }
 
                 var startDate = StartDate.Date;
                 var endDate = EndDate.Date.AddDays(1).AddSeconds(-1);
 
-                // 過濾數據 - 僅按日期過濾，暫不考慮狀態
-                var filteredData = _allSalesData
+                // 僅按指定的日期範圍過濾數據，不再擴大範圍
+                var filteredData = _allSalesData?
                     .Where(x => x.ReceivedDate.Date >= startDate && x.ReceivedDate.Date <= endDate.Date)
-                    .ToList();
+                    .ToList() ?? new List<SalesData>();
 
                 Debug.WriteLine($"日期過濾後有 {filteredData.Count} 條記錄");
 
-                // 重要修改：只有當有記錄符合狀態過濾條件時才進行狀態過濾
-                var bookedData = filteredData.Where(x => x.Status?.ToLower().Contains("booked") == true).ToList();
-                var completedData = filteredData.Where(x => x.Status?.ToLower().Contains("completed") == true).ToList();
-
-                Debug.WriteLine($"Booked 狀態記錄數: {bookedData.Count}, Completed 狀態記錄數: {completedData.Count}");
-
-                // 如果選定狀態的數據為空，則不進行狀態過濾
-                if (IsBookedStatus && bookedData.Count == 0)
-                {
-                    Debug.WriteLine("沒有 Booked 狀態的記錄，使用所有記錄");
-                    // 不篩選，使用所有記錄
-                }
-                else if (!IsBookedStatus && completedData.Count == 0)
-                {
-                    Debug.WriteLine("沒有 Completed 狀態的記錄，使用所有記錄");
-                    // 不篩選，使用所有記錄
-                }
-                else
-                {
-                    // 有符合條件的記錄，正常過濾
-                    if (IsBookedStatus)
-                    {
-                        filteredData = bookedData;
-                        Debug.WriteLine($"狀態過濾 'Booked' 後有 {filteredData.Count} 條記錄");
-                    }
-                    else
-                    {
-                        filteredData = completedData;
-                        Debug.WriteLine($"狀態過濾 'Completed' 後有 {filteredData.Count} 條記錄");
-                    }
-                }
-
-                // 如果過濾後沒有數據，添加一些默認數據
-                if (filteredData.Count == 0)
-                {
-                    Debug.WriteLine("過濾後沒有數據，創建默認數據");
-                    // 創建一些假資料確保界面有內容顯示
-                    filteredData = CreateSampleData();
-                }
+                // 清除現有緩存，確保數據重新生成
+                _excelService.ClearCache();
 
                 await MainThread.InvokeOnMainThreadAsync(() => {
                     LoadLeaderboardData(filteredData);
@@ -734,12 +697,11 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"LoadLeaderboardDataAsync 錯誤: {ex.Message}");
-                Debug.WriteLine($"堆疊追蹤: {ex.StackTrace}");
+                Debug.WriteLine(ex.StackTrace);
 
-                // 發生錯誤時，創建默認數據確保界面有內容
-                var defaultData = CreateSampleData();
+                // 發生錯誤時，不使用示例數據，而是顯示空白數據
                 await MainThread.InvokeOnMainThreadAsync(() => {
-                    LoadLeaderboardData(defaultData);
+                    LoadLeaderboardData(new List<SalesData>());
                 });
             }
             finally
@@ -820,22 +782,25 @@ namespace ScoreCard.ViewModels
                 {
                     case "ByProduct":
                         LoadProductData(filteredData);
-                        // 確保更新通知
                         OnPropertyChanged(nameof(ProductSalesData));
                         break;
 
                     case "ByRep":
                         LoadSalesRepData(filteredData);
-                        // 確保更新通知
                         OnPropertyChanged(nameof(SalesLeaderboard));
-                        Debug.WriteLine($"已加載 {SalesLeaderboard.Count} 條銷售代表數據");
                         break;
 
                     case "ByDeptLOB":
-                        LoadDeptLobData(filteredData);
-                        // 確保更新通知
+                        // 重要：設置過濾後的數據到ExcelService
+                        if (_excelService is ExcelService excelSvc)
+                        {
+                            excelSvc.SetFilteredData(filteredData);
+                        }
+
+                        // 加載部門/LOB數據
+                        DepartmentLobData = new ObservableCollection<DepartmentLobData>(_excelService.GetDepartmentLobData());
+                        Debug.WriteLine($"已加載 {DepartmentLobData.Count} 條部門/LOB數據");
                         OnPropertyChanged(nameof(DepartmentLobData));
-                        Debug.WriteLine($"已加載 {DepartmentLobData.Count} 條部門數據");
                         break;
 
                     default:
@@ -846,6 +811,31 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"LoadLeaderboardData 錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+            }
+        }
+
+        // 新增：載入部門/LOB數據
+        private void LoadDeptLobData()
+        {
+            try
+            {
+                Debug.WriteLine("載入部門/LOB數據");
+
+                // 獲取部門/LOB數據（這裡會先清除緩存，確保數據重新計算）
+                var deptLobData = _excelService.GetDepartmentLobData();
+
+                // 將數據轉換為ObservableCollection
+                DepartmentLobData = new ObservableCollection<DepartmentLobData>(deptLobData);
+
+                Debug.WriteLine($"已加載 {deptLobData.Count} 條部門/LOB數據");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入部門/LOB數據時出錯: {ex.Message}");
+
+                // 出錯時顯示空數據
+                DepartmentLobData = new ObservableCollection<DepartmentLobData>();
             }
         }
 
@@ -855,60 +845,60 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                Debug.WriteLine($"LoadProductData - 數據量: {filteredData?.Count ?? 0}");
+                Debug.WriteLine("載入產品視圖數據");
 
                 if (filteredData == null || !filteredData.Any())
                 {
-                    Debug.WriteLine("沒有數據可用於產品視圖");
+                    Debug.WriteLine("沒有過濾後的數據可用");
                     ProductSalesData = new ObservableCollection<ProductSalesData>();
                     return;
                 }
 
+                // 按產品類型分組，並計算每個類型的各項數值
                 var productData = filteredData
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // 更新字段名稱 (Commission -> Margin)
-                        AgencyMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.7m), 2), // 假設的分配比例
-                        BuyResellMargin = Math.Round(g.Sum(x => x.TotalCommission * 0.3m), 2), // 假設的分配比例
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                        PercentageOfTotal = filteredData.Sum(x => x.POValue) > 0
-                            ? g.Sum(x => x.POValue) / filteredData.Sum(x => x.POValue)
-                            : 0
+                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                        // 修正：直接使用TotalCommission而不是計算得出
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
                     })
-                    .OrderByDescending(x => x.POValue)
+                    .OrderByDescending(x => x.TotalMargin)
                     .ToList();
 
-                // 確保更新TotalMargin
+                // 計算總Margin
+                decimal totalMargin = productData.Sum(p => p.TotalMargin);
+
+                Debug.WriteLine($"總Margin: {totalMargin}");
+
                 foreach (var product in productData)
                 {
-                    product.TotalMargin = product.AgencyMargin + product.BuyResellMargin;
+                    // 正確計算百分比：(單項值/總值) * 100
+                    product.PercentageOfTotal = totalMargin > 0
+                        ? (product.TotalMargin / totalMargin)
+                        : 0;
+
+                    Debug.WriteLine($"產品:{product.ProductType}, TotalMargin:{product.TotalMargin}, 計算的百分比:{product.PercentageOfTotal}%");
                 }
 
+                // 確認百分比總和，應該接近100%
+                decimal totalPercentage = productData.Sum(p => p.PercentageOfTotal);
+                Debug.WriteLine($"所有產品百分比總和: {totalPercentage}%");
+
                 ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                Debug.WriteLine($"Loaded {productData.Count} product records");
+                Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading product data: {ex.Message}");
+                Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
 
-                // 錯誤時顯示一些默認數據
-                var defaultData = new ObservableCollection<ProductSalesData>
-        {
-            new ProductSalesData { ProductType = "Thermal", AgencyMargin = 629681.95m, BuyResellMargin = 269863.69m, POValue = 8058197.44m, PercentageOfTotal = 0.398m },
-            new ProductSalesData { ProductType = "Power", AgencyMargin = 213836.71m, BuyResellMargin = 91644.30m, POValue = 5857870.43m, PercentageOfTotal = 0.289m },
-            new ProductSalesData { ProductType = "Batts & Caps", AgencyMargin = 241225.60m, BuyResellMargin = 103382.40m, POValue = 2169156.88m, PercentageOfTotal = 0.107m }
-        };
-
-                // 確保更新TotalMargin
-                foreach (var product in defaultData)
-                {
-                    product.TotalMargin = product.AgencyMargin + product.BuyResellMargin;
-                }
-
-                ProductSalesData = defaultData;
+                // 發生錯誤時顯示空數據
+                ProductSalesData = new ObservableCollection<ProductSalesData>();
             }
         }
 
