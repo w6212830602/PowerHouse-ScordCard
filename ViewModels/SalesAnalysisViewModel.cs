@@ -88,8 +88,6 @@ namespace ScoreCard.ViewModels
             set => SetProperty(ref _summary, value);
         }
 
-
-
         // 圖表相關屬性
         private ObservableCollection<Models.ChartData> _targetVsAchievementData = new();
         public ObservableCollection<Models.ChartData> TargetVsAchievementData
@@ -172,8 +170,6 @@ namespace ScoreCard.ViewModels
         }
 
         // 視圖可見性計算屬性
-        // 在 SalesAnalysisViewModel.cs 中修改視圖可見性屬性實現
-        private bool _isProductView;
         public bool IsProductView
         {
             get => ViewType == "ByProduct";
@@ -186,7 +182,6 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        private bool _isRepView;
         public bool IsRepView
         {
             get => ViewType == "ByRep";
@@ -199,7 +194,6 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        private bool _isDeptLobView;
         public bool IsDeptLobView
         {
             get => ViewType == "ByDeptLOB";
@@ -325,7 +319,6 @@ namespace ScoreCard.ViewModels
             }
         }
 
-
         // 切換狀態過濾器 (Booked/Completed)
         private void ExecuteChangeStatus(string status)
         {
@@ -336,15 +329,6 @@ namespace ScoreCard.ViewModels
         // 初始化
         private async void InitializeAsync()
         {
-
-            var defaultProductData = new ObservableCollection<ProductSalesData>
-{
-    new ProductSalesData { ProductType = "Power", AgencyMargin = 296743.08m, BuyResellMargin = 8737.33m, POValue = 5466144.65m, PercentageOfTotal = 0.31m },
-    new ProductSalesData { ProductType = "Thermal", AgencyMargin = 744855.43m, BuyResellMargin = 116206.36m, POValue = 7358201.65m, PercentageOfTotal = 0.41m },
-    new ProductSalesData { ProductType = "Channel", AgencyMargin = 167353.03m, BuyResellMargin = 8323.03m, POValue = 1416574.65m, PercentageOfTotal = 0.08m }
-};
-            ProductSalesData = new ObservableCollection<ProductSalesData>(defaultProductData);
-
             try
             {
                 IsLoading = true;
@@ -413,7 +397,6 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 載入數據
         // 載入數據
         private async Task LoadDataAsync()
         {
@@ -500,18 +483,18 @@ namespace ScoreCard.ViewModels
                     Debug.WriteLine($"Error generating monthly data: {ex.Message}");
                     // 創建默認月度數據
                     monthlyData = new List<Models.ChartData>
-            {
-                new Models.ChartData { Label = DateTime.Now.ToString("yyyy/MM"), Target = 1, Achievement = 0.5m }
-            };
+                    {
+                        new Models.ChartData { Label = DateTime.Now.ToString("yyyy/MM"), Target = 1, Achievement = 0.5m }
+                    };
                 }
 
                 // 如果沒有月度數據，添加默認數據點
                 if (monthlyData == null || !monthlyData.Any())
                 {
                     monthlyData = new List<Models.ChartData>
-            {
-                new Models.ChartData { Label = "No Data", Target = 0, Achievement = 0 }
-            };
+                    {
+                        new Models.ChartData { Label = "No Data", Target = 0, Achievement = 0 }
+                    };
                 }
 
                 // 在主線程上進行 UI 更新
@@ -614,15 +597,15 @@ namespace ScoreCard.ViewModels
                         if (TargetVsAchievementData == null || TargetVsAchievementData.Count == 0)
                         {
                             TargetVsAchievementData = new ObservableCollection<Models.ChartData> {
-                        new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 }
-                    };
+                                new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 }
+                            };
                         }
 
                         if (AchievementTrendData == null || AchievementTrendData.Count == 0)
                         {
                             AchievementTrendData = new ObservableCollection<Models.ChartData> {
-                        new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 }
-                    };
+                                new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 }
+                            };
                         }
 
                         // 確保有有效的 Y 軸最大值
@@ -660,7 +643,6 @@ namespace ScoreCard.ViewModels
                 IsLoading = false;
             }
         }
-
 
         // 載入 Leaderboard 數據 (不更新其他頁面數據)
         private async Task LoadLeaderboardDataAsync()
@@ -714,61 +696,59 @@ namespace ScoreCard.ViewModels
         {
             // 創建一些樣本數據，確保在沒有實際數據時界面也能顯示內容
             return new List<SalesData>
-    {
-        new SalesData
-        {
-            ReceivedDate = DateTime.Now,
-            ProductType = "Thermal",
-            POValue = 8058197.44m,
-            VertivValue = 8058197.44m,
-            TotalCommission = 899545.64m,
-            SalesRep = "Sample Rep 1",
-            Status = "Booked"
-        },
-        new SalesData
-        {
-            ReceivedDate = DateTime.Now,
-            ProductType = "Power",
-            POValue = 5857870.43m,
-            VertivValue = 5857870.43m,
-            TotalCommission = 305481.01m,
-            SalesRep = "Sample Rep 2",
-            Status = "Booked"
-        },
-        new SalesData
-        {
-            ReceivedDate = DateTime.Now,
-            ProductType = "Batts & Caps",
-            POValue = 2169156.88m,
-            VertivValue = 2169156.88m,
-            TotalCommission = 344608.00m,
-            SalesRep = "Sample Rep 3",
-            Status = "Booked"
-        },
-        new SalesData
-        {
-            ReceivedDate = DateTime.Now,
-            ProductType = "Service",
-            POValue = 2140938.32m,
-            VertivValue = 2140938.32m,
-            TotalCommission = 160595.74m,
-            SalesRep = "Sample Rep 4",
-            Status = "Booked"
-        },
-        new SalesData
-        {
-            ReceivedDate = DateTime.Now,
-            ProductType = "Channel",
-            POValue = 1863238.05m,
-            VertivValue = 1863238.05m,
-            TotalCommission = 214071.40m,
-            SalesRep = "Sample Rep 5",
-            Status = "Booked"
+            {
+                new SalesData
+                {
+                    ReceivedDate = DateTime.Now,
+                    ProductType = "Thermal",
+                    POValue = 8058197.44m,
+                    VertivValue = 8058197.44m,
+                    TotalCommission = 899545.64m,
+                    SalesRep = "Sample Rep 1",
+                    Status = "Booked"
+                },
+                new SalesData
+                {
+                    ReceivedDate = DateTime.Now,
+                    ProductType = "Power",
+                    POValue = 5857870.43m,
+                    VertivValue = 5857870.43m,
+                    TotalCommission = 305481.01m,
+                    SalesRep = "Sample Rep 2",
+                    Status = "Booked"
+                },
+                new SalesData
+                {
+                    ReceivedDate = DateTime.Now,
+                    ProductType = "Batts & Caps",
+                    POValue = 2169156.88m,
+                    VertivValue = 2169156.88m,
+                    TotalCommission = 344608.00m,
+                    SalesRep = "Sample Rep 3",
+                    Status = "Booked"
+                },
+                new SalesData
+                {
+                    ReceivedDate = DateTime.Now,
+                    ProductType = "Service",
+                    POValue = 2140938.32m,
+                    VertivValue = 2140938.32m,
+                    TotalCommission = 160595.74m,
+                    SalesRep = "Sample Rep 4",
+                    Status = "Booked"
+                },
+                new SalesData
+                {
+                    ReceivedDate = DateTime.Now,
+                    ProductType = "Channel",
+                    POValue = 1863238.05m,
+                    VertivValue = 1863238.05m,
+                    TotalCommission = 214071.40m,
+                    SalesRep = "Sample Rep 5",
+                    Status = "Booked"
+                }
+            };
         }
-    };
-        }
-
-
 
         // 載入 Leaderboard 數據的核心邏輯
         private void LoadLeaderboardData(List<SalesData> filteredData)
@@ -777,16 +757,24 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"LoadLeaderboardData - 當前視圖: {ViewType}, 數據量: {filteredData?.Count ?? 0}");
 
+                // 先根據 IsBookedStatus 過濾數據
+                var statusFilteredData = filteredData.Where(x =>
+                    (IsBookedStatus && x.Status == "Booked") ||
+                    (!IsBookedStatus && x.Status == "Completed")
+                ).ToList();
+
+                Debug.WriteLine($"狀態過濾後剩餘數據量: {statusFilteredData.Count}");
+
                 // 根據不同的視圖類型加載對應的數據
                 switch (ViewType)
                 {
                     case "ByProduct":
-                        LoadProductData(filteredData);
+                        LoadProductData(statusFilteredData);
                         OnPropertyChanged(nameof(ProductSalesData));
                         break;
 
                     case "ByRep":
-                        LoadSalesRepData(filteredData);
+                        LoadSalesRepData(statusFilteredData);
                         OnPropertyChanged(nameof(SalesLeaderboard));
                         break;
 
@@ -794,7 +782,7 @@ namespace ScoreCard.ViewModels
                         // 重要：設置過濾後的數據到ExcelService
                         if (_excelService is ExcelService excelSvc)
                         {
-                            excelSvc.SetFilteredData(filteredData);
+                            excelSvc.SetFilteredData(statusFilteredData);
                         }
 
                         // 加載部門/LOB數據
@@ -815,32 +803,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 新增：載入部門/LOB數據
-        private void LoadDeptLobData()
-        {
-            try
-            {
-                Debug.WriteLine("載入部門/LOB數據");
-
-                // 獲取部門/LOB數據（這裡會先清除緩存，確保數據重新計算）
-                var deptLobData = _excelService.GetDepartmentLobData();
-
-                // 將數據轉換為ObservableCollection
-                DepartmentLobData = new ObservableCollection<DepartmentLobData>(deptLobData);
-
-                Debug.WriteLine($"已加載 {deptLobData.Count} 條部門/LOB數據");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"載入部門/LOB數據時出錯: {ex.Message}");
-
-                // 出錯時顯示空數據
-                DepartmentLobData = new ObservableCollection<DepartmentLobData>();
-            }
-        }
-
-
-        // 修改 LoadProductData 方法
+        // 載入產品數據
         private void LoadProductData(List<SalesData> filteredData)
         {
             try
@@ -897,7 +860,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
-                // 發生錯誤時顯示空數據
+                // 發生錯誤時返回空列表
                 ProductSalesData = new ObservableCollection<ProductSalesData>();
             }
         }
@@ -929,24 +892,14 @@ namespace ScoreCard.ViewModels
                         .ToList();
                 }
 
-                // 如果沒有數據，添加樣本數據（保持不變）
+                // 不再添加樣本數據，如果沒有數據就顯示空列表
+                // 用戶將看到EmptyView提供的"No data in this time range"訊息
                 if (!salesRepData.Any())
                 {
-                    Debug.WriteLine("使用樣本銷售代表數據");
-                    salesRepData = new List<SalesLeaderboardItem>
-            {
-                new SalesLeaderboardItem { SalesRep = "Mark", AgencyMargin = 2956m, BuyResellMargin = 1267m },
-                new SalesLeaderboardItem { SalesRep = "Nathan", AgencyMargin = 1282181m, BuyResellMargin = 549506m },
-                new SalesLeaderboardItem { SalesRep = "Brandon", AgencyMargin = 240792m, BuyResellMargin = 103197m },
-                new SalesLeaderboardItem { SalesRep = "Tania", AgencyMargin = 261620m, BuyResellMargin = 112123m },
-                new SalesLeaderboardItem { SalesRep = "Pourya", AgencyMargin = 91512m, BuyResellMargin = 39219m }
-            };
-
-                    // 確保TotalMargin字段更新
-                    foreach (var rep in salesRepData)
-                    {
-                        rep.TotalMargin = rep.AgencyMargin + rep.BuyResellMargin;
-                    }
+                    Debug.WriteLine("沒有找到符合條件的銷售代表數據");
+                    // 返回空列表，UI會顯示EmptyView
+                    SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
+                    return;
                 }
 
                 // 添加排名
@@ -962,39 +915,32 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"載入銷售代表數據錯誤: {ex.Message}");
 
-                // 確保在錯誤情況下也有數據顯示
-                var sampleData = new List<SalesLeaderboardItem>
-        {
-            new SalesLeaderboardItem { Rank = 1, SalesRep = "Isaac", AgencyMargin = 22467m, BuyResellMargin = 9629m },
-            new SalesLeaderboardItem { Rank = 2, SalesRep = "Terry SK", AgencyMargin = 14092m, BuyResellMargin = 6040m },
-            new SalesLeaderboardItem { Rank = 3, SalesRep = "Tracy", AgencyMargin = 11303m, BuyResellMargin = 4844m }
-        };
-
-                // 確保更新TotalMargin
-                foreach (var rep in sampleData)
-                {
-                    rep.TotalMargin = rep.AgencyMargin + rep.BuyResellMargin;
-                }
-
-                SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(sampleData);
+                // 出錯時也返回空列表，而不是示例數據
+                SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
             }
         }
-
 
         // 載入部門/LOB數據
         private void LoadDeptLobData(List<SalesData> filteredData)
         {
             try
             {
+                if (filteredData == null || !filteredData.Any())
+                {
+                    Debug.WriteLine("沒有過濾後的數據可用於部門/LOB分析");
+                    DepartmentLobData = new ObservableCollection<DepartmentLobData>();
+                    return;
+                }
+
                 // 無論是否有實際數據，都添加樣本數據確保 UI 顯示正常
                 var deptLobData = new List<DepartmentLobData>
-        {
-            new DepartmentLobData { Rank = 1, LOB = "Power", MarginTarget = 850000, MarginYTD = 650000 },
-            new DepartmentLobData { Rank = 2, LOB = "Thermal", MarginTarget = 720000, MarginYTD = 1000000 },
-            new DepartmentLobData { Rank = 3, LOB = "Channel", MarginTarget = 650000, MarginYTD = 580000 },
-            new DepartmentLobData { Rank = 4, LOB = "Service", MarginTarget = 580000, MarginYTD = 1000000 },
-            new DepartmentLobData { Rank = 0, LOB = "Total", MarginTarget = 2800000, MarginYTD = 3230000 }
-        };
+                {
+                    new DepartmentLobData { Rank = 1, LOB = "Power", MarginTarget = 850000, MarginYTD = 650000 },
+                    new DepartmentLobData { Rank = 2, LOB = "Thermal", MarginTarget = 720000, MarginYTD = 1000000 },
+                    new DepartmentLobData { Rank = 3, LOB = "Channel", MarginTarget = 650000, MarginYTD = 580000 },
+                    new DepartmentLobData { Rank = 4, LOB = "Service", MarginTarget = 580000, MarginYTD = 1000000 },
+                    new DepartmentLobData { Rank = 0, LOB = "Total", MarginTarget = 2800000, MarginYTD = 3230000 }
+                };
 
                 DepartmentLobData = new ObservableCollection<DepartmentLobData>(deptLobData);
                 Debug.WriteLine($"已加載 {deptLobData.Count} 條部門/LOB數據");
@@ -1005,11 +951,11 @@ namespace ScoreCard.ViewModels
 
                 // 確保在錯誤情況下也有數據顯示
                 var sampleData = new List<DepartmentLobData>
-        {
-            new DepartmentLobData { Rank = 1, LOB = "Power", MarginTarget = 850000, MarginYTD = 650000 },
-            new DepartmentLobData { Rank = 2, LOB = "Thermal", MarginTarget = 720000, MarginYTD = 580000 },
-            new DepartmentLobData { Rank = 0, LOB = "Total", MarginTarget = 1570000, MarginYTD = 1230000 }
-        };
+                {
+                    new DepartmentLobData { Rank = 1, LOB = "Power", MarginTarget = 850000, MarginYTD = 650000 },
+                    new DepartmentLobData { Rank = 2, LOB = "Thermal", MarginTarget = 720000, MarginYTD = 580000 },
+                    new DepartmentLobData { Rank = 0, LOB = "Total", MarginTarget = 1570000, MarginYTD = 1230000 }
+                };
 
                 DepartmentLobData = new ObservableCollection<DepartmentLobData>(sampleData);
             }
@@ -1144,6 +1090,5 @@ namespace ScoreCard.ViewModels
                 }
             }
         }
-
     }
 }

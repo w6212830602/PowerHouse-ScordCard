@@ -30,6 +30,7 @@ namespace ScoreCard.Services
             Debug.WriteLine("ExcelService 初始化");
         }
 
+        // In ExcelService.cs, modify the LoadDataAsync method to include the completion date
         public async Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME)
         {
             return await Task.Run(() =>
@@ -101,6 +102,29 @@ namespace ScoreCard.Services
                                         }
                                     }
 
+                                    // 讀取完成日期（Y列）
+                                    DateTime? completionDate = null;
+                                    var completionDateCell = worksheet.Cells[row, 25]; // Y列是第25列
+                                    if (completionDateCell.Value != null)
+                                    {
+                                        if (completionDateCell.Value is DateTime completionDateTime)
+                                        {
+                                            completionDate = completionDateTime;
+                                        }
+                                        else
+                                        {
+                                            // 嘗試解析完成日期
+                                            DateTime parsedCompletionDate;
+                                            if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
+                                            {
+                                                completionDate = parsedCompletionDate;
+                                            }
+                                        }
+                                    }
+
+                                    // 根據完成日期設置訂單狀態
+                                    string status = completionDate.HasValue ? "Completed" : "Booked";
+
                                     var salesData = new SalesData
                                     {
                                         ReceivedDate = receivedDate,
@@ -110,7 +134,8 @@ namespace ScoreCard.Services
                                         AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
                                         TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]), // N列
                                         CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
-                                        Status = worksheet.Cells[row, 18].GetValue<string>(),      // R列
+                                        Status = status,      // 根據Y列的完成日期確定狀態
+                                        CompletionDate = completionDate, // 新增的完成日期欄位
                                         SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
                                         ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
                                         Department = worksheet.Cells[row, 29].GetValue<string>()   // AC列 - Department/LOB
@@ -121,7 +146,8 @@ namespace ScoreCard.Services
                                         Debug.WriteLine($"第 {row} 行: 日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
                                                        $"POValue=${salesData.POValue}, " +
                                                        $"SalesRep={salesData.SalesRep}, " +
-                                                       $"ProductType={salesData.ProductType}");
+                                                       $"ProductType={salesData.ProductType}, " +
+                                                       $"Status={salesData.Status}");
                                     }
 
                                     if (IsValidSalesData(salesData))
@@ -308,16 +334,30 @@ namespace ScoreCard.Services
 
                             decimal finalAmount = baseAmount * productMultiplier;
 
+                            // 設置完成日期與狀態 - 為一半的數據設置完成日期
+                            DateTime? completionDate = null;
+                            if (day % 10 == 0) // 這會給大約30%的數據設置完成日期
+                            {
+                                completionDate = recordDate.AddDays(14); // 訂單兩週後完成
+                            }
+
+                            // 根據完成日期設置狀態 - 這是關鍵部分
+                            string status = completionDate.HasValue ? "Completed" : "Booked";
+
                             data.Add(new SalesData
                             {
                                 ReceivedDate = recordDate,
                                 SalesRep = rep,
-                                Status = day % 10 == 0 ? "Completed" : "Booked",
+                                Status = status,
+                                CompletionDate = completionDate,
                                 ProductType = product,
                                 POValue = finalAmount,
                                 VertivValue = finalAmount * 0.9m,
+                                BuyResellValue = finalAmount * 0.3m,
+                                AgencyMargin = finalAmount * 0.07m,
                                 TotalCommission = finalAmount * 0.1m,
-                                CommissionPercentage = 0.1m
+                                CommissionPercentage = 0.1m,
+                                Department = GetDepartmentFromProduct(product)
                             });
                         }
                     }
@@ -325,8 +365,24 @@ namespace ScoreCard.Services
             }
 
             Debug.WriteLine($"已創建 {data.Count} 條測試銷售數據，跨越從2022年至今的各個月份");
+            Debug.WriteLine($"其中 Booked 狀態: {data.Count(x => x.Status == "Booked")} 條，Completed 狀態: {data.Count(x => x.Status == "Completed")} 條");
             return data;
         }
+
+        // Helper method to get Department for test data
+        private string GetDepartmentFromProduct(string productType)
+        {
+            return productType switch
+            {
+                "Power" => "Power",
+                "Thermal" => "Thermal",
+                "Channel" => "Channel",
+                "Service" => "Service",
+                _ => "Other"
+            };
+        }
+
+
 
 
         // 載入所有摘要工作表

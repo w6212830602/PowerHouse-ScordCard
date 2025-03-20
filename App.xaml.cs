@@ -62,7 +62,7 @@ namespace ScoreCard
             try
             {
                 Debug.WriteLine("應用程式啟動: 正在初始化 Syncfusion 許可證...");
-                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Mzc1NDA4MUAzMjM4MmUzMDJlMzBYS29KeExQMmFtNVdPVDlOTjVKalV6VXZzdVdGWjZDcEI5ZkdkRURlMy80PQ");
+                Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("Ngo9BigBOggjHTQxAR8/V1NMaF5cXmBCf1FpRmJGdld5fUVHYVZUTXxaS00DNHVRdkdmWXxccHVVQ2JdV0F/XUI=");
                 Debug.WriteLine("Syncfusion 許可證註冊成功");
             }
             catch (Exception ex)

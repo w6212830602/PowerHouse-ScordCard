@@ -21,6 +21,23 @@
         <converts:TotalAgencyMarginConverter x:Key="TotalAgencyMarginConverter"/>
         <converts:TotalBuyResellMarginConverter x:Key="TotalBuyResellMarginConverter"/>
         <converts:TotalMarginConverter x:Key="TotalMarginConverter"/>
+
+        <!-- No Data Template -->
+        <DataTemplate x:Key="NoDataTemplate">
+            <Grid Padding="20" HeightRequest="100">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="No data in this time range" 
+                           FontSize="16" 
+                           TextColor="#666666" 
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center"/>
+                    <Label Text="Try adjusting the date range or filters" 
+                           FontSize="14" 
+                           TextColor="#888888"
+                           HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Grid>
+        </DataTemplate>
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*">
@@ -275,7 +292,7 @@
                         </Grid>
                     </Border>
                 </Grid>
-                
+
                 <!-- Sales Leaderboard -->
                 <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
@@ -293,12 +310,14 @@
                                 <!-- 視圖類型選擇器 (By Product, By Rep, By Dept-LOB) -->
                                 <HorizontalStackLayout Grid.Column="0" Spacing="0">
                                     <!-- By Product 按鈕 -->
-                                    <Border Stroke="#E2E8F0"
-                                            StrokeThickness="1"
-                                            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                                            StrokeShape="RoundRectangle 4,0,0,4"
-                                            HeightRequest="36">
-                                      <Border.GestureRecognizers>
+                                    <Border Stroke="#E2E8F0" 
+        StrokeThickness="1" 
+        BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}" 
+        HeightRequest="36">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="4,0,0,4" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="By Product"
@@ -409,7 +428,8 @@
                                                TextColor="#666666"/>
                                     </Grid>
 
-                                    <CollectionView ItemsSource="{Binding ProductSalesData}">
+                                    <CollectionView ItemsSource="{Binding ProductSalesData}"
+                                                    EmptyView="{StaticResource NoDataTemplate}">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ProductSalesData">
                                                 <Grid ColumnDefinitions="2*,*,*,*,*,*" Padding="15,12">
@@ -449,7 +469,8 @@
                                                TextColor="#666666"/>
                                     </Grid>
 
-                                    <CollectionView ItemsSource="{Binding SalesLeaderboard}">
+                                    <CollectionView ItemsSource="{Binding SalesLeaderboard}"
+                                                    EmptyView="{StaticResource NoDataTemplate}">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="models:SalesLeaderboardItem">
                                                 <Grid ColumnDefinitions="60,2*,*,*,*" 
@@ -487,24 +508,24 @@
 
                                     <!-- 部門/LOB數據 -->
                                     <CollectionView ItemsSource="{Binding DepartmentLobData}"
-                    EmptyView="沒有找到數據">
+                                                    EmptyView="{StaticResource NoDataTemplate}">
                                         <CollectionView.ItemTemplate>
                                             <DataTemplate x:DataType="models:DepartmentLobData">
                                                 <Grid ColumnDefinitions="60,2*,2*,2*,2*" 
-                      Padding="15,12"
-                      BackgroundColor="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,#F9FAFB,Transparent'}">
+                                                      Padding="15,12"
+                                                      BackgroundColor="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,#F9FAFB,Transparent'}">
                                                     <Label Grid.Column="0" 
-                           Text="{Binding Rank}" 
-                           IsVisible="{Binding Rank, Converter={StaticResource GreaterThanZeroConverter}}"
-                           HorizontalOptions="Center"/>
+                                                           Text="{Binding Rank}" 
+                                                           IsVisible="{Binding Rank, Converter={StaticResource GreaterThanZeroConverter}}"
+                                                           HorizontalOptions="Center"/>
                                                     <Label Grid.Column="1" 
-                           Text="{Binding LOB}"/>
+                                                           Text="{Binding LOB}"/>
                                                     <Label Grid.Column="2" 
-                           Text="{Binding MarginTarget, StringFormat='${0:N0}'}"/>
+                                                           Text="{Binding MarginTarget, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="3" 
-                           Text="{Binding MarginYTD, StringFormat='${0:N0}'}"/>
+                                                           Text="{Binding MarginYTD, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="4" 
-                           Text="{Binding MarginPercentage, StringFormat='{0:P0}'}"/>
+                                                           Text="{Binding MarginPercentage, StringFormat='{0:P0}'}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>

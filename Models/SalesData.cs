@@ -19,7 +19,7 @@ namespace ScoreCard.Models
         public decimal TotalCommission { get; set; }
         public decimal CommissionPercentage { get; set; }
         public string Department { get; set; }
-
+        public DateTime? CompletionDate { get; set; } // 新增: Y列的完成日期
 
         // 財年計算 (8月以後為新的一年)
         public int FiscalYear
@@ -39,5 +39,8 @@ namespace ScoreCard.Models
                 _ => 0
             };
         }
+
+        // 訂單是否已完成
+        public bool IsCompleted => CompletionDate.HasValue;
     }
 }
