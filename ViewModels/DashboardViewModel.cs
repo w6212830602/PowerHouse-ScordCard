@@ -77,7 +77,7 @@ namespace ScoreCard.ViewModels
 
         // Excel服務和設定
         private readonly IExcelService _excelService;
-        private readonly TargetSettings _targetSettings;
+        private readonly ITargetService _targetService;
         private CancellationTokenSource _cancellationTokenSource;
 
         // 格式化顯示屬性 - 新增
@@ -122,20 +122,14 @@ namespace ScoreCard.ViewModels
         public string Q3ExceededDisplay => $"Exceeded: +${Q3Exceeded:N0}";
         public string Q4ExceededDisplay => $"Exceeded: +${Q4Exceeded:N0}";
 
-        public DashboardViewModel(IExcelService excelService)
+        public DashboardViewModel(IExcelService excelService, ITargetService targetService)
         {
             Debug.WriteLine("DashboardViewModel 建構函數開始初始化");
             _excelService = excelService;
+            _targetService = targetService;
             _excelService.DataUpdated += OnDataUpdated;
+            _targetService.TargetsUpdated += OnTargetsUpdated;
             _cancellationTokenSource = new CancellationTokenSource();
-
-            // 讀取設定檔
-            var config = new ConfigurationBuilder()
-                .SetBasePath(AppContext.BaseDirectory)
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .Build();
-
-            _targetSettings = config.GetSection("TargetSettings").Get<TargetSettings>();
 
             // 取得目前財年
             var currentDate = DateTime.Now;
@@ -158,29 +152,45 @@ namespace ScoreCard.ViewModels
             Debug.WriteLine($"DashboardViewModel 初始化完成，選擇的財年: {SelectedOption}");
         }
 
-        private void UpdateTargets(int fiscalYear)
+        private async void UpdateTargets(int fiscalYear)
         {
-            var yearTarget = _targetSettings?.CompanyTargets?
-                .FirstOrDefault(t => t.FiscalYear == fiscalYear);
-
-            if (yearTarget != null)
+            try
             {
-                AnnualTarget = yearTarget.AnnualTarget;
-                Q1Target = yearTarget.Q1Target;
-                Q2Target = yearTarget.Q2Target;
-                Q3Target = yearTarget.Q3Target;
-                Q4Target = yearTarget.Q4Target;
+                // 初始化目標服務（如果尚未初始化）
+                await _targetService.InitializeAsync();
 
-                Debug.WriteLine($"已載入 FY{fiscalYear} 目標值:");
-                Debug.WriteLine($"Annual: ${AnnualTarget:N0}");
-                Debug.WriteLine($"Q1: ${Q1Target:N0}");
-                Debug.WriteLine($"Q2: ${Q2Target:N0}");
-                Debug.WriteLine($"Q3: ${Q3Target:N0}");
-                Debug.WriteLine($"Q4: ${Q4Target:N0}");
+                // 獲取所選財年的公司目標
+                var companyTarget = _targetService.GetCompanyTarget(fiscalYear);
+
+                if (companyTarget != null)
+                {
+                    AnnualTarget = companyTarget.AnnualTarget;
+                    Q1Target = companyTarget.Q1Target;
+                    Q2Target = companyTarget.Q2Target;
+                    Q3Target = companyTarget.Q3Target;
+                    Q4Target = companyTarget.Q4Target;
+
+                    Debug.WriteLine($"已載入 FY{fiscalYear} 目標值:");
+                    Debug.WriteLine($"Annual: ${AnnualTarget:N0}");
+                    Debug.WriteLine($"Q1: ${Q1Target:N0}");
+                    Debug.WriteLine($"Q2: ${Q2Target:N0}");
+                    Debug.WriteLine($"Q3: ${Q3Target:N0}");
+                    Debug.WriteLine($"Q4: ${Q4Target:N0}");
+                }
+                else
+                {
+                    Debug.WriteLine($"警告: 找不到 FY{fiscalYear} 的目標值設定");
+                    // 設置默認值避免計算問題
+                    AnnualTarget = 100000;
+                    Q1Target = 25000;
+                    Q2Target = 25000;
+                    Q3Target = 25000;
+                    Q4Target = 25000;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Debug.WriteLine($"警告: 找不到 FY{fiscalYear} 的目標值設定");
+                Debug.WriteLine($"更新目標時發生錯誤: {ex.Message}");
                 // 設置默認值避免計算問題
                 AnnualTarget = 100000;
                 Q1Target = 25000;
@@ -249,6 +259,11 @@ namespace ScoreCard.ViewModels
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
+                    // 獲取選擇的財年並更新目標值
+                    var selectedFiscalYear = GetSelectedFiscalYear();
+                    UpdateTargets(selectedFiscalYear);
+
+                    // 基於新載入的數據更新儀錶板
                     UpdateDashboard(data);
                     LastUpdated = DateTime.Now.ToString("yyyy/MM/dd HH:mm");
                     Debug.WriteLine("數據已更新到 UI");
@@ -278,7 +293,6 @@ namespace ScoreCard.ViewModels
 
                 // 獲取選擇的財年並更新目標值
                 var selectedFiscalYear = GetSelectedFiscalYear();
-                UpdateTargets(selectedFiscalYear);
 
                 // 篩選選擇的財年數據
                 var yearData = data.Where(x => x.FiscalYear == selectedFiscalYear).ToList();
@@ -422,6 +436,19 @@ namespace ScoreCard.ViewModels
                 LastUpdated = DateTime.Now.ToString("yyyy/MM/dd HH:mm");
                 await LoadDataAsync();
                 Debug.WriteLine("檔案更新處理完成");
+            });
+        }
+
+        private void OnTargetsUpdated(object sender, EventArgs e)
+        {
+            Debug.WriteLine("收到目標更新通知");
+            MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                // 獲取選擇的財年並更新目標值
+                var selectedFiscalYear = GetSelectedFiscalYear();
+                UpdateTargets(selectedFiscalYear);
+                await LoadDataAsync();
+                Debug.WriteLine("目標更新處理完成");
             });
         }
 

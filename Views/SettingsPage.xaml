@@ -19,7 +19,7 @@
         </ResourceDictionary>
     </ContentPage.Resources>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*,Auto">
         <!-- Header with tabs -->
         <Grid Grid.Row="0" Padding="20,0" BackgroundColor="White">
             <HorizontalStackLayout Spacing="0">
@@ -472,8 +472,7 @@
                                                                   Spacing="5">
                                                 <!-- Update Annual Target based on quarters -->
                                                 <Button Text="↑"
-                                                        ToolTipProperties.Text="Update Annual Target from Quarters"
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
+                                                        ToolTipProperties.Text="Update Annual Target from Quarters"Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
                                                         CommandParameter="{Binding}"
                                                         BackgroundColor="#4CAF50"
                                                         TextColor="White"
@@ -522,6 +521,18 @@
                                   HorizontalOptions="Center" 
                                   VerticalOptions="Center"/>
             </Grid>
+        </Grid>
+
+        <!-- Status Message Bar -->
+        <Grid Grid.Row="2" 
+              IsVisible="{Binding IsStatusMessageVisible}"
+              BackgroundColor="{Binding IsStatusSuccess, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#D1FAE5,#FEE2E2'}"
+              Padding="20,10">
+            <Label Text="{Binding StatusMessage}"
+                   TextColor="{Binding IsStatusSuccess, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#065F46,#991B1B'}"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center"
+                   HorizontalTextAlignment="Center"/>
         </Grid>
     </Grid>
 </ContentPage>

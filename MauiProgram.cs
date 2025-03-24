@@ -4,6 +4,9 @@ using ScoreCard.Services;
 using ScoreCard.ViewModels;
 using Microsoft.Maui.LifecycleEvents;
 using Syncfusion.Maui.Core.Hosting;
+using Microsoft.Extensions.Configuration;
+using System.Reflection;
+using System.IO;
 
 namespace ScoreCard
 {
@@ -21,6 +24,9 @@ namespace ScoreCard
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
+            // Add Configuration
+            builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
             // 添加視窗設定
             builder.ConfigureLifecycleEvents(events =>
             {
@@ -35,7 +41,8 @@ namespace ScoreCard
 
             // Register Services
             builder.Services.AddSingleton<IExcelService, ExcelService>();
-            builder.Services.AddSingleton<IExportService, ExportService>(); // 新增匯出服務
+            builder.Services.AddSingleton<IExportService, ExportService>();
+            builder.Services.AddSingleton<ITargetService, TargetService>(); // Add the new target service
 
             // Register ViewModels
             builder.Services.AddTransient<DashboardViewModel>();
