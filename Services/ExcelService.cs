@@ -382,9 +382,6 @@ namespace ScoreCard.Services
             };
         }
 
-
-
-
         // 載入所有摘要工作表
         private void LoadSummarySheets(ExcelPackage package)
         {
