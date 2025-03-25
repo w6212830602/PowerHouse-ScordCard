@@ -1142,5 +1142,71 @@ namespace ScoreCard.Services
             }
             return true;
         }
+
+
+        public List<string> GetAllSalesReps()
+        {
+            try
+            {
+                // 如果 _recentDataCache 有數據，從中獲取
+                if (_recentDataCache != null && _recentDataCache.Any())
+                {
+                    return _recentDataCache
+                        .Where(x => !string.IsNullOrWhiteSpace(x.SalesRep))
+                        .Select(x => x.SalesRep)
+                        .Distinct()
+                        .OrderBy(x => x)
+                        .ToList();
+                }
+
+                // 否則，嘗試從主資料源讀取
+                var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                return data
+                    .Where(x => !string.IsNullOrWhiteSpace(x.SalesRep))
+                    .Select(x => x.SalesRep)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"獲取銷售代表列表時出錯: {ex.Message}");
+                // 返回一些默認數據
+                return new List<string> { "Brandon", "Chris", "Isaac", "Mark", "Nathan", "Tania" };
+            }
+        }
+
+        public List<string> GetAllLOBs()
+        {
+            try
+            {
+                // 如果 _recentDataCache 有數據，從中獲取
+                if (_recentDataCache != null && _recentDataCache.Any())
+                {
+                    return _recentDataCache
+                        .Where(x => !string.IsNullOrWhiteSpace(x.Department))
+                        .Select(x => NormalizeDepartment(x.Department))
+                        .Distinct()
+                        .OrderBy(x => x)
+                        .ToList();
+                }
+
+                // 否則，嘗試從主資料源讀取
+                var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                return data
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Department))
+                    .Select(x => NormalizeDepartment(x.Department))
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"獲取 LOB 列表時出錯: {ex.Message}");
+                // 返回一些默認數據
+                return new List<string> { "Power", "Thermal", "Channel", "Service", "Batts & Caps" };
+            }
+        }
+
     }
 }

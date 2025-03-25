@@ -7,7 +7,7 @@
              x:Class="ScoreCard.Views.SettingsPage"
              x:DataType="viewmodels:SettingsViewModel"
              BackgroundColor="#F8F9FA"
-             Title="Settings">
+             Title="設定">
 
     <ContentPage.Resources>
         <ResourceDictionary>
@@ -20,15 +20,15 @@
     </ContentPage.Resources>
 
     <Grid RowDefinitions="Auto,*,Auto">
-        <!-- Header with tabs -->
+        <!-- 頁首導覽區 -->
         <Grid Grid.Row="0" Padding="20,10" BackgroundColor="White">
             <HorizontalStackLayout Spacing="0">
-                <!-- Company Target Tab -->
+                <!-- 公司目標標籤 -->
                 <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
                         BackgroundColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,#EFF6FF,White'}"
                         Padding="20,10">
-                    <Label Text="Company Target"
+                    <Label Text="公司目標"
                            TextColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,#2563EB,#6B7280'}"
                            FontAttributes="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,Bold,None'}"/>
                     <Border.GestureRecognizers>
@@ -36,12 +36,12 @@
                     </Border.GestureRecognizers>
                 </Border>
 
-                <!-- Individual Target Tab -->
+                <!-- 個人目標標籤 -->
                 <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
                         BackgroundColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='IndividualTarget,#EFF6FF,White'}"
                         Padding="20,10">
-                    <Label Text="Individual Target"
+                    <Label Text="個人目標"
                            TextColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='IndividualTarget,#2563EB,#6B7280'}"
                            FontAttributes="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='IndividualTarget,Bold,None'}"/>
                     <Border.GestureRecognizers>
@@ -49,12 +49,12 @@
                     </Border.GestureRecognizers>
                 </Border>
 
-                <!-- LOB Targets Tab -->
+                <!-- LOB 目標標籤 -->
                 <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
                         BackgroundColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,#EFF6FF,White'}"
                         Padding="20,10">
-                    <Label Text="LOB Targets"
+                    <Label Text="產品線目標"
                            TextColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,#2563EB,#6B7280'}"
                            FontAttributes="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,Bold,None'}"/>
                     <Border.GestureRecognizers>
@@ -64,22 +64,22 @@
             </HorizontalStackLayout>
         </Grid>
 
-        <!-- Main content area -->
+        <!-- 主要內容區域 -->
         <Grid Grid.Row="1" Padding="20">
-            <!-- Top control area -->
+            <!-- 頂部控制區域 -->
             <Grid ColumnDefinitions="Auto,*,Auto" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,10,0,20">
-                <!-- Fiscal Year Selector (for Individual and LOB tabs) -->
-                <Picker Grid.Column="0" 
-                        Title="Select Fiscal Year"
-                        ItemsSource="{Binding FiscalYears}"
-                        SelectedItem="{Binding SelectedFiscalYear}"
-                        IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,False,True'}"
-                        WidthRequest="150"
-                        Margin="0,0,10,0"/>
+                <!-- 財年選擇器（適用於個人和 LOB 標籤） -->
+                <Grid Grid.Column="0" ColumnDefinitions="Auto,*" IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,False,True'}">
+                    <Label Text="選擇財年：" VerticalOptions="Center" Margin="0,0,10,0"/>
+                    <Picker Grid.Column="1"
+                            ItemsSource="{Binding FiscalYears}"
+                            SelectedItem="{Binding SelectedFiscalYear}"
+                            WidthRequest="150"/>
+                </Grid>
 
-                <!-- Add Fiscal Year Button (only for Company Target tab) -->
+                <!-- 添加財年按鈕（僅適用於公司目標標籤） -->
                 <Button Grid.Column="0"
-                        Text="+ Add Fiscal Year"
+                        Text="+ 添加財年"
                         Command="{Binding AddFiscalYearCommand}"
                         IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,True,False'}"
                         BackgroundColor="#3B82F6"
@@ -88,9 +88,20 @@
                         Padding="15,5"
                         IsEnabled="{Binding IsEditingTargets}"/>
 
-                <!-- Edit/Save Buttons -->
+                <!-- 添加代表/添加 LOB 按鈕（根據選定標籤顯示） -->
+                <Button Grid.Column="1" HorizontalOptions="End" Margin="0,0,10,0"
+                        Text="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='IndividualTarget,+ 添加代表,+ 添加產品線'}"
+                        Command="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='IndividualTarget,AddRepCommand,AddLOBCommand'}"
+                        IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,False,True'}"
+                        BackgroundColor="#3B82F6"
+                        TextColor="White"
+                        HeightRequest="36"
+                        Padding="15,5"
+                        IsEnabled="{Binding IsEditingTargets}"/>
+
+                <!-- 編輯/保存按鈕 -->
                 <Button Grid.Column="2"
-                        Text="Edit Targets"
+                        Text="編輯目標"
                         Command="{Binding ToggleEditModeCommand}"
                         TextColor="White"
                         BackgroundColor="#FF3B30"
@@ -100,7 +111,7 @@
                         IsVisible="{Binding IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
 
                 <Button Grid.Column="2"
-                        Text="Save Changes"
+                        Text="保存更改"
                         Command="{Binding SaveChangesCommand}"
                         TextColor="White"
                         BackgroundColor="#10B981"
@@ -110,9 +121,9 @@
                         IsVisible="{Binding IsEditingTargets}"/>
             </Grid>
 
-            <!-- Content Area -->
+            <!-- 內容區域 -->
             <ScrollView Margin="0,60,0,0">
-                <!-- Company Target Tab Content -->
+                <!-- 公司目標標籤內容 -->
                 <VerticalStackLayout IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,True,False'}"
                                     Spacing="20">
                     <Border Stroke="#E5E7EB"
@@ -120,20 +131,20 @@
                             StrokeShape="RoundRectangle 8"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <!-- Table Header -->
+                            <!-- 表格標題 -->
                             <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
                                   BackgroundColor="#F9FAFB"
                                   Padding="16,12">
-                                <Label Grid.Column="0" Text="Fiscal Year" FontAttributes="Bold"/>
-                                <Label Grid.Column="1" Text="Annual Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="2" Text="Q1 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="3" Text="Q2 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="4" Text="Q3 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="5" Text="Q4 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="6" Text="Actions" FontAttributes="Bold" IsVisible="{Binding IsEditingTargets}"/>
+                                <Label Grid.Column="0" Text="財年" FontAttributes="Bold"/>
+                                <Label Grid.Column="1" Text="年度目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="2" Text="Q1 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="3" Text="Q2 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="4" Text="Q3 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="5" Text="Q4 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="6" Text="操作" FontAttributes="Bold" IsVisible="{Binding IsEditingTargets}"/>
                             </Grid>
 
-                            <!-- Table Content -->
+                            <!-- 表格內容 -->
                             <CollectionView ItemsSource="{Binding CompanyTargets}">
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate x:DataType="models:FiscalYearTarget">
@@ -141,7 +152,7 @@
                                               Padding="16,12">
                                             <Label Grid.Column="0" Text="{Binding FiscalYear, StringFormat='FY {0}'}"/>
 
-                                            <!-- Targets - conditionally editable -->
+                                            <!-- 目標 - 根據編輯模式條件顯示 -->
                                             <Grid Grid.Column="1">
                                                 <Label Text="{Binding AnnualTarget, StringFormat='${0:N0}'}"
                                                        IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
@@ -192,13 +203,13 @@
                                                        ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
-                                            <!-- Actions for editing -->
+                                            <!-- 編輯功能按鈕 -->
                                             <HorizontalStackLayout Grid.Column="6" 
                                                                   IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
                                                                   Spacing="5">
-                                                <!-- Update Annual Target based on quarters -->
+                                                <!-- 根據季度更新年度目標 -->
                                                 <Button Text="↑"
-                                                        ToolTipProperties.Text="Update Annual Target from Quarters"
+                                                        ToolTipProperties.Text="根據季度更新年度目標"
                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
                                                         CommandParameter="{Binding}"
                                                         BackgroundColor="#4CAF50"
@@ -207,9 +218,9 @@
                                                         HeightRequest="36"
                                                         Padding="0"/>
 
-                                                <!-- Distribute Annual Target to quarters -->
+                                                <!-- 將年度目標分配到季度 -->
                                                 <Button Text="↓"
-                                                        ToolTipProperties.Text="Distribute Annual Target to Quarters"
+                                                        ToolTipProperties.Text="將年度目標平均分配到季度"
                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=DistributeTargetCommand}"
                                                         CommandParameter="{Binding}"
                                                         BackgroundColor="#2196F3"
@@ -226,42 +237,30 @@
                     </Border>
                 </VerticalStackLayout>
 
-                <!-- Individual Target Tab Content -->
+                <!-- 個人目標標籤內容 -->
                 <VerticalStackLayout IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='IndividualTarget,True,False'}"
                                     Spacing="20">
-                    <Grid ColumnDefinitions="*,Auto" VerticalOptions="Start">
-                        <!-- Add Reps Button -->
-                        <Button Grid.Column="1"
-                                Text="+ Add Rep"
-                                Command="{Binding AddSalesRepCommand}"
-                                IsVisible="{Binding IsEditingTargets}"
-                                BackgroundColor="#3B82F6"
-                                TextColor="White"
-                                HeightRequest="36"
-                                Padding="15,5"/>
-                    </Grid>
-
                     <Border Stroke="#E5E7EB"
                             StrokeThickness="1"
                             StrokeShape="RoundRectangle 8"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <!-- Table Header -->
+                            <!-- 表格標題 -->
                             <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
                                   BackgroundColor="#F9FAFB"
                                   Padding="16,12">
-                                <Label Grid.Column="0" Text="Sales Rep" FontAttributes="Bold"/>
-                                <Label Grid.Column="1" Text="Annual Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="2" Text="Q1 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="3" Text="Q2 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="4" Text="Q3 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="5" Text="Q4 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="6" Text="Actions" FontAttributes="Bold" IsVisible="{Binding IsEditingTargets}"/>
+                                <Label Grid.Column="0" Text="銷售代表" FontAttributes="Bold"/>
+                                <Label Grid.Column="1" Text="年度目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="2" Text="Q1 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="3" Text="Q2 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="4" Text="Q3 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="5" Text="Q4 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="6" Text="操作" FontAttributes="Bold" IsVisible="{Binding IsEditingTargets}"/>
                             </Grid>
 
-                            <!-- Table Content -->
+                            <!-- 表格內容 -->
                             <CollectionView ItemsSource="{Binding SalesRepTargets}" 
-                                          EmptyView="No sales rep targets defined for this fiscal year.">
+                                          EmptyView="此財年尚未定義任何銷售代表目標。">
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate x:DataType="models:SalesRepTarget">
                                         <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
@@ -274,7 +273,7 @@
                                                        ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
-                                            <!-- Targets - conditionally editable -->
+                                            <!-- 目標 - 根據編輯模式條件顯示 -->
                                             <Grid Grid.Column="1">
                                                 <Label Text="{Binding AnnualTarget, StringFormat='${0:N0}'}"
                                                        IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
@@ -325,13 +324,13 @@
                                                        ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
-                                            <!-- Actions for editing -->
+                                            <!-- 編輯功能按鈕 -->
                                             <HorizontalStackLayout Grid.Column="6" 
                                                                   IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
                                                                   Spacing="5">
-                                                <!-- Update Annual Target based on quarters -->
+                                                <!-- 根據季度更新年度目標 -->
                                                 <Button Text="↑"
-                                                        ToolTipProperties.Text="Update Annual Target from Quarters"
+                                                        ToolTipProperties.Text="根據季度更新年度目標"
                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
                                                         CommandParameter="{Binding}"
                                                         BackgroundColor="#4CAF50"
@@ -340,9 +339,9 @@
                                                         HeightRequest="36"
                                                         Padding="0"/>
 
-                                                <!-- Distribute Annual Target to quarters -->
+                                                <!-- 將年度目標分配到季度 -->
                                                 <Button Text="↓"
-                                                        ToolTipProperties.Text="Distribute Annual Target to Quarters"
+                                                        ToolTipProperties.Text="將年度目標平均分配到季度"
                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=DistributeTargetCommand}"
                                                         CommandParameter="{Binding}"
                                                         BackgroundColor="#2196F3"
@@ -351,9 +350,9 @@
                                                         HeightRequest="36"
                                                         Padding="0"/>
 
-                                                <!-- Remove Rep -->
+                                                <!-- 刪除代表 -->
                                                 <Button Text="🗑"
-                                                        ToolTipProperties.Text="Remove Sales Rep"
+                                                        ToolTipProperties.Text="刪除銷售代表"
                                                         Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=RemoveSalesRepCommand}"
                                                         CommandParameter="{Binding}"
                                                         BackgroundColor="#F44336"
@@ -370,42 +369,30 @@
                     </Border>
                 </VerticalStackLayout>
 
-                <!-- LOB Targets Tab Content -->
+                <!-- LOB 目標標籤內容 -->
                 <VerticalStackLayout IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,True,False'}"
                                      Spacing="20">
-                    <Grid ColumnDefinitions="*,Auto" VerticalOptions="Start">
-                        <!-- Add LOB Button -->
-                        <Button Grid.Column="1"
-                                Text="+ Add LOB"
-                                Command="{Binding AddLOBCommand}"
-                                IsVisible="{Binding IsEditingTargets}"
-                                BackgroundColor="#3B82F6"
-                                TextColor="White"
-                                HeightRequest="36"
-                                Padding="15,5"/>
-                    </Grid>
-
                     <Border Stroke="#E5E7EB"
                             StrokeThickness="1"
                             StrokeShape="RoundRectangle 8"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <!-- Table Header -->
+                            <!-- 表格標題 -->
                             <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
                                   BackgroundColor="#F9FAFB"
                                   Padding="16,12">
-                                <Label Grid.Column="0" Text="LOB" FontAttributes="Bold"/>
-                                <Label Grid.Column="1" Text="Annual Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="2" Text="Q1 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="3" Text="Q2 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="4" Text="Q3 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="5" Text="Q4 Target" FontAttributes="Bold"/>
-                                <Label Grid.Column="6" Text="Actions" FontAttributes="Bold" IsVisible="{Binding IsEditingTargets}"/>
+                                <Label Grid.Column="0" Text="產品線" FontAttributes="Bold"/>
+                                <Label Grid.Column="1" Text="年度目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="2" Text="Q1 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="3" Text="Q2 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="4" Text="Q3 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="5" Text="Q4 目標" FontAttributes="Bold"/>
+                                <Label Grid.Column="6" Text="操作" FontAttributes="Bold" IsVisible="{Binding IsEditingTargets}"/>
                             </Grid>
 
-                            <!-- Table Content -->
+                            <!-- 表格內容 -->
                             <CollectionView ItemsSource="{Binding LobTargets}"
-                                          EmptyView="No LOB targets defined for this fiscal year.">
+                                          EmptyView="此財年尚未定義任何產品線目標。">
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate x:DataType="models:LOBTarget">
                                         <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
@@ -418,7 +405,7 @@
                                                        ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
-                                            <!-- Targets - conditionally editable -->
+                                            <!-- 目標 - 根據編輯模式條件顯示 -->
                                             <Grid Grid.Column="1">
                                                 <Label Text="{Binding AnnualTarget, StringFormat='${0:N0}'}"
                                                        IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
@@ -461,21 +448,21 @@
 
                                             <Grid Grid.Column="5">
                                                 <Label Text="{Binding Q4Target, StringFormat='${0:N0}'}"
-                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
+           IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
                                                 <Entry Text="{Binding Q4Target, StringFormat='{0:N0}'}" 
-                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                       Keyboard="Numeric"
-                                                       ReturnType="Done"
-                                                       ClearButtonVisibility="WhileEditing"/>
+           IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+           Keyboard="Numeric"
+           ReturnType="Done"
+           ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
-                                            <!-- Actions for editing -->
+                                            <!-- 編輯功能按鈕 -->
                                             <HorizontalStackLayout Grid.Column="6" 
                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
                       Spacing="5">
-                                                <!-- Update Annual Target based on quarters -->
+                                                <!-- 根據季度更新年度目標 -->
                                                 <Button Text="↑"
-            ToolTipProperties.Text="Update Annual Target from Quarters"
+            ToolTipProperties.Text="根據季度更新年度目標"
             Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
             CommandParameter="{Binding}"
             BackgroundColor="#4CAF50"
@@ -484,9 +471,9 @@
             HeightRequest="36"
             Padding="0"/>
 
-                                                <!-- Distribute Annual Target to quarters -->
+                                                <!-- 將年度目標分配到季度 -->
                                                 <Button Text="↓"
-            ToolTipProperties.Text="Distribute Annual Target to Quarters"
+            ToolTipProperties.Text="將年度目標平均分配到季度"
             Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=DistributeTargetCommand}"
             CommandParameter="{Binding}"
             BackgroundColor="#2196F3"
@@ -495,9 +482,9 @@
             HeightRequest="36"
             Padding="0"/>
 
-                                                <!-- Remove LOB -->
+                                                <!-- 刪除LOB -->
                                                 <Button Text="🗑"
-            ToolTipProperties.Text="Remove LOB"
+            ToolTipProperties.Text="刪除產品線"
             Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=RemoveLOBCommand}"
             CommandParameter="{Binding}"
             BackgroundColor="#F44336"
@@ -515,7 +502,7 @@
                 </VerticalStackLayout>
             </ScrollView>
 
-            <!-- Loading indicator -->
+            <!-- 載入指示器 -->
             <Grid BackgroundColor="#80000000" 
                   IsVisible="{Binding IsLoading}">
                 <ActivityIndicator IsRunning="{Binding IsLoading}" 
@@ -527,7 +514,7 @@
             </Grid>
         </Grid>
 
-        <!-- Status Message Bar -->
+        <!-- 狀態消息欄 -->
         <Grid Grid.Row="2" 
               IsVisible="{Binding IsStatusMessageVisible}"
               BackgroundColor="{Binding IsStatusSuccess, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#D1FAE5,#FEE2E2'}"

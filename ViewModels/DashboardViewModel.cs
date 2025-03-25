@@ -75,9 +75,9 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private bool isLoading;
 
-        // Excel服務和設定
+        // Excel服務和目標服務
         private readonly IExcelService _excelService;
-        private readonly ITargetService _targetService;
+        private readonly ITargetService _targetService; // 新增目標服務
         private CancellationTokenSource _cancellationTokenSource;
 
         // 格式化顯示屬性 - 新增
@@ -126,9 +126,9 @@ namespace ScoreCard.ViewModels
         {
             Debug.WriteLine("DashboardViewModel 建構函數開始初始化");
             _excelService = excelService;
-            _targetService = targetService;
+            _targetService = targetService; // 初始化目標服務
             _excelService.DataUpdated += OnDataUpdated;
-            _targetService.TargetsUpdated += OnTargetsUpdated;
+            _targetService.TargetsUpdated += OnTargetsUpdated; // 訂閱目標更新事件
             _cancellationTokenSource = new CancellationTokenSource();
 
             // 取得目前財年
@@ -232,6 +232,10 @@ namespace ScoreCard.ViewModels
             try
             {
                 Debug.WriteLine("開始初始化 Dashboard");
+
+                // 初始化目標服務
+                await _targetService.InitializeAsync();
+
                 await LoadDataAsync();
                 Debug.WriteLine("開始監控 Excel 檔案變更");
                 await _excelService.MonitorFileChangesAsync(_cancellationTokenSource.Token);
@@ -254,15 +258,16 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("開始載入 Excel 數據");
                 IsLoading = true;
+
+                // 獲取選擇的財年並更新目標值
+                var selectedFiscalYear = GetSelectedFiscalYear();
+                UpdateTargets(selectedFiscalYear);
+
                 var (data, lastUpdated) = await _excelService.LoadDataAsync();
                 Debug.WriteLine($"成功載入數據，共 {data.Count} 筆記錄");
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    // 獲取選擇的財年並更新目標值
-                    var selectedFiscalYear = GetSelectedFiscalYear();
-                    UpdateTargets(selectedFiscalYear);
-
                     // 基於新載入的數據更新儀錶板
                     UpdateDashboard(data);
                     LastUpdated = DateTime.Now.ToString("yyyy/MM/dd HH:mm");
@@ -392,7 +397,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Q1 未達成通知: ${Q1Carried:N0}");
                 newNotifications.Add(new NotificationItem
                 {
-                    Message = $"Q1 Target not achieved! ${Q1Carried:N0} carried to Q2"
+                    Message = $"Q1 目標未達成! ${Q1Carried:N0} 轉移至 Q2"
                 });
             }
 
@@ -402,7 +407,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Q2 未達成通知: ${Q2Carried:N0}");
                 newNotifications.Add(new NotificationItem
                 {
-                    Message = $"Q2 Target not achieved! ${Q2Carried:N0} carried to Q3"
+                    Message = $"Q2 目標未達成! ${Q2Carried:N0} 轉移至 Q3"
                 });
             }
 
@@ -412,7 +417,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Q3 未達成通知: ${Q3Carried:N0}");
                 newNotifications.Add(new NotificationItem
                 {
-                    Message = $"Q3 Target not achieved! ${Q3Carried:N0} carried to Q4"
+                    Message = $"Q3 目標未達成! ${Q3Carried:N0} 轉移至 Q4"
                 });
             }
 

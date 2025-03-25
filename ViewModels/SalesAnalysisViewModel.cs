@@ -15,6 +15,7 @@ namespace ScoreCard.ViewModels
     public partial class SalesAnalysisViewModel : INotifyPropertyChanged
     {
         private readonly IExcelService _excelService;
+        private readonly ITargetService _targetService; // 新增目標服務
         private List<SalesData> _allSalesData;
 
         #region INotifyPropertyChanged
@@ -86,6 +87,14 @@ namespace ScoreCard.ViewModels
         {
             get => _summary;
             set => SetProperty(ref _summary, value);
+        }
+
+        // 新增使用目標值的屬性
+        private decimal _targetValue; // 當前選擇的目標值
+        public decimal TargetValue
+        {
+            get => _targetValue;
+            set => SetProperty(ref _targetValue, value);
         }
 
         // 圖表相關屬性
@@ -216,9 +225,10 @@ namespace ScoreCard.ViewModels
 
         #endregion
 
-        public SalesAnalysisViewModel(IExcelService excelService)
+        public SalesAnalysisViewModel(IExcelService excelService, ITargetService targetService)
         {
             _excelService = excelService;
+            _targetService = targetService; // 初始化目標服務
             _summary = new SalesAnalysisSummary
             {
                 TotalTarget = 0,
@@ -232,8 +242,22 @@ namespace ScoreCard.ViewModels
             ChangeViewTypeCommand = new RelayCommand<string>(ExecuteChangeViewType);
             ChangeStatusCommand = new RelayCommand<string>(ExecuteChangeStatus);
 
+            // 訂閱目標更新事件
+            _targetService.TargetsUpdated += OnTargetsUpdated;
+
             // 初始化
             InitializeAsync();
+        }
+
+        // 處理目標更新事件
+        private void OnTargetsUpdated(object sender, EventArgs e)
+        {
+            Debug.WriteLine("收到目標更新通知");
+            MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                await ReloadDataAsync();
+                Debug.WriteLine("目標更新後，數據已重新載入");
+            });
         }
 
         // 切換 Summary/Detailed 視圖
@@ -333,6 +357,9 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = true;
 
+                // 初始化目標服務
+                await _targetService.InitializeAsync();
+
                 // 初始載入數據
                 var (data, lastUpdated) = await _excelService.LoadDataAsync();
                 _allSalesData = data;
@@ -359,6 +386,16 @@ namespace ScoreCard.ViewModels
                         OnPropertyChanged(nameof(EndDate));
                         OnPropertyChanged(nameof(StartDate));
                     }
+                }
+
+                // 載入現在財政年度的目標
+                var currentDate = DateTime.Now;
+                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+                var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
+                if (companyTarget != null)
+                {
+                    TargetValue = companyTarget.AnnualTarget;
+                    Debug.WriteLine($"已載入 FY{currentFiscalYear} 目標值: ${TargetValue:N0}");
                 }
 
                 // 顯式調用數據載入
@@ -426,6 +463,16 @@ namespace ScoreCard.ViewModels
                         Debug.WriteLine($"Error loading Excel data: {ex.Message}");
                         _allSalesData = CreateSampleData(); // 確保始終有數據可用
                     }
+                }
+
+                // 從目標服務獲取當前財年的目標
+                var currentDate = DateTime.Now;
+                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+                var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
+                if (companyTarget != null)
+                {
+                    TargetValue = companyTarget.AnnualTarget;
+                    Debug.WriteLine($"載入 FY{currentFiscalYear} 目標值: ${TargetValue:N0}");
                 }
 
                 // 強制使用當前的 StartDate 和 EndDate
@@ -817,40 +864,31 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
-                // 按產品類型分組，並計算每個類型的各項數值
+                // 按產品類型（AD列）分組，並計算每個類型的PO Value（G列）總和
                 var productData = filteredData
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
+                        // 直接從Excel的相應列獲取數值
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        // 修正：直接使用TotalCommission而不是計算得出
-                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        // TotalMargin是兩個Margin的總和
+                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
                     })
-                    .OrderByDescending(x => x.TotalMargin)
+                    .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // 計算總Margin
-                decimal totalMargin = productData.Sum(p => p.TotalMargin);
-
-                Debug.WriteLine($"總Margin: {totalMargin}");
-
+                // 計算PO Value百分比
+                decimal totalPOValue = productData.Sum(p => p.POValue);
                 foreach (var product in productData)
                 {
-                    // 正確計算百分比：(單項值/總值) * 100
-                    product.PercentageOfTotal = totalMargin > 0
-                        ? (product.TotalMargin / totalMargin)
+                    product.PercentageOfTotal = totalPOValue > 0
+                        ? Math.Round((product.POValue / totalPOValue) * 100, 2)
                         : 0;
-
-                    Debug.WriteLine($"產品:{product.ProductType}, TotalMargin:{product.TotalMargin}, 計算的百分比:{product.PercentageOfTotal}%");
                 }
-
-                // 確認百分比總和，應該接近100%
-                decimal totalPercentage = productData.Sum(p => p.PercentageOfTotal);
-                Debug.WriteLine($"所有產品百分比總和: {totalPercentage}%");
 
                 ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
                 Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
@@ -858,237 +896,6 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
 
-                // 發生錯誤時返回空列表
-                ProductSalesData = new ObservableCollection<ProductSalesData>();
-            }
-        }
-
-        // 更新LoadSalesRepData方法
-        private void LoadSalesRepData(List<SalesData> filteredData)
-        {
-            try
-            {
-                var salesRepData = new List<SalesLeaderboardItem>();
-
-                // 處理實際數據
-                if (filteredData?.Any() == true)
-                {
-                    salesRepData = filteredData
-                        .GroupBy(x => x.SalesRep)
-                        .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                        .Select(g => new SalesLeaderboardItem
-                        {
-                            SalesRep = g.Key,
-                            // 直接從Excel的M列獲取Agency Margin
-                            AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
-                            // 直接從Excel的J列獲取Buy Resell
-                            BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                            // Total Margin仍然是兩者之和
-                            TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
-                        })
-                        .OrderByDescending(x => x.TotalMargin)
-                        .ToList();
-                }
-
-                // 不再添加樣本數據，如果沒有數據就顯示空列表
-                // 用戶將看到EmptyView提供的"No data in this time range"訊息
-                if (!salesRepData.Any())
-                {
-                    Debug.WriteLine("沒有找到符合條件的銷售代表數據");
-                    // 返回空列表，UI會顯示EmptyView
-                    SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
-                    return;
-                }
-
-                // 添加排名
-                for (int i = 0; i < salesRepData.Count; i++)
-                {
-                    salesRepData[i].Rank = i + 1;
-                }
-
-                SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(salesRepData);
-                Debug.WriteLine($"已加載 {salesRepData.Count} 條銷售代表數據");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"載入銷售代表數據錯誤: {ex.Message}");
-
-                // 出錯時也返回空列表，而不是示例數據
-                SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
-            }
-        }
-
-        // 載入部門/LOB數據
-        private void LoadDeptLobData(List<SalesData> filteredData)
-        {
-            try
-            {
-                if (filteredData == null || !filteredData.Any())
-                {
-                    Debug.WriteLine("沒有過濾後的數據可用於部門/LOB分析");
-                    DepartmentLobData = new ObservableCollection<DepartmentLobData>();
-                    return;
-                }
-
-                // 無論是否有實際數據，都添加樣本數據確保 UI 顯示正常
-                var deptLobData = new List<DepartmentLobData>
-                {
-                    new DepartmentLobData { Rank = 1, LOB = "Power", MarginTarget = 850000, MarginYTD = 650000 },
-                    new DepartmentLobData { Rank = 2, LOB = "Thermal", MarginTarget = 720000, MarginYTD = 1000000 },
-                    new DepartmentLobData { Rank = 3, LOB = "Channel", MarginTarget = 650000, MarginYTD = 580000 },
-                    new DepartmentLobData { Rank = 4, LOB = "Service", MarginTarget = 580000, MarginYTD = 1000000 },
-                    new DepartmentLobData { Rank = 0, LOB = "Total", MarginTarget = 2800000, MarginYTD = 3230000 }
-                };
-
-                DepartmentLobData = new ObservableCollection<DepartmentLobData>(deptLobData);
-                Debug.WriteLine($"已加載 {deptLobData.Count} 條部門/LOB數據");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"載入部門/LOB數據錯誤: {ex.Message}");
-
-                // 確保在錯誤情況下也有數據顯示
-                var sampleData = new List<DepartmentLobData>
-                {
-                    new DepartmentLobData { Rank = 1, LOB = "Power", MarginTarget = 850000, MarginYTD = 650000 },
-                    new DepartmentLobData { Rank = 2, LOB = "Thermal", MarginTarget = 720000, MarginYTD = 580000 },
-                    new DepartmentLobData { Rank = 0, LOB = "Total", MarginTarget = 1570000, MarginYTD = 1230000 }
-                };
-
-                DepartmentLobData = new ObservableCollection<DepartmentLobData>(sampleData);
-            }
-        }
-
-        // 從ProductType獲取LOB - 改進版本
-        private string GetLOBFromProductType(string productType)
-        {
-            if (string.IsNullOrWhiteSpace(productType))
-                return "Other";
-
-            // 基於您的 Excel 數據對應產品類型到 LOB
-            if (productType.Contains("Power", StringComparison.OrdinalIgnoreCase))
-                return "Power";
-            if (productType.Contains("Thermal", StringComparison.OrdinalIgnoreCase))
-                return "Thermal";
-            if (productType.Contains("Channel", StringComparison.OrdinalIgnoreCase))
-                return "Channel";
-            if (productType.Contains("Service", StringComparison.OrdinalIgnoreCase))
-                return "Service";
-            if (productType.Contains("Batts", StringComparison.OrdinalIgnoreCase) ||
-                productType.Contains("Battery", StringComparison.OrdinalIgnoreCase) ||
-                productType.Contains("Caps", StringComparison.OrdinalIgnoreCase))
-                return "Batts & Caps";
-
-            // 其他類型歸為 "Other"
-            return "Other";
-        }
-
-        // 獲取LOB的目標邊際值 (示例邏輯，需要根據實際情況調整)
-        private decimal GetMarginTargetForLOB(string lob)
-        {
-            // 這裡應該根據實際業務邏輯設置目標值
-            return lob switch
-            {
-                "Power" => 850000m,
-                "Thermal" => 720000m,
-                "Channel" => 650000m,
-                "Service" => 580000m,
-                "Batts & Caps" => 450000m,
-                "Other" => 200000m,
-                "Total" => 3450000m,
-                _ => 100000m
-            };
-        }
-
-        public async Task ForceRefreshCharts()
-        {
-            await MainThread.InvokeOnMainThreadAsync(() => {
-                // 通知所有繫結屬性已更改
-                OnPropertyChanged(nameof(TargetVsAchievementData));
-                OnPropertyChanged(nameof(AchievementTrendData));
-                OnPropertyChanged(nameof(YAxisMaximum));
-                OnPropertyChanged(nameof(Leaderboard));
-                OnPropertyChanged(nameof(ProductSalesData));
-                OnPropertyChanged(nameof(SalesLeaderboard));
-                OnPropertyChanged(nameof(DepartmentLobData));
-                OnPropertyChanged(nameof(IsProductView));
-                OnPropertyChanged(nameof(IsRepView));
-                OnPropertyChanged(nameof(IsDeptLobView));
-            });
-        }
-
-        private void UpdateChartAxes()
-        {
-            try
-            {
-                double maxValue = 5.0; // 默認值
-
-                if (TargetVsAchievementData?.Any() == true)
-                {
-                    try
-                    {
-                        var maxTarget = TargetVsAchievementData.Max(x => Convert.ToDouble(x.Target));
-                        var maxAchievement = TargetVsAchievementData.Max(x => Convert.ToDouble(x.Achievement));
-                        maxValue = Math.Max(maxTarget, maxAchievement);
-                        maxValue = Math.Max(1.0, maxValue); // 確保至少為1
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error calculating max values: {ex.Message}");
-                    }
-                }
-
-                // 設置一個稍大的最大值以便於查看
-                YAxisMaximum = Math.Ceiling(maxValue * 1.2);
-                Debug.WriteLine($"Updated Y-axis maximum to {YAxisMaximum}");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error in UpdateChartAxes: {ex.Message}");
-                YAxisMaximum = 5; // 出錯時使用安全的默認值
-            }
-        }
-
-        private void LogCurrentState()
-        {
-            Debug.WriteLine("\n=== 當前 ViewModel 狀態 ===");
-            Debug.WriteLine($"ViewType: {ViewType}");
-            Debug.WriteLine($"IsProductView: {IsProductView}");
-            Debug.WriteLine($"IsRepView: {IsRepView}");
-            Debug.WriteLine($"IsDeptLobView: {IsDeptLobView}");
-            Debug.WriteLine($"IsBookedStatus: {IsBookedStatus}");
-            Debug.WriteLine($"SalesLeaderboard 項目數: {SalesLeaderboard?.Count ?? 0}");
-            Debug.WriteLine($"ProductSalesData 項目數: {ProductSalesData?.Count ?? 0}");
-            Debug.WriteLine($"DepartmentLobData 項目數: {DepartmentLobData?.Count ?? 0}");
-            Debug.WriteLine("=========================\n");
-        }
-
-        [RelayCommand]
-        private async Task NavigateToDetailedView()
-        {
-            {
-                try
-                {
-                    // 修正導航方式，使用相對路徑而非絕對路徑
-                    await Shell.Current.GoToAsync("DetailedSales");
-                    Debug.WriteLine("導航到詳細視圖");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"導航錯誤: {ex.Message}");
-
-                    // 顯示錯誤訊息，便於調試
-                    if (Application.Current?.MainPage != null)
-                    {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "導航錯誤",
-                            $"無法導航到詳細頁面: {ex.Message}",
-                            "確定");
-                    }
-                }
-            }
-        }
-    }
-}
+                // 發生錯誤
+                Debug.WriteLine($"")

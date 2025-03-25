@@ -64,6 +64,48 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private bool _isStatusSuccess;
 
+        [RelayCommand]
+        private void EditTargets()
+        {
+            IsEditingTargets = true;
+        }
+
+        // 為每行添加編輯按鈕的命令
+        [RelayCommand]
+        private void EditTargetRow(object parameter)
+        {
+            // 根據當前標籤確定編輯的是哪種目標
+            if (SelectedTab == "CompanyTarget" && parameter is FiscalYearTarget target)
+            {
+                // 儲存原始值，以便在取消時還原
+                _originalCompanyTarget = new FiscalYearTarget
+                {
+                    FiscalYear = target.FiscalYear,
+                    AnnualTarget = target.AnnualTarget,
+                    Q1Target = target.Q1Target,
+                    Q2Target = target.Q2Target,
+                    Q3Target = target.Q3Target,
+                    Q4Target = target.Q4Target
+                };
+
+                // 設置為編輯模式
+                _editingRowId = target.FiscalYear;
+                IsEditingRow = true;
+            }
+            else if (SelectedTab == "IndividualTarget" && parameter is SalesRepTarget repTarget)
+            {
+                // 類似的處理銷售代表目標的編輯
+                _editingRowId = repTarget.SalesRep;
+                IsEditingRow = true;
+            }
+            else if (SelectedTab == "LOBTargets" && parameter is LOBTarget lobTarget)
+            {
+                // 處理 LOB 目標的編輯
+                _editingRowId = lobTarget.LOB;
+                IsEditingRow = true;
+            }
+        }
+
         public SettingsViewModel(IExcelService excelService, ITargetService targetService)
         {
             _excelService = excelService;
@@ -195,192 +237,209 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                // Get the current fiscal year (parsed from the selected fiscal year string)
+                // 獲取當前選擇的財年值
                 int currentFiscalYear = GetSelectedFiscalYearValue();
+                Debug.WriteLine($"正在加載 {currentFiscalYear} 財年的銷售代表目標");
 
-                // Get sales rep targets from target service
+                // 嘗試從目標服務中獲取已保存的目標
                 var savedTargets = _targetService.GetSalesRepTargets(currentFiscalYear);
-                
+
                 if (savedTargets?.Any() == true)
                 {
+                    // 如果已有保存的目標，直接使用
                     SalesRepTargets = new ObservableCollection<SalesRepTarget>(savedTargets);
-                    Debug.WriteLine($"Loaded {savedTargets.Count} sales rep targets");
+                    Debug.WriteLine($"已加載 {savedTargets.Count} 個銷售代表目標");
                     return;
                 }
 
-                // If no saved targets, generate from leaderboard data
-                var leaderboardData = _excelService.GetSalesLeaderboardData();
+                // 從 Excel 獲取所有銷售代表
+                var allReps = _excelService.GetAllSalesReps();
+                Debug.WriteLine($"從 Excel 讀取到 {allReps.Count} 個銷售代表");
 
-                // Create sales rep targets
+                // 獲取公司年度總目標用於分配
+                var companyTarget = CompanyTargets.FirstOrDefault(t => t.FiscalYear == currentFiscalYear);
+                decimal annualTarget = companyTarget?.AnnualTarget ?? 4000000m;
+
+                // 為每個銷售代表創建目標
                 SalesRepTargets = new ObservableCollection<SalesRepTarget>();
 
-                if (leaderboardData.Any())
+                if (allReps.Any())
                 {
-                    // Calculate an appropriate target based on current performance
-                    // This is just an example logic - adjust as needed for your business rules
-                    foreach (var item in leaderboardData)
+                    // 計算每位代表的平均目標值
+                    decimal avgTarget = annualTarget / allReps.Count;
+                    // 四捨五入到最接近的 1000
+                    avgTarget = Math.Round(avgTarget / 1000) * 1000;
+                    decimal quarterlyTarget = avgTarget / 4;
+
+                    foreach (var rep in allReps)
                     {
-                        // Use the annual target from the company targets and distribute based on rep performance
-                        var companyTarget = CompanyTargets.FirstOrDefault(t => t.FiscalYear == currentFiscalYear);
-                        decimal annualTarget = companyTarget?.AnnualTarget ?? 4000000;
-
-                        // Calculate a weighted target based on the rep's ranking
-                        decimal weight = 1.0m / Math.Max(1, item.Rank + 1);  // 確保除數至少為1
-                        decimal repTarget = annualTarget * weight;
-
-                        // Ensure a minimum target
-                        repTarget = Math.Max(repTarget, annualTarget * 0.05m);
-
-                        var roundedAnnualTarget = Math.Round(repTarget, -3);  // Round to nearest thousand
-                        var quarterlyTarget = Math.Round(roundedAnnualTarget / 4, 0);  // Round to nearest whole number
-
                         SalesRepTargets.Add(new SalesRepTarget
                         {
-                            SalesRep = item.SalesRep,
+                            SalesRep = rep,
                             FiscalYear = currentFiscalYear,
-                            AnnualTarget = roundedAnnualTarget,
+                            AnnualTarget = avgTarget,
                             Q1Target = quarterlyTarget,
                             Q2Target = quarterlyTarget,
                             Q3Target = quarterlyTarget,
                             Q4Target = quarterlyTarget
                         });
                     }
+
+                    Debug.WriteLine($"已為 {allReps.Count} 個銷售代表創建目標");
                 }
                 else
                 {
-                    // Add default sample data if no leaderboard data
-                    SalesRepTargets.Add(new SalesRepTarget
-                    {
-                        SalesRep = "Brandon",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 1000000,
-                        Q1Target = 250000,
-                        Q2Target = 250000,
-                        Q3Target = 250000,
-                        Q4Target = 250000
-                    });
-
-                    SalesRepTargets.Add(new SalesRepTarget
-                    {
-                        SalesRep = "Chris",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 900000,
-                        Q1Target = 225000,
-                        Q2Target = 225000,
-                        Q3Target = 225000,
-                        Q4Target = 225000
-                    });
-
-                    SalesRepTargets.Add(new SalesRepTarget
-                    {
-                        SalesRep = "Isaac",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 850000,
-                        Q1Target = 212500,
-                        Q2Target = 212500,
-                        Q3Target = 212500,
-                        Q4Target = 212500
-                    });
+                    // 如果沒有找到銷售代表，添加默認數據
+                    AddDefaultSalesRepTargets(currentFiscalYear);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading sales rep targets: {ex.Message}");
-                ShowStatusMessage($"Error loading sales rep targets: {ex.Message}", false);
+                Debug.WriteLine($"加載銷售代表目標時出錯: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+
+                // 確保視圖始終有數據顯示
+                if (SalesRepTargets == null || !SalesRepTargets.Any())
+                {
+                    SalesRepTargets = new ObservableCollection<SalesRepTarget>();
+                    AddDefaultSalesRepTargets(GetSelectedFiscalYearValue());
+                }
+
+                // 向用戶顯示錯誤消息
+                ShowStatusMessage($"加載銷售代表目標失敗: {ex.Message}", false);
             }
+        }
+
+        // 辅助方法：添加默认销售代表目标
+        private void AddDefaultSalesRepTargets(int fiscalYear)
+        {
+            var defaultReps = new[]
+            {
+        ("Brandon", 1000000m),
+        ("Chris", 900000m),
+        ("Isaac", 850000m),
+        ("Mark", 800000m),
+        ("Nathan", 750000m)
+    };
+
+            foreach (var (name, target) in defaultReps)
+            {
+                decimal quarterlyTarget = target / 4;
+                SalesRepTargets.Add(new SalesRepTarget
+                {
+                    SalesRep = name,
+                    FiscalYear = fiscalYear,
+                    AnnualTarget = target,
+                    Q1Target = quarterlyTarget,
+                    Q2Target = quarterlyTarget,
+                    Q3Target = quarterlyTarget,
+                    Q4Target = quarterlyTarget
+                });
+            }
+
+            Debug.WriteLine($"已添加 {defaultReps.Length} 个默认销售代表目标");
         }
 
         private async Task LoadLOBTargets()
         {
             try
             {
-                // Get the current fiscal year
+                // 獲取當前財年
                 int currentFiscalYear = GetSelectedFiscalYearValue();
 
-                // Get LOB targets from target service
+                // 獲取 LOB 目標從目標服務
                 var savedTargets = _targetService.GetLOBTargets(currentFiscalYear);
-                
+
                 if (savedTargets?.Any() == true)
                 {
                     LobTargets = new ObservableCollection<LOBTarget>(savedTargets);
-                    Debug.WriteLine($"Loaded {savedTargets.Count} LOB targets");
+                    Debug.WriteLine($"已加載 {savedTargets.Count} 個 LOB 目標");
                     return;
                 }
 
-                var deptLobData = _excelService.GetDepartmentLobData();
+                // 從 Excel 獲取所有 LOB
+                var allLOBs = _excelService.GetAllLOBs();
+                Debug.WriteLine($"從 Excel 讀取到 {allLOBs.Count} 個 LOB");
+
+                // 獲取公司年度總目標用於分配
+                var companyTarget = CompanyTargets.FirstOrDefault(t => t.FiscalYear == currentFiscalYear);
+                decimal annualTarget = companyTarget?.AnnualTarget ?? 4000000m;
 
                 LobTargets = new ObservableCollection<LOBTarget>();
 
-                if (deptLobData.Any())
+                if (allLOBs.Any())
                 {
-                    // Use existing data, skipping "Total" entry
-                    foreach (var item in deptLobData.Where(d => d.LOB != "Total"))
+                    // 計算每個 LOB 的平均目標值
+                    decimal avgTarget = annualTarget / allLOBs.Count;
+                    // 四捨五入到最接近的 1000
+                    avgTarget = Math.Round(avgTarget / 1000) * 1000;
+                    decimal quarterlyTarget = avgTarget / 4;
+
+                    foreach (var lob in allLOBs)
                     {
                         LobTargets.Add(new LOBTarget
                         {
-                            LOB = item.LOB,
+                            LOB = lob,
                             FiscalYear = currentFiscalYear,
-                            AnnualTarget = item.MarginTarget,
-                            Q1Target = item.MarginTarget / 4,
-                            Q2Target = item.MarginTarget / 4,
-                            Q3Target = item.MarginTarget / 4,
-                            Q4Target = item.MarginTarget / 4
+                            AnnualTarget = avgTarget,
+                            Q1Target = quarterlyTarget,
+                            Q2Target = quarterlyTarget,
+                            Q3Target = quarterlyTarget,
+                            Q4Target = quarterlyTarget
                         });
                     }
+
+                    Debug.WriteLine($"已為 {allLOBs.Count} 個 LOB 創建目標");
                 }
                 else
                 {
-                    // Add default sample data
-                    LobTargets.Add(new LOBTarget
-                    {
-                        LOB = "Power",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 1000000,
-                        Q1Target = 250000,
-                        Q2Target = 250000,
-                        Q3Target = 250000,
-                        Q4Target = 250000
-                    });
-
-                    LobTargets.Add(new LOBTarget
-                    {
-                        LOB = "Thermal",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 900000,
-                        Q1Target = 225000,
-                        Q2Target = 225000,
-                        Q3Target = 225000,
-                        Q4Target = 225000
-                    });
-
-                    LobTargets.Add(new LOBTarget
-                    {
-                        LOB = "Channel",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 750000,
-                        Q1Target = 187500,
-                        Q2Target = 187500,
-                        Q3Target = 187500,
-                        Q4Target = 187500
-                    });
-
-                    LobTargets.Add(new LOBTarget
-                    {
-                        LOB = "Service",
-                        FiscalYear = currentFiscalYear,
-                        AnnualTarget = 500000,
-                        Q1Target = 125000,
-                        Q2Target = 125000,
-                        Q3Target = 125000,
-                        Q4Target = 125000
-                    });
+                    // 如果沒有找到 LOB，添加默認數據
+                    AddDefaultLOBTargets(currentFiscalYear);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading LOB targets: {ex.Message}`");
-                ShowStatusMessage($"Error loading LOB targets: {ex.Message}", false);
+                Debug.WriteLine($"加載 LOB 目標時出錯: {ex.Message}");
+
+                // 確保視圖始終有數據顯示
+                if (LobTargets == null || !LobTargets.Any())
+                {
+                    LobTargets = new ObservableCollection<LOBTarget>();
+                    AddDefaultLOBTargets(GetSelectedFiscalYearValue());
+                }
+
+                ShowStatusMessage($"加載 LOB 目標失敗: {ex.Message}", false);
             }
+        }
+
+        // 添加默認 LOB 目標的輔助方法
+        private void AddDefaultLOBTargets(int fiscalYear)
+        {
+            var defaultLOBs = new[]
+            {
+        ("Power", 1000000m),
+        ("Thermal", 900000m),
+        ("Channel", 750000m),
+        ("Service", 500000m),
+        ("Batts & Caps", 400000m)
+    };
+
+            foreach (var (name, target) in defaultLOBs)
+            {
+                decimal quarterlyTarget = target / 4;
+                LobTargets.Add(new LOBTarget
+                {
+                    LOB = name,
+                    FiscalYear = fiscalYear,
+                    AnnualTarget = target,
+                    Q1Target = quarterlyTarget,
+                    Q2Target = quarterlyTarget,
+                    Q3Target = quarterlyTarget,
+                    Q4Target = quarterlyTarget
+                });
+            }
+
+            Debug.WriteLine($"已添加 {defaultLOBs.Length} 個默認 LOB 目標");
         }
 
         private int GetSelectedFiscalYearValue()
@@ -835,6 +894,94 @@ namespace ScoreCard.ViewModels
                 await Task.Delay(5000);
                 IsStatusMessageVisible = false;
             });
+        }
+
+        [RelayCommand]
+        private void AddRep()
+        {
+            if (!IsEditingTargets)
+                return;
+
+            try
+            {
+                // 獲取平均目標值
+                decimal avgTarget = 500000m;
+                if (SalesRepTargets.Any())
+                {
+                    avgTarget = SalesRepTargets.Average(r => r.AnnualTarget);
+                }
+
+                // 四捨五入到最接近的 50,000
+                avgTarget = Math.Round(avgTarget / 50000) * 50000;
+                decimal quarterlyTarget = avgTarget / 4;
+
+                // 創建新的銷售代表目標
+                var newTarget = new SalesRepTarget
+                {
+                    SalesRep = "新代表",
+                    FiscalYear = GetSelectedFiscalYearValue(),
+                    AnnualTarget = avgTarget,
+                    Q1Target = quarterlyTarget,
+                    Q2Target = quarterlyTarget,
+                    Q3Target = quarterlyTarget,
+                    Q4Target = quarterlyTarget
+                };
+
+                // 添加到集合
+                SalesRepTargets.Add(newTarget);
+
+                // 顯示成功消息
+                ShowStatusMessage("已添加新銷售代表，請更改代表名稱並設定目標值", true);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"添加代表時出錯: {ex.Message}");
+                ShowStatusMessage($"添加代表失敗: {ex.Message}", false);
+            }
+        }
+
+        [RelayCommand]
+        private void AddLOB()
+        {
+            if (!IsEditingTargets)
+                return;
+
+            try
+            {
+                // 獲取平均目標值
+                decimal avgTarget = 500000m;
+                if (LobTargets.Any())
+                {
+                    avgTarget = LobTargets.Average(l => l.AnnualTarget);
+                }
+
+                // 四捨五入到最接近的 50,000
+                avgTarget = Math.Round(avgTarget / 50000) * 50000;
+                decimal quarterlyTarget = avgTarget / 4;
+
+                // 創建新的 LOB 目標
+                var newTarget = new LOBTarget
+                {
+                    LOB = "新產品線",
+                    FiscalYear = GetSelectedFiscalYearValue(),
+                    AnnualTarget = avgTarget,
+                    Q1Target = quarterlyTarget,
+                    Q2Target = quarterlyTarget,
+                    Q3Target = quarterlyTarget,
+                    Q4Target = quarterlyTarget
+                };
+
+                // 添加到集合
+                LobTargets.Add(newTarget);
+
+                // 顯示成功消息
+                ShowStatusMessage("已添加新產品線，請更改名稱並設定目標值", true);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"添加 LOB 時出錯: {ex.Message}");
+                ShowStatusMessage($"添加產品線失敗: {ex.Message}", false);
+            }
         }
     }
 }
