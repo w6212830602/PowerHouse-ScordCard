@@ -1,356 +1,166 @@
-﻿using System;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Windows.Input;
-using System.Runtime.CompilerServices;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ScoreCard.Models;
 using ScoreCard.Services;
-using System.Linq;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace ScoreCard.ViewModels
 {
-    public partial class SalesAnalysisViewModel : INotifyPropertyChanged
+    public partial class SalesAnalysisViewModel : ObservableObject
     {
+        // 服務依賴注入
         private readonly IExcelService _excelService;
-        private readonly ITargetService _targetService; // 新增目標服務
+        private readonly ITargetService _targetService;
         private List<SalesData> _allSalesData;
-
-        #region INotifyPropertyChanged
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-
-        protected bool SetProperty<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
-        {
-            if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-            field = value;
-            OnPropertyChanged(propertyName);
-            return true;
-        }
-
-        #endregion
+        private List<SalesData> _filteredData;
 
         #region 屬性
 
-        // 基本屬性
-        private DateTime _startDate;
-        public DateTime StartDate
-        {
-            get => _startDate;
-            set
-            {
-                if (SetProperty(ref _startDate, value))
-                {
-                    Debug.WriteLine($"ViewModel - StartDate changed to: {_startDate:yyyy/MM/dd}");
-                    OnDateRangeChangedAsync().ConfigureAwait(false);
-                }
-            }
-        }
+        // 日期範圍控制
+        [ObservableProperty]
+        private DateTime _startDate = DateTime.Now.AddMonths(-3);
 
-        private DateTime _endDate;
-        public DateTime EndDate
-        {
-            get => _endDate;
-            set
-            {
-                if (SetProperty(ref _endDate, value))
-                {
-                    Debug.WriteLine($"ViewModel - EndDate changed to: {_endDate:yyyy/MM/dd}");
-                    OnDateRangeChangedAsync().ConfigureAwait(false);
-                }
-            }
-        }
+        [ObservableProperty]
+        private DateTime _endDate = DateTime.Now;
 
-        private bool _isSummaryView = true;
-        public bool IsSummaryView
-        {
-            get => _isSummaryView;
-            set => SetProperty(ref _isSummaryView, value);
-        }
-
+        // 載入狀態
+        [ObservableProperty]
         private bool _isLoading;
-        public bool IsLoading
-        {
-            get => _isLoading;
-            set => SetProperty(ref _isLoading, value);
-        }
 
+        // 視圖類型控制
+        [ObservableProperty]
+        private bool _isSummaryView = true;
+
+        [ObservableProperty]
+        private string _viewType = "ByProduct"; // ByProduct, ByRep, ByDeptLOB
+
+        [ObservableProperty]
+        private bool _isBookedStatus = true; // true=Booked, false=Completed
+
+        // 摘要數據
+        [ObservableProperty]
         private SalesAnalysisSummary _summary;
-        public SalesAnalysisSummary Summary
-        {
-            get => _summary;
-            set => SetProperty(ref _summary, value);
-        }
 
-        // 新增使用目標值的屬性
-        private decimal _targetValue; // 當前選擇的目標值
-        public decimal TargetValue
-        {
-            get => _targetValue;
-            set => SetProperty(ref _targetValue, value);
-        }
+        // 圖表數據
+        [ObservableProperty]
+        private ObservableCollection<ChartData> _targetVsAchievementData = new();
 
-        // 圖表相關屬性
-        private ObservableCollection<Models.ChartData> _targetVsAchievementData = new();
-        public ObservableCollection<Models.ChartData> TargetVsAchievementData
-        {
-            get => _targetVsAchievementData;
-            set => SetProperty(ref _targetVsAchievementData, value);
-        }
+        [ObservableProperty]
+        private ObservableCollection<ChartData> _achievementTrendData = new();
 
-        private ObservableCollection<Models.ChartData> _achievementTrendData = new();
-        public ObservableCollection<Models.ChartData> AchievementTrendData
-        {
-            get => _achievementTrendData;
-            set => SetProperty(ref _achievementTrendData, value);
-        }
-
-        private ObservableCollection<SalesRepPerformance> _leaderboard = new();
-        public ObservableCollection<SalesRepPerformance> Leaderboard
-        {
-            get => _leaderboard;
-            set => SetProperty(ref _leaderboard, value);
-        }
-
+        [ObservableProperty]
         private double _yAxisMaximum = 20;
-        public double YAxisMaximum
-        {
-            get => _yAxisMaximum;
-            set => SetProperty(ref _yAxisMaximum, value);
-        }
 
-        // Leaderboard 頁籤切換相關屬性
-        private string _viewType = "ByProduct";
-        public string ViewType
-        {
-            get => _viewType;
-            set
-            {
-                if (SetProperty(ref _viewType, value))
-                {
-                    OnPropertyChanged(nameof(IsProductView));
-                    OnPropertyChanged(nameof(IsRepView));
-                    OnPropertyChanged(nameof(IsDeptLobView));
-                    LoadLeaderboardDataAsync().ConfigureAwait(false);
-                }
-            }
-        }
-
-        private bool _isBookedStatus = true;
-        public bool IsBookedStatus
-        {
-            get => _isBookedStatus;
-            set
-            {
-                if (SetProperty(ref _isBookedStatus, value))
-                {
-                    LoadLeaderboardDataAsync().ConfigureAwait(false);
-                }
-            }
-        }
-
-        // 各視圖數據集合
-        private ObservableCollection<SalesLeaderboardItem> _salesLeaderboard = new();
-        public ObservableCollection<SalesLeaderboardItem> SalesLeaderboard
-        {
-            get => _salesLeaderboard;
-            set => SetProperty(ref _salesLeaderboard, value);
-        }
-
+        // 產品數據
+        [ObservableProperty]
         private ObservableCollection<ProductSalesData> _productSalesData = new();
-        public ObservableCollection<ProductSalesData> ProductSalesData
-        {
-            get => _productSalesData;
-            set => SetProperty(ref _productSalesData, value);
-        }
 
+        // 銷售代表排行榜
+        [ObservableProperty]
+        private ObservableCollection<SalesLeaderboardItem> _salesLeaderboard = new();
+
+        // 部門/LOB 數據
+        [ObservableProperty]
         private ObservableCollection<DepartmentLobData> _departmentLobData = new();
-        public ObservableCollection<DepartmentLobData> DepartmentLobData
+
+        // 視圖計算屬性
+        public bool IsProductView => ViewType == "ByProduct";
+        public bool IsRepView => ViewType == "ByRep";
+        public bool IsDeptLobView => ViewType == "ByDeptLOB";
+
+        #endregion
+
+        #region 構造函數
+
+        public SalesAnalysisViewModel(IExcelService excelService, ITargetService targetService)
         {
-            get => _departmentLobData;
-            set => SetProperty(ref _departmentLobData, value);
+            Debug.WriteLine("初始化 SalesAnalysisViewModel");
+            _excelService = excelService;
+            _targetService = targetService;
+
+            // 初始化摘要數據
+            Summary = new SalesAnalysisSummary();
+
+            // 訂閱服務的事件通知
+            _excelService.DataUpdated += OnDataUpdated;
+            _targetService.TargetsUpdated += OnTargetsUpdated;
+
+            // 初始化資料
+            InitializeAsync();
         }
 
-        // 視圖可見性計算屬性
-        public bool IsProductView
-        {
-            get => ViewType == "ByProduct";
-            set
-            {
-                if (value && ViewType != "ByProduct")
-                {
-                    ViewType = "ByProduct";
-                }
-            }
-        }
-
-        public bool IsRepView
-        {
-            get => ViewType == "ByRep";
-            set
-            {
-                if (value && ViewType != "ByRep")
-                {
-                    ViewType = "ByRep";
-                }
-            }
-        }
-
-        public bool IsDeptLobView
-        {
-            get => ViewType == "ByDeptLOB";
-            set
-            {
-                if (value && ViewType != "ByDeptLOB")
-                {
-                    ViewType = "ByDeptLOB";
-                }
-            }
-        }
         #endregion
 
         #region 命令
 
-        public ICommand SwitchViewCommand { get; }
-        public ICommand ChangeViewTypeCommand { get; }
-        public ICommand ChangeStatusCommand { get; }
-        public IAsyncRelayCommand LoadDataCommand { get; }
-
-        #endregion
-
-        public SalesAnalysisViewModel(IExcelService excelService, ITargetService targetService)
+        // 切換視圖（摘要/詳細）
+        [RelayCommand]
+        private async Task SwitchView(string viewType)
         {
-            _excelService = excelService;
-            _targetService = targetService; // 初始化目標服務
-            _summary = new SalesAnalysisSummary
+            if (viewType.ToLower() == "summary")
             {
-                TotalTarget = 0,
-                TotalAchievement = 0,
-                TotalMargin = 0
-            };
-
-            // 初始化命令
-            LoadDataCommand = new AsyncRelayCommand(LoadDataAsync);
-            SwitchViewCommand = new RelayCommand<string>(ExecuteSwitchView);
-            ChangeViewTypeCommand = new RelayCommand<string>(ExecuteChangeViewType);
-            ChangeStatusCommand = new RelayCommand<string>(ExecuteChangeStatus);
-
-            // 訂閱目標更新事件
-            _targetService.TargetsUpdated += OnTargetsUpdated;
-
-            // 初始化
-            InitializeAsync();
-        }
-
-        // 處理目標更新事件
-        private void OnTargetsUpdated(object sender, EventArgs e)
-        {
-            Debug.WriteLine("收到目標更新通知");
-            MainThread.InvokeOnMainThreadAsync(async () =>
-            {
+                IsSummaryView = true;
                 await ReloadDataAsync();
-                Debug.WriteLine("目標更新後，數據已重新載入");
-            });
-        }
-
-        // 切換 Summary/Detailed 視圖
-        private void ExecuteSwitchView(string viewType)
-        {
-            if (!string.IsNullOrEmpty(viewType))
+            }
+            else if (viewType.ToLower() == "detailed")
             {
-                if (viewType.ToLower() == "summary")
-                {
-                    IsSummaryView = true;
-                }
-                else if (viewType.ToLower() == "detailed")
-                {
-                    // 如果切換到詳細視圖，則導航到詳細頁面
-                    NavigateToDetailedViewCommand.Execute(null);
-                    return;
-                }
+                IsSummaryView = false;
+                await Shell.Current.GoToAsync("DetailedAnalysis");
             }
         }
 
-        // 切換 Leaderboard 視圖類型 (Product/Rep/Dept-LOB)
-        private void ExecuteChangeViewType(string viewTypeStr)
+        // 變更視圖類型（產品/代表/部門）
+        [RelayCommand]
+        private async Task ChangeViewType(string newViewType)
+        {
+            if (!string.IsNullOrEmpty(newViewType) && ViewType != newViewType)
+            {
+                ViewType = newViewType;
+                OnPropertyChanged(nameof(IsProductView));
+                OnPropertyChanged(nameof(IsRepView));
+                OnPropertyChanged(nameof(IsDeptLobView));
+                await LoadLeaderboardDataAsync();
+            }
+            else if (ViewType == newViewType)
+            {
+                // 即使視圖類型相同，也重新載入數據
+                await LoadLeaderboardDataAsync();
+            }
+        }
+
+        // 變更狀態過濾器（Booked/Completed）
+        [RelayCommand]
+        private async Task ChangeStatus(string status)
+        {
+            bool wasBooked = IsBookedStatus;
+            IsBookedStatus = status.ToLower() == "booked";
+
+            if (wasBooked != IsBookedStatus)
+            {
+                await LoadLeaderboardDataAsync();
+            }
+        }
+
+        // 導航到詳細分析頁面
+        [RelayCommand]
+        private async Task NavigateToDetailed()
         {
             try
             {
-                if (!string.IsNullOrEmpty(viewTypeStr))
-                {
-                    // 記錄原始視圖類型
-                    string originalViewType = ViewType;
-                    Debug.WriteLine($"視圖切換請求: 從 {originalViewType} 到 {viewTypeStr}");
-
-                    // 如果視圖類型沒變，重新加載當前視圖數據而不改變視圖類型
-                    if (originalViewType == viewTypeStr)
-                    {
-                        Debug.WriteLine("重新加載當前視圖數據，不改變視圖類型");
-
-                        // 由於我們沒有改變視圖類型，不會自動觸發數據重載
-                        // 因此需要手動觸發數據重載
-                        MainThread.BeginInvokeOnMainThread(async () => {
-                            try
-                            {
-                                // 確保在加載前，視圖類型已經正確設置
-                                await LoadLeaderboardDataAsync();
-                                // 明確觸發 UI 更新
-                                OnPropertyChanged(nameof(ProductSalesData));
-                                OnPropertyChanged(nameof(SalesLeaderboard));
-                                OnPropertyChanged(nameof(DepartmentLobData));
-                                Debug.WriteLine($"已重新加載視圖 {viewTypeStr} 的數據");
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"重新加載數據錯誤: {ex.Message}");
-                            }
-                        });
-                        return;
-                    }
-
-                    // 設置新的視圖類型
-                    ViewType = viewTypeStr;
-
-                    // 明確觸發所有相關的屬性更新
-                    OnPropertyChanged(nameof(IsProductView));
-                    OnPropertyChanged(nameof(IsRepView));
-                    OnPropertyChanged(nameof(IsDeptLobView));
-
-                    // 確保立即加載對應的數據
-                    MainThread.BeginInvokeOnMainThread(async () => {
-                        try
-                        {
-                            await LoadLeaderboardDataAsync();
-                            Debug.WriteLine($"視圖已成功切換為: {viewTypeStr}，IsProductView={IsProductView}, IsRepView={IsRepView}, IsDeptLobView={IsDeptLobView}");
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"視圖切換後加載數據錯誤: {ex.Message}");
-                        }
-                    });
-                }
+                await Shell.Current.GoToAsync("DetailedAnalysis");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"視圖切換錯誤: {ex.Message}");
+                Debug.WriteLine($"導航錯誤: {ex.Message}");
+                await Application.Current.MainPage.DisplayAlert("導航錯誤", $"無法導航至詳細頁面: {ex.Message}", "確定");
             }
         }
 
-        // 切換狀態過濾器 (Booked/Completed)
-        private void ExecuteChangeStatus(string status)
-        {
-            IsBookedStatus = status.ToLower() == "booked";
-            Debug.WriteLine($"狀態過濾器切換為: {status}");
-        }
+        #endregion
 
-        // 初始化
+        #region 數據載入方法
+
         private async void InitializeAsync()
         {
             try
@@ -360,51 +170,33 @@ namespace ScoreCard.ViewModels
                 // 初始化目標服務
                 await _targetService.InitializeAsync();
 
-                // 初始載入數據
+                // 載入 Excel 數據
                 var (data, lastUpdated) = await _excelService.LoadDataAsync();
-                _allSalesData = data;
+                _allSalesData = data ?? new List<SalesData>();
 
-                // 設定初始日期範圍
+                // 設定日期範圍（如果未設置）
                 if (StartDate == default || EndDate == default)
                 {
                     var dates = _allSalesData.Select(x => x.ReceivedDate).OrderBy(x => x).ToList();
                     if (dates.Any())
                     {
-                        // 直接設置欄位避免觸發事件
-                        _endDate = dates.Last().Date;
-                        _startDate = dates.First().Date;
-                        OnPropertyChanged(nameof(EndDate)); // 然後手動觸發UI更新
-                        OnPropertyChanged(nameof(StartDate));
-
-                        Debug.WriteLine($"Initial date range set - Start: {StartDate:yyyy/MM/dd}, End: {EndDate:yyyy/MM/dd}");
+                        EndDate = dates.Last().Date;
+                        StartDate = EndDate.AddMonths(-3).Date;
                     }
                     else
                     {
-                        // 若沒有數據，設置合理的預設值
-                        _endDate = DateTime.Now.Date;
-                        _startDate = DateTime.Now.AddMonths(-3).Date;
-                        OnPropertyChanged(nameof(EndDate));
-                        OnPropertyChanged(nameof(StartDate));
+                        EndDate = DateTime.Now.Date;
+                        StartDate = EndDate.AddMonths(-3).Date;
                     }
                 }
 
-                // 載入現在財政年度的目標
-                var currentDate = DateTime.Now;
-                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
-                var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
-                if (companyTarget != null)
-                {
-                    TargetValue = companyTarget.AnnualTarget;
-                    Debug.WriteLine($"已載入 FY{currentFiscalYear} 目標值: ${TargetValue:N0}");
-                }
-
-                // 顯式調用數據載入
-                await LoadDataAsync();
+                // 初始載入數據
+                await ReloadDataAsync();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in InitializeAsync: {ex.Message}");
-                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                Debug.WriteLine($"初始化錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
             }
             finally
             {
@@ -412,278 +204,42 @@ namespace ScoreCard.ViewModels
             }
         }
 
+        // 重新載入所有數據
         public async Task ReloadDataAsync()
-        {
-            Debug.WriteLine("手動觸發數據重載");
-            await LoadDataAsync();
-            await ForceRefreshCharts(); // 強制圖表刷新
-        }
-
-        // 專用的日期範圍變更處理方法
-        private async Task OnDateRangeChangedAsync()
-        {
-            // 確保日期範圍有效並且兩個都已設置
-            if (StartDate != default && EndDate != default && StartDate <= EndDate)
-            {
-                Debug.WriteLine($"Valid date range: {StartDate:yyyy/MM/dd} to {EndDate:yyyy/MM/dd} - Reloading data...");
-                await LoadDataAsync();
-            }
-            else
-            {
-                Debug.WriteLine($"Invalid date range: {StartDate:yyyy/MM/dd} to {EndDate:yyyy/MM/dd} - Skipping reload");
-            }
-        }
-
-        // 載入數據
-        private async Task LoadDataAsync()
         {
             try
             {
                 IsLoading = true;
-                Debug.WriteLine($"LoadDataAsync - Using date range: {StartDate:yyyy/MM/dd} to {EndDate:yyyy/MM/dd}");
 
-                // 確保圖表數據集合不為空
-                if (TargetVsAchievementData == null)
-                    TargetVsAchievementData = new ObservableCollection<Models.ChartData>();
-
-                if (AchievementTrendData == null)
-                    AchievementTrendData = new ObservableCollection<Models.ChartData>();
-
-                // 確保已有數據載入
+                // 重新載入原始數據（如果需要）
                 if (_allSalesData == null || !_allSalesData.Any())
                 {
-                    try
-                    {
-                        var (data, lastUpdated) = await _excelService.LoadDataAsync();
-                        _allSalesData = data ?? new List<SalesData>();
-                        Debug.WriteLine($"Loaded {_allSalesData.Count} records from Excel");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error loading Excel data: {ex.Message}");
-                        _allSalesData = CreateSampleData(); // 確保始終有數據可用
-                    }
+                    var (data, lastUpdated) = await _excelService.LoadDataAsync();
+                    _allSalesData = data ?? new List<SalesData>();
                 }
-
-                // 從目標服務獲取當前財年的目標
-                var currentDate = DateTime.Now;
-                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
-                var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
-                if (companyTarget != null)
-                {
-                    TargetValue = companyTarget.AnnualTarget;
-                    Debug.WriteLine($"載入 FY{currentFiscalYear} 目標值: ${TargetValue:N0}");
-                }
-
-                // 強制使用當前的 StartDate 和 EndDate
-                var startDate = StartDate.Date;
-                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含結束日期的整天
-
-                Debug.WriteLine($"實際過濾使用的日期範圍: {startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}");
 
                 // 過濾數據
-                var filteredData = new List<SalesData>();
-                try
-                {
-                    filteredData = _allSalesData
-                        .Where(x => x.ReceivedDate.Date >= startDate && x.ReceivedDate.Date <= endDate.Date)
-                        .ToList();
+                FilterDataByDateRange();
 
-                    Debug.WriteLine($"過濾後數據: {filteredData.Count} 條記錄在 {startDate:yyyy-MM-dd} 和 {endDate:yyyy-MM-dd} 之間");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error filtering data: {ex.Message}");
-                    filteredData = CreateSampleData(); // 確保始終有過濾後的數據
-                }
+                // 載入摘要數據
+                await LoadSummaryDataAsync();
 
-                // 如果過濾後沒有數據，添加默認樣本數據
-                if (filteredData == null || !filteredData.Any())
-                {
-                    Debug.WriteLine("No data after filtering, using sample data");
-                    filteredData = CreateSampleData();
-                }
+                // 載入圖表數據
+                await LoadChartDataAsync();
 
-                // 按月份分組並排序
-                var monthlyData = new List<Models.ChartData>();
-                try
-                {
-                    monthlyData = filteredData
-                        .GroupBy(x => new
-                        {
-                            Year = x.ReceivedDate.Year,
-                            Month = x.ReceivedDate.Month
-                        })
-                        .Select(g => new Models.ChartData
-                        {
-                            Label = $"{g.Key.Year}/{g.Key.Month:D2}",
-                            Target = Math.Round(g.Sum(x => x.POValue) / 1000000m, 2),
-                            Achievement = Math.Round(g.Sum(x => x.VertivValue) / 1000000m, 2)
-                        })
-                        .OrderBy(x => x.Label)
-                        .ToList();
+                // 載入排行榜數據
+                await LoadLeaderboardDataAsync();
 
-                    Debug.WriteLine($"Generated {monthlyData.Count} monthly data points");
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error generating monthly data: {ex.Message}");
-                    // 創建默認月度數據
-                    monthlyData = new List<Models.ChartData>
-                    {
-                        new Models.ChartData { Label = DateTime.Now.ToString("yyyy/MM"), Target = 1, Achievement = 0.5m }
-                    };
-                }
-
-                // 如果沒有月度數據，添加默認數據點
-                if (monthlyData == null || !monthlyData.Any())
-                {
-                    monthlyData = new List<Models.ChartData>
-                    {
-                        new Models.ChartData { Label = "No Data", Target = 0, Achievement = 0 }
-                    };
-                }
-
-                // 在主線程上進行 UI 更新
-                await MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    try
-                    {
-                        // 強制 UI 更新 - 創建新的集合實例
-                        var newTargetVsAchievementData = new ObservableCollection<Models.ChartData>(
-                            monthlyData.Select(item => new Models.ChartData
-                            {
-                                Label = item.Label,
-                                Target = item.Target,
-                                Achievement = item.Achievement
-                            })
-                        );
-
-                        TargetVsAchievementData = newTargetVsAchievementData;
-
-                        var newAchievementTrendData = new ObservableCollection<Models.ChartData>(
-                            monthlyData.Select(item => new Models.ChartData
-                            {
-                                Label = item.Label,
-                                Target = item.Target,
-                                Achievement = item.Achievement
-                            })
-                        );
-
-                        AchievementTrendData = newAchievementTrendData;
-
-                        // 確保圖表有數據
-                        if (TargetVsAchievementData.Count == 0)
-                        {
-                            TargetVsAchievementData.Add(new Models.ChartData { Label = "No Data", Target = 0, Achievement = 0 });
-                        }
-
-                        if (AchievementTrendData.Count == 0)
-                        {
-                            AchievementTrendData.Add(new Models.ChartData { Label = "No Data", Target = 0, Achievement = 0 });
-                        }
-
-                        // 更新匯總數據
-                        var totalTarget = Math.Round(filteredData.Sum(x => x.POValue) / 1000000m, 2);
-                        var totalAchievement = Math.Round(filteredData.Sum(x => x.VertivValue) / 1000000m, 2);
-                        var totalMargin = Math.Round(filteredData.Sum(x => x.TotalCommission) / 1000000m, 2);
-
-                        // 防止零值或負值
-                        totalTarget = Math.Max(0.01m, totalTarget);
-                        totalAchievement = Math.Max(0.01m, totalAchievement);
-                        totalMargin = Math.Max(0.01m, totalMargin);
-
-                        Summary = new SalesAnalysisSummary
-                        {
-                            TotalTarget = totalTarget,
-                            TotalAchievement = totalAchievement,
-                            TotalMargin = totalMargin
-                        };
-
-                        Debug.WriteLine($"Updated summary: Target=${Summary.TotalTarget}M, Achievement=${Summary.TotalAchievement}M, Margin=${Summary.TotalMargin}M");
-
-                        // 更新排行榜數據
-                        LoadLeaderboardData(filteredData);
-
-                        // 確保更新圖表軸
-                        UpdateChartAxes();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"Error updating UI: {ex.Message}");
-
-                        // 確保即使出錯也有默認數據
-                        if (TargetVsAchievementData.Count == 0)
-                        {
-                            TargetVsAchievementData.Add(new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 });
-                        }
-
-                        if (AchievementTrendData.Count == 0)
-                        {
-                            AchievementTrendData.Add(new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 });
-                        }
-
-                        Summary = new SalesAnalysisSummary
-                        {
-                            TotalTarget = 1,
-                            TotalAchievement = 0.5m,
-                            TotalMargin = 0.1m
-                        };
-                    }
-                });
+                // 更新圖表軸
+                UpdateChartAxes();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error in LoadDataAsync: {ex.Message}");
-                Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+                Debug.WriteLine($"重新載入數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
 
-                try
-                {
-                    await MainThread.InvokeOnMainThreadAsync(() => {
-                        // 確保圖表數據不為空
-                        if (TargetVsAchievementData == null || TargetVsAchievementData.Count == 0)
-                        {
-                            TargetVsAchievementData = new ObservableCollection<Models.ChartData> {
-                                new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 }
-                            };
-                        }
-
-                        if (AchievementTrendData == null || AchievementTrendData.Count == 0)
-                        {
-                            AchievementTrendData = new ObservableCollection<Models.ChartData> {
-                                new Models.ChartData { Label = "Error", Target = 1, Achievement = 0 }
-                            };
-                        }
-
-                        // 確保有有效的 Y 軸最大值
-                        YAxisMaximum = 5;
-
-                        // 確保 Summary 不為空
-                        if (Summary == null)
-                        {
-                            Summary = new SalesAnalysisSummary
-                            {
-                                TotalTarget = 1,
-                                TotalAchievement = 0.5m,
-                                TotalMargin = 0.1m
-                            };
-                        }
-                    });
-                }
-                catch (Exception innerEx)
-                {
-                    Debug.WriteLine($"Fatal error in error handling: {innerEx.Message}");
-                }
-
-                // 顯示錯誤，但不要讓應用程式崩潰
-                try
-                {
-                    await Application.Current.MainPage.DisplayAlert("資料載入錯誤", "無法載入銷售數據，請稍後再試", "確定");
-                }
-                catch
-                {
-                    // 最後的防線 - 即使顯示錯誤對話框失敗也不崩潰
-                }
+                // 確保有一些默認數據顯示
+                LoadSampleData();
             }
             finally
             {
@@ -691,211 +247,682 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 載入 Leaderboard 數據 (不更新其他頁面數據)
+        // 過濾數據按日期範圍
+        private void FilterDataByDateRange()
+        {
+            try
+            {
+                if (_allSalesData == null || !_allSalesData.Any())
+                {
+                    _filteredData = new List<SalesData>();
+                    return;
+                }
+
+                var startDate = StartDate.Date;
+                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含結束日期整天
+
+                Debug.WriteLine($"過濾日期範圍: {startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}");
+
+                _filteredData = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= startDate && x.ReceivedDate.Date <= endDate.Date)
+                    .ToList();
+
+                Debug.WriteLine($"過濾後數據: {_filteredData.Count} 條記錄");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"過濾數據時發生錯誤: {ex.Message}");
+                _filteredData = new List<SalesData>();
+            }
+        }
+
+        // 載入摘要數據
+        private async Task LoadSummaryDataAsync()
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+
+                // 從目標服務獲取目標
+                var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
+                decimal targetValue = companyTarget?.AnnualTarget ?? 4000000m;
+
+                // 計算總體達成值
+                decimal totalAchievement = _filteredData?.Sum(x => x.POValue) ?? 0;
+                decimal totalMargin = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
+
+                // 更新摘要
+                decimal remainingTarget = targetValue - totalAchievement;
+
+                // 百分比計算
+                decimal achievementPercentage = 0;
+                decimal marginPercentage = 0;
+                decimal remainingTargetPercentage = 0;
+
+                if (targetValue > 0)
+                {
+                    achievementPercentage = Math.Round((totalAchievement / targetValue) * 100, 1);
+                    remainingTargetPercentage = Math.Round((remainingTarget / targetValue) * 100, 1);
+                }
+
+                if (totalAchievement > 0)
+                {
+                    marginPercentage = Math.Round((totalMargin / totalAchievement) * 100, 1);
+                }
+
+                // 轉換為百萬單位
+                targetValue = Math.Round(targetValue / 1000000m, 2);
+                totalAchievement = Math.Round(totalAchievement / 1000000m, 2);
+                totalMargin = Math.Round(totalMargin / 1000000m, 2);
+                remainingTarget = Math.Round(remainingTarget / 1000000m, 2);
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    if (Summary == null)
+                    {
+                        Summary = new SalesAnalysisSummary();
+                    }
+
+                    Summary.TotalTarget = targetValue;
+                    Summary.TotalAchievement = totalAchievement;
+                    Summary.TotalMargin = totalMargin;
+                    Summary.RemainingTarget = remainingTarget;
+                    Summary.AchievementPercentage = achievementPercentage;
+                    Summary.MarginPercentage = marginPercentage;
+                    Summary.RemainingTargetPercentage = remainingTargetPercentage;
+                });
+
+                Debug.WriteLine($"摘要數據: Target=${targetValue}M, Achievement=${totalAchievement}M ({achievementPercentage}%), Margin=${totalMargin}M ({marginPercentage}%)");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入摘要數據時發生錯誤: {ex.Message}");
+
+                // 確保摘要不為空
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    if (Summary == null)
+                    {
+                        Summary = new SalesAnalysisSummary
+                        {
+                            TotalTarget = 10,
+                            TotalAchievement = 5,
+                            TotalMargin = 1,
+                            RemainingTarget = 5,
+                            AchievementPercentage = 50,
+                            MarginPercentage = 20,
+                            RemainingTargetPercentage = 50
+                        };
+                    }
+                });
+            }
+        }
+
+        // 載入圖表數據
+        private async Task LoadChartDataAsync()
+        {
+            try
+            {
+                if (_filteredData == null || !_filteredData.Any())
+                {
+                    LoadSampleChartData();
+                    return;
+                }
+
+                // 按月份分組
+                var monthlyData = _filteredData
+                    .GroupBy(x => new {
+                        Year = x.ReceivedDate.Year,
+                        Month = x.ReceivedDate.Month
+                    })
+                    .Select(g => new {
+                        YearMonth = g.Key,
+                        POValue = g.Sum(x => x.POValue),
+                        MarginValue = g.Sum(x => x.TotalCommission)
+                    })
+                    .OrderBy(x => x.YearMonth.Year)
+                    .ThenBy(x => x.YearMonth.Month)
+                    .ToList();
+
+                // 載入圖表數據
+                var newTargetVsAchievementData = new ObservableCollection<ChartData>();
+                var newAchievementTrendData = new ObservableCollection<ChartData>();
+
+                foreach (var month in monthlyData)
+                {
+                    var label = $"{month.YearMonth.Year}/{month.YearMonth.Month:D2}";
+                    decimal poValueInMillions = Math.Round(month.POValue / 1000000m, 2);
+                    decimal marginValueInMillions = Math.Round(month.MarginValue / 1000000m, 2);
+
+                    // 從目標服務獲取該月份的目標值
+                    int fiscalYear = month.YearMonth.Month >= 8 ? month.YearMonth.Year + 1 : month.YearMonth.Year;
+                    int quarter = GetQuarterFromMonth(month.YearMonth.Month);
+                    decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 將季度目標平均分配到月
+                    decimal targetValueInMillions = Math.Round(targetValue / 1000000m, 2);
+
+                    // 添加到目標與達成對比圖表
+                    newTargetVsAchievementData.Add(new ChartData
+                    {
+                        Label = label,
+                        Target = targetValueInMillions,
+                        Achievement = poValueInMillions
+                    });
+
+                    // 添加到達成趨勢圖表
+                    newAchievementTrendData.Add(new ChartData
+                    {
+                        Label = label,
+                        Target = targetValueInMillions,
+                        Achievement = poValueInMillions
+                    });
+                }
+
+                // 更新 UI
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    TargetVsAchievementData = newTargetVsAchievementData;
+                    AchievementTrendData = newAchievementTrendData;
+                });
+
+                Debug.WriteLine($"圖表數據已更新，共 {newTargetVsAchievementData.Count} 個數據點");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入圖表數據時發生錯誤: {ex.Message}");
+                LoadSampleChartData();
+            }
+        }
+
+        // 載入排行榜數據
         private async Task LoadLeaderboardDataAsync()
         {
             try
             {
-                Debug.WriteLine($"LoadLeaderboardDataAsync - 當前視圖: {ViewType}");
-                IsLoading = true;
-
-                if (_allSalesData == null || !_allSalesData.Any())
+                if (_filteredData == null)
                 {
-                    var (data, lastUpdated) = await _excelService.LoadDataAsync();
-                    _allSalesData = data;
-                    Debug.WriteLine($"已載入 {_allSalesData?.Count ?? 0} 條記錄");
+                    FilterDataByDateRange();
                 }
 
-                var startDate = StartDate.Date;
-                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1);
-
-                // 僅按指定的日期範圍過濾數據，不再擴大範圍
-                var filteredData = _allSalesData?
-                    .Where(x => x.ReceivedDate.Date >= startDate && x.ReceivedDate.Date <= endDate.Date)
-                    .ToList() ?? new List<SalesData>();
-
-                Debug.WriteLine($"日期過濾後有 {filteredData.Count} 條記錄");
-
-                // 清除現有緩存，確保數據重新生成
-                _excelService.ClearCache();
-
-                await MainThread.InvokeOnMainThreadAsync(() => {
-                    LoadLeaderboardData(filteredData);
-                });
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"LoadLeaderboardDataAsync 錯誤: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
-
-                // 發生錯誤時，不使用示例數據，而是顯示空白數據
-                await MainThread.InvokeOnMainThreadAsync(() => {
-                    LoadLeaderboardData(new List<SalesData>());
-                });
-            }
-            finally
-            {
-                IsLoading = false;
-            }
-        }
-
-        private List<SalesData> CreateSampleData()
-        {
-            // 創建一些樣本數據，確保在沒有實際數據時界面也能顯示內容
-            return new List<SalesData>
-            {
-                new SalesData
+                // 再次確認數據可用性
+                if (_filteredData == null || !_filteredData.Any())
                 {
-                    ReceivedDate = DateTime.Now,
-                    ProductType = "Thermal",
-                    POValue = 8058197.44m,
-                    VertivValue = 8058197.44m,
-                    TotalCommission = 899545.64m,
-                    SalesRep = "Sample Rep 1",
-                    Status = "Booked"
-                },
-                new SalesData
-                {
-                    ReceivedDate = DateTime.Now,
-                    ProductType = "Power",
-                    POValue = 5857870.43m,
-                    VertivValue = 5857870.43m,
-                    TotalCommission = 305481.01m,
-                    SalesRep = "Sample Rep 2",
-                    Status = "Booked"
-                },
-                new SalesData
-                {
-                    ReceivedDate = DateTime.Now,
-                    ProductType = "Batts & Caps",
-                    POValue = 2169156.88m,
-                    VertivValue = 2169156.88m,
-                    TotalCommission = 344608.00m,
-                    SalesRep = "Sample Rep 3",
-                    Status = "Booked"
-                },
-                new SalesData
-                {
-                    ReceivedDate = DateTime.Now,
-                    ProductType = "Service",
-                    POValue = 2140938.32m,
-                    VertivValue = 2140938.32m,
-                    TotalCommission = 160595.74m,
-                    SalesRep = "Sample Rep 4",
-                    Status = "Booked"
-                },
-                new SalesData
-                {
-                    ReceivedDate = DateTime.Now,
-                    ProductType = "Channel",
-                    POValue = 1863238.05m,
-                    VertivValue = 1863238.05m,
-                    TotalCommission = 214071.40m,
-                    SalesRep = "Sample Rep 5",
-                    Status = "Booked"
+                    LoadSampleLeaderboardData();
+                    return;
                 }
-            };
-        }
 
-        // 載入 Leaderboard 數據的核心邏輯
-        private void LoadLeaderboardData(List<SalesData> filteredData)
-        {
-            try
-            {
-                Debug.WriteLine($"LoadLeaderboardData - 當前視圖: {ViewType}, 數據量: {filteredData?.Count ?? 0}");
-
-                // 先根據 IsBookedStatus 過濾數據
-                var statusFilteredData = filteredData.Where(x =>
+                // 根據狀態過濾
+                var statusFiltered = _filteredData.Where(x =>
                     (IsBookedStatus && x.Status == "Booked") ||
-                    (!IsBookedStatus && x.Status == "Completed")
-                ).ToList();
+                    (!IsBookedStatus && x.Status == "Completed")).ToList();
 
-                Debug.WriteLine($"狀態過濾後剩餘數據量: {statusFilteredData.Count}");
+                Debug.WriteLine($"狀態過濾後剩餘: {statusFiltered.Count} 條記錄");
 
-                // 根據不同的視圖類型加載對應的數據
+                // 根據視圖類型載入相應數據
                 switch (ViewType)
                 {
                     case "ByProduct":
-                        LoadProductData(statusFilteredData);
-                        OnPropertyChanged(nameof(ProductSalesData));
+                        await LoadProductDataAsync(statusFiltered);
                         break;
-
                     case "ByRep":
-                        LoadSalesRepData(statusFilteredData);
-                        OnPropertyChanged(nameof(SalesLeaderboard));
+                        await LoadSalesRepDataAsync(statusFiltered);
                         break;
-
                     case "ByDeptLOB":
-                        // 重要：設置過濾後的數據到ExcelService
-                        if (_excelService is ExcelService excelSvc)
-                        {
-                            excelSvc.SetFilteredData(statusFilteredData);
-                        }
-
-                        // 加載部門/LOB數據
-                        DepartmentLobData = new ObservableCollection<DepartmentLobData>(_excelService.GetDepartmentLobData());
-                        Debug.WriteLine($"已加載 {DepartmentLobData.Count} 條部門/LOB數據");
-                        OnPropertyChanged(nameof(DepartmentLobData));
-                        break;
-
-                    default:
-                        Debug.WriteLine($"未知的視圖類型: {ViewType}");
+                        await LoadDeptLobDataAsync(statusFiltered);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"LoadLeaderboardData 錯誤: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
+                Debug.WriteLine($"載入排行榜數據時發生錯誤: {ex.Message}");
+                LoadSampleLeaderboardData();
             }
         }
 
         // 載入產品數據
-        private void LoadProductData(List<SalesData> filteredData)
+        private async Task LoadProductDataAsync(List<SalesData> data)
         {
             try
             {
-                Debug.WriteLine("載入產品視圖數據");
-
-                if (filteredData == null || !filteredData.Any())
-                {
-                    Debug.WriteLine("沒有過濾後的數據可用");
-                    ProductSalesData = new ObservableCollection<ProductSalesData>();
-                    return;
-                }
-
-                // 按產品類型（AD列）分組，並計算每個類型的PO Value（G列）總和
-                var productData = filteredData
+                var products = data
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // 直接從Excel的相應列獲取數值
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                        // TotalMargin是兩個Margin的總和
-                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
+                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // 計算PO Value百分比
-                decimal totalPOValue = productData.Sum(p => p.POValue);
-                foreach (var product in productData)
+                // 計算百分比
+                decimal totalPOValue = products.Sum(p => p.POValue);
+                foreach (var product in products)
                 {
                     product.PercentageOfTotal = totalPOValue > 0
-                        ? Math.Round((product.POValue / totalPOValue) * 100, 2)
+                        ? Math.Round((product.POValue / totalPOValue) * 100, 1)
                         : 0;
                 }
 
-                ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    ProductSalesData = new ObservableCollection<ProductSalesData>(products);
+                });
+
+                Debug.WriteLine($"產品數據已載入，共 {products.Count} 個項目");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
+                LoadSampleProductData();
+            }
+        }
 
-                // 發生錯誤
-                Debug.WriteLine($"")
+        // 載入銷售代表數據
+        private async Task LoadSalesRepDataAsync(List<SalesData> data)
+        {
+            try
+            {
+                var reps = data
+                    .GroupBy(x => x.SalesRep)
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new SalesLeaderboardItem
+                    {
+                        SalesRep = g.Key,
+                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
+                    })
+                    .OrderByDescending(x => x.TotalMargin)
+                    .ToList();
+
+                // 設置排名
+                for (int i = 0; i < reps.Count; i++)
+                {
+                    reps[i].Rank = i + 1;
+                }
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(reps);
+                });
+
+                Debug.WriteLine($"銷售代表數據已載入，共 {reps.Count} 個項目");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入銷售代表數據時發生錯誤: {ex.Message}");
+                LoadSampleSalesRepData();
+            }
+        }
+
+        // 載入部門/LOB數據
+        private async Task LoadDeptLobDataAsync(List<SalesData> data)
+        {
+            try
+            {
+                var currentDate = DateTime.Now;
+                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+
+                // 按部門分組
+                var departments = data
+                    .GroupBy(x => NormalizeDepartment(x.Department))
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new DepartmentLobData
+                    {
+                        LOB = g.Key,
+                        MarginYTD = Math.Round(g.Sum(x => x.TotalCommission), 2)
+                    })
+                    .OrderByDescending(x => x.MarginYTD)
+                    .ToList();
+
+                // 獲取目標值
+                foreach (var dept in departments)
+                {
+                    // 從目標服務獲取目標值
+                    dept.MarginTarget = _targetService.GetLOBTarget(currentFiscalYear, dept.LOB);
+                }
+
+                // 添加總計行
+                decimal totalTarget = departments.Sum(d => d.MarginTarget);
+                decimal totalYTD = departments.Sum(d => d.MarginYTD);
+                departments.Add(new DepartmentLobData
+                {
+                    Rank = 0, // 排在最後
+                    LOB = "Total",
+                    MarginTarget = totalTarget,
+                    MarginYTD = totalYTD
+                });
+
+                // 設置排名
+                var rankedDepts = departments
+                    .Where(d => d.LOB != "Total")
+                    .OrderByDescending(d => d.MarginYTD)
+                    .ToList();
+
+                for (int i = 0; i < rankedDepts.Count; i++)
+                {
+                    rankedDepts[i].Rank = i + 1;
+                }
+
+                // 重新組合結果（有排名的 + Total）
+                var result = new List<DepartmentLobData>();
+                result.AddRange(rankedDepts);
+                result.Add(departments.FirstOrDefault(d => d.LOB == "Total"));
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    DepartmentLobData = new ObservableCollection<DepartmentLobData>(result);
+                });
+
+                Debug.WriteLine($"部門/LOB數據已載入，共 {result.Count} 個項目");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入部門/LOB數據時發生錯誤: {ex.Message}");
+                LoadSampleDeptLobData();
+            }
+        }
+
+        // 標準化部門名稱
+        private string NormalizeDepartment(string department)
+        {
+            if (string.IsNullOrWhiteSpace(department))
+                return "Other";
+
+            if (department.Contains("Power", StringComparison.OrdinalIgnoreCase))
+                return "Power";
+            if (department.Contains("Thermal", StringComparison.OrdinalIgnoreCase))
+                return "Thermal";
+            if (department.Contains("Channel", StringComparison.OrdinalIgnoreCase))
+                return "Channel";
+            if (department.Contains("Service", StringComparison.OrdinalIgnoreCase))
+                return "Service";
+            if (department.Contains("Batts", StringComparison.OrdinalIgnoreCase) ||
+                department.Contains("Caps", StringComparison.OrdinalIgnoreCase))
+                return "Batts & Caps";
+
+            return department;
+        }
+
+        // 更新圖表軸
+        private void UpdateChartAxes()
+        {
+            try
+            {
+                // 找出圖表中的最大值，用於設置 Y 軸的最大值
+                double maxTarget = 0;
+                double maxAchievement = 0;
+
+                if (TargetVsAchievementData.Any())
+                {
+                    maxTarget = (double)TargetVsAchievementData.Max(d => d.Target);
+                    maxAchievement = (double)TargetVsAchievementData.Max(d => d.Achievement);
+                }
+
+                double maxValue = Math.Max(maxTarget, maxAchievement);
+                // 增加 20% 空間，使圖表不會太緊湊
+                maxValue = maxValue * 1.2;
+                // 向上取整到下一個整數
+                maxValue = Math.Ceiling(maxValue);
+
+                // 確保最小有 5 的空間
+                YAxisMaximum = Math.Max(5, maxValue);
+
+                Debug.WriteLine($"圖表 Y 軸最大值設為: {YAxisMaximum}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"更新圖表軸時發生錯誤: {ex.Message}");
+                YAxisMaximum = 10; // 默認值
+            }
+        }
+
+        #region 輔助方法
+
+        // 從月份獲取季度
+        private int GetQuarterFromMonth(int month)
+        {
+            // 財年 Q1: 8-10月, Q2: 11-1月, Q3: 2-4月, Q4: 5-7月
+            return month switch
+            {
+                8 or 9 or 10 => 1,
+                11 or 12 or 1 => 2,
+                2 or 3 or 4 => 3,
+                5 or 6 or 7 => 4,
+                _ => 1
+            };
+        }
+
+        // 處理數據更新通知
+        private void OnDataUpdated(object sender, DateTime lastUpdated)
+        {
+            Debug.WriteLine($"收到 Excel 數據更新通知: {lastUpdated}");
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await ReloadDataAsync();
+            });
+        }
+
+        // 處理目標更新通知
+        private void OnTargetsUpdated(object sender, EventArgs e)
+        {
+            Debug.WriteLine("收到目標更新通知");
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await ReloadDataAsync();
+            });
+        }
+
+        #endregion
+
+        #region 樣本數據
+
+        // 載入樣本數據（當有錯誤或無數據時使用）
+        private void LoadSampleData()
+        {
+            LoadSampleChartData();
+            LoadSampleLeaderboardData();
+        }
+
+        // 載入樣本圖表數據
+        private void LoadSampleChartData()
+        {
+            // 目標 vs 達成圖表
+            var targetVsAchievementSample = new ObservableCollection<ChartData>
+            {
+                new ChartData { Label = "1月", Target = 2.5m, Achievement = 2.0m },
+                new ChartData { Label = "2月", Target = 2.5m, Achievement = 2.3m },
+                new ChartData { Label = "3月", Target = 2.5m, Achievement = 2.7m },
+                new ChartData { Label = "4月", Target = 2.5m, Achievement = 2.1m },
+                new ChartData { Label = "5月", Target = 2.5m, Achievement = 3.0m },
+                new ChartData { Label = "6月", Target = 2.5m, Achievement = 3.2m }
+            };
+            TargetVsAchievementData = targetVsAchievementSample;
+
+            // 達成趨勢圖表
+            var achievementTrendSample = new ObservableCollection<ChartData>
+            {
+                new ChartData { Label = "1月", Achievement = 2.0m },
+                new ChartData { Label = "2月", Achievement = 2.3m },
+                new ChartData { Label = "3月", Achievement = 2.7m },
+                new ChartData { Label = "4月", Achievement = 2.1m },
+                new ChartData { Label = "5月", Achievement = 3.0m },
+                new ChartData { Label = "6月", Achievement = 3.2m }
+            };
+            AchievementTrendData = achievementTrendSample;
+        }
+
+        // 載入樣本排行榜數據
+        private void LoadSampleLeaderboardData()
+        {
+            LoadSampleProductData();
+            LoadSampleSalesRepData();
+            LoadSampleDeptLobData();
+        }
+
+        // 載入樣本產品數據
+        private void LoadSampleProductData()
+        {
+            var productSample = new ObservableCollection<ProductSalesData>
+            {
+                new ProductSalesData
+                {
+                    ProductType = "Thermal",
+                    AgencyMargin = 744855.43m,
+                    BuyResellMargin = 116206.36m,
+                    TotalMargin = 861061.79m,
+                    POValue = 7358201.65m,
+                    PercentageOfTotal = 41.0m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Power",
+                    AgencyMargin = 296743.08m,
+                    BuyResellMargin = 8737.33m,
+                    TotalMargin = 305481.01m,
+                    POValue = 5466144.65m,
+                    PercentageOfTotal = 31.0m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Batts & Caps",
+                    AgencyMargin = 250130.95m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 250130.95m,
+                    POValue = 2061423.30m,
+                    PercentageOfTotal = 12.0m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Channel",
+                    AgencyMargin = 167353.03m,
+                    BuyResellMargin = 8323.03m,
+                    TotalMargin = 175676.06m,
+                    POValue = 1416574.65m,
+                    PercentageOfTotal = 8.0m
+                },
+                new ProductSalesData
+                {
+                    ProductType = "Service",
+                    AgencyMargin = 101556.42m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 101556.42m,
+                    POValue = 1272318.58m,
+                    PercentageOfTotal = 7.0m
+                }
+            };
+
+            ProductSalesData = productSample;
+        }
+
+        // 載入樣本銷售代表數據
+        private void LoadSampleSalesRepData()
+        {
+            var salesRepSample = new ObservableCollection<SalesLeaderboardItem>
+            {
+                new SalesLeaderboardItem
+                {
+                    Rank = 1,
+                    SalesRep = "Isaac",
+                    AgencyMargin = 350186.00m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 350186.00m
+                },
+                new SalesLeaderboardItem
+                {
+                    Rank = 2,
+                    SalesRep = "Brandon",
+                    AgencyMargin = 301802.40m,
+                    BuyResellMargin = 38165.70m,
+                    TotalMargin = 339968.10m
+                },
+                new SalesLeaderboardItem
+                {
+                    Rank = 3,
+                    SalesRep = "Chris",
+                    AgencyMargin = 186411.10m,
+                    BuyResellMargin = 0.00m,
+                    TotalMargin = 186411.10m
+                },
+                new SalesLeaderboardItem
+                {
+                    Rank = 4,
+                    SalesRep = "Mark",
+                    AgencyMargin = 124680.50m,
+                    BuyResellMargin = 18920.30m,
+                    TotalMargin = 143600.80m
+                },
+                new SalesLeaderboardItem
+                {
+                    Rank = 5,
+                    SalesRep = "Nathan",
+                    AgencyMargin = 104582.20m,
+                    BuyResellMargin = 21060.80m,
+                    TotalMargin = 125643.00m
+                }
+            };
+
+            SalesLeaderboard = salesRepSample;
+        }
+
+        // 載入樣本部門/LOB數據
+        private void LoadSampleDeptLobData()
+        {
+            var deptLobSample = new ObservableCollection<DepartmentLobData>
+            {
+                new DepartmentLobData
+                {
+                    Rank = 1,
+                    LOB = "Power",
+                    MarginTarget = 850000m,
+                    MarginYTD = 650000m
+                },
+                new DepartmentLobData
+                {
+                    Rank = 2,
+                    LOB = "Thermal",
+                    MarginTarget = 720000m,
+                    MarginYTD = 980000m
+                },
+                new DepartmentLobData
+                {
+                    Rank = 3,
+                    LOB = "Channel",
+                    MarginTarget = 650000m,
+                    MarginYTD = 580000m
+                },
+                new DepartmentLobData
+                {
+                    Rank = 4,
+                    LOB = "Service",
+                    MarginTarget = 580000m,
+                    MarginYTD = 520000m
+                },
+                new DepartmentLobData
+                {
+                    Rank = 5,
+                    LOB = "Batts & Caps",
+                    MarginTarget = 450000m,
+                    MarginYTD = 500000m
+                },
+                new DepartmentLobData
+                {
+                    Rank = 0,
+                    LOB = "Total",
+                    MarginTarget = 3250000m,
+                    MarginYTD = 3230000m
+                }
+            };
+            DepartmentLobData = deptLobSample;
+
+        }
+        #endregion // 结束 #region 樣本數据
+
+        #endregion // 结束 #region 辅助方法
+
+    }
+}

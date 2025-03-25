@@ -19,6 +19,9 @@ namespace ScoreCard.ViewModels
         private readonly IExcelService _excelService;
         private readonly ITargetService _targetService;
         private IConfiguration _configuration;
+        private bool _isEditingRow;
+        private string _editingRowId;
+        private FiscalYearTarget _originalCompanyTarget;
 
         // Selected tab
         [ObservableProperty]
@@ -65,9 +68,9 @@ namespace ScoreCard.ViewModels
         private bool _isStatusSuccess;
 
         [RelayCommand]
-        private void EditTargets()
+        private void ToggleEditMode()
         {
-            IsEditingTargets = true;
+            IsEditingTargets = !IsEditingTargets;
         }
 
         // 為每行添加編輯按鈕的命令
@@ -89,20 +92,20 @@ namespace ScoreCard.ViewModels
                 };
 
                 // 設置為編輯模式
-                _editingRowId = target.FiscalYear;
-                IsEditingRow = true;
+                _editingRowId = target.FiscalYear.ToString();
+                _isEditingRow = true;
             }
             else if (SelectedTab == "IndividualTarget" && parameter is SalesRepTarget repTarget)
             {
                 // 類似的處理銷售代表目標的編輯
                 _editingRowId = repTarget.SalesRep;
-                IsEditingRow = true;
+                _isEditingRow = true;
             }
             else if (SelectedTab == "LOBTargets" && parameter is LOBTarget lobTarget)
             {
                 // 處理 LOB 目標的編輯
                 _editingRowId = lobTarget.LOB;
-                IsEditingRow = true;
+                _isEditingRow = true;
             }
         }
 
@@ -172,11 +175,11 @@ namespace ScoreCard.ViewModels
             {
                 // Get company targets from target service
                 var companyTargets = new List<FiscalYearTarget>();
-                
+
                 // Get current fiscal year and several previous/next years
                 var currentDate = DateTime.Now;
                 var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
-                
+
                 for (int year = currentFiscalYear - 2; year <= currentFiscalYear + 2; year++)
                 {
                     var target = _targetService.GetCompanyTarget(year);
@@ -315,12 +318,12 @@ namespace ScoreCard.ViewModels
         {
             var defaultReps = new[]
             {
-        ("Brandon", 1000000m),
-        ("Chris", 900000m),
-        ("Isaac", 850000m),
-        ("Mark", 800000m),
-        ("Nathan", 750000m)
-    };
+                ("Brandon", 1000000m),
+                ("Chris", 900000m),
+                ("Isaac", 850000m),
+                ("Mark", 800000m),
+                ("Nathan", 750000m)
+            };
 
             foreach (var (name, target) in defaultReps)
             {
@@ -417,12 +420,12 @@ namespace ScoreCard.ViewModels
         {
             var defaultLOBs = new[]
             {
-        ("Power", 1000000m),
-        ("Thermal", 900000m),
-        ("Channel", 750000m),
-        ("Service", 500000m),
-        ("Batts & Caps", 400000m)
-    };
+                ("Power", 1000000m),
+                ("Thermal", 900000m),
+                ("Channel", 750000m),
+                ("Service", 500000m),
+                ("Batts & Caps", 400000m)
+            };
 
             foreach (var (name, target) in defaultLOBs)
             {
@@ -497,13 +500,6 @@ namespace ScoreCard.ViewModels
                     });
                 }
             }
-        }
-
-        // Toggle edit mode
-        [RelayCommand]
-        private void ToggleEditMode()
-        {
-            IsEditingTargets = !IsEditingTargets;
         }
 
         // Update annual target based on quarterly targets
@@ -584,12 +580,12 @@ namespace ScoreCard.ViewModels
                 _targetService.NotifyTargetsUpdated();
 
                 // Show success message
-                ShowStatusMessage("All target settings have been saved successfully.", true);
+                ShowStatusMessage("所有目標設定已成功儲存。", true);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error saving changes: {ex.Message}");
-                ShowStatusMessage($"Failed to save target settings: {ex.Message}", false);
+                ShowStatusMessage($"儲存目標設定失敗: {ex.Message}", false);
             }
             finally
             {
@@ -635,11 +631,11 @@ namespace ScoreCard.ViewModels
                 // Write back to the file
                 await File.WriteAllTextAsync(settingsPath, updatedJson);
 
-                Debug.WriteLine("Company targets saved to appsettings.json");
+                Debug.WriteLine("公司目標已儲存至 appsettings.json");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error saving company targets: {ex.Message}");
+                Debug.WriteLine($"儲存公司目標時發生錯誤: {ex.Message}");
                 throw; // Re-throw to be caught by the caller
             }
         }
@@ -670,11 +666,11 @@ namespace ScoreCard.ViewModels
                 });
 
                 await File.WriteAllTextAsync(filePath, json);
-                Debug.WriteLine($"Sales rep targets saved to {filePath}");
+                Debug.WriteLine($"銷售代表目標已儲存至 {filePath}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error saving sales rep targets: {ex.Message}");
+                Debug.WriteLine($"儲存銷售代表目標時發生錯誤: {ex.Message}");
                 throw; // Re-throw to be caught by the caller
             }
         }
@@ -705,11 +701,11 @@ namespace ScoreCard.ViewModels
                 });
 
                 await File.WriteAllTextAsync(filePath, json);
-                Debug.WriteLine($"LOB targets saved to {filePath}");
+                Debug.WriteLine($"LOB 目標已儲存至 {filePath}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error saving LOB targets: {ex.Message}");
+                Debug.WriteLine($"儲存 LOB 目標時發生錯誤: {ex.Message}");
                 throw; // Re-throw to be caught by the caller
             }
         }
@@ -748,154 +744,16 @@ namespace ScoreCard.ViewModels
                 // Update fiscal years list
                 SetupFiscalYears();
 
-                ShowStatusMessage($"Added new fiscal year FY{maxYear + 1}", true);
+                ShowStatusMessage($"已新增財年 FY{maxYear + 1}", true);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error adding fiscal year: {ex.Message}");
-                ShowStatusMessage($"Error adding fiscal year: {ex.Message}", false);
+                Debug.WriteLine($"新增財年時發生錯誤: {ex.Message}");
+                ShowStatusMessage($"新增財年時發生錯誤: {ex.Message}", false);
             }
         }
 
         // Add sales rep command
-        [RelayCommand]
-        private void AddSalesRep()
-        {
-            try
-            {
-                // Get average target from existing reps
-                decimal avgTarget = 500000m; // Default fallback
-                if (SalesRepTargets.Any())
-                {
-                    avgTarget = SalesRepTargets.Average(r => r.AnnualTarget);
-                }
-
-                // Round to nearest 50,000
-                avgTarget = Math.Round(avgTarget / 50000) * 50000;
-                decimal quarterlyTarget = avgTarget / 4;
-
-                SalesRepTargets.Add(new SalesRepTarget
-                {
-                    SalesRep = "New Rep",
-                    FiscalYear = GetSelectedFiscalYearValue(),
-                    AnnualTarget = avgTarget,
-                    Q1Target = quarterlyTarget,
-                    Q2Target = quarterlyTarget,
-                    Q3Target = quarterlyTarget,
-                    Q4Target = quarterlyTarget
-                });
-
-                ShowStatusMessage("Added new sales rep", true);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error adding sales rep: {ex.Message}");
-                ShowStatusMessage($"Error adding sales rep: {ex.Message}", false);
-            }
-        }
-
-        // Remove sales rep command
-        [RelayCommand]
-        private void RemoveSalesRep(SalesRepTarget repTarget)
-        {
-            if (repTarget != null)
-            {
-                SalesRepTargets.Remove(repTarget);
-                ShowStatusMessage($"Removed sales rep {repTarget.SalesRep}", true);
-            }
-        }
-
-        // Add LOB command
-        [RelayCommand]
-        private void AddLOB()
-        {
-            try
-            {
-                // Get average target from existing LOBs
-                decimal avgTarget = 500000m; // Default fallback
-                if (LobTargets.Any())
-                {
-                    avgTarget = LobTargets.Average(l => l.AnnualTarget);
-                }
-
-                // Round to nearest 50,000
-                avgTarget = Math.Round(avgTarget / 50000) * 50000;
-                decimal quarterlyTarget = avgTarget / 4;
-
-                LobTargets.Add(new LOBTarget
-                {
-                    LOB = "New Line of Business",
-                    FiscalYear = GetSelectedFiscalYearValue(),
-                    AnnualTarget = avgTarget,
-                    Q1Target = quarterlyTarget,
-                    Q2Target = quarterlyTarget,
-                    Q3Target = quarterlyTarget,
-                    Q4Target = quarterlyTarget
-                });
-
-                ShowStatusMessage("Added new LOB", true);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error adding LOB: {ex.Message}");
-                ShowStatusMessage($"Error adding LOB: {ex.Message}", false);
-            }
-        }
-
-        // Remove LOB command
-        [RelayCommand]
-        private void RemoveLOB(LOBTarget lobTarget)
-        {
-            if (lobTarget != null)
-            {
-                LobTargets.Remove(lobTarget);
-                ShowStatusMessage($"Removed LOB {lobTarget.LOB}", true);
-            }
-        }
-
-        // Change fiscal year for individual and LOB targets
-        partial void OnSelectedFiscalYearChanged(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return;
-
-            Debug.WriteLine($"Selected fiscal year changed to: {value}");
-
-            // Load targets for the selected fiscal year
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                IsLoading = true;
-                try
-                {
-                    await LoadSalesRepTargets();
-                    await LoadLOBTargets();
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"Error loading targets for fiscal year {value}: {ex.Message}");
-                    ShowStatusMessage($"Error loading targets: {ex.Message}", false);
-                }
-                finally
-                {
-                    IsLoading = false;
-                }
-            });
-        }
-
-        private void ShowStatusMessage(string message, bool isSuccess)
-        {
-            StatusMessage = message;
-            IsStatusSuccess = isSuccess;
-            IsStatusMessageVisible = true;
-
-            // Hide the message after a delay
-            MainThread.BeginInvokeOnMainThread(async () =>
-            {
-                await Task.Delay(5000);
-                IsStatusMessageVisible = false;
-            });
-        }
-
         [RelayCommand]
         private void AddRep()
         {
@@ -940,6 +798,18 @@ namespace ScoreCard.ViewModels
             }
         }
 
+        // Remove sales rep command
+        [RelayCommand]
+        private void RemoveSalesRep(SalesRepTarget repTarget)
+        {
+            if (repTarget != null)
+            {
+                SalesRepTargets.Remove(repTarget);
+                ShowStatusMessage($"已移除銷售代表 {repTarget.SalesRep}", true);
+            }
+        }
+
+        // Add LOB command
         [RelayCommand]
         private void AddLOB()
         {
@@ -982,6 +852,60 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"添加 LOB 時出錯: {ex.Message}");
                 ShowStatusMessage($"添加產品線失敗: {ex.Message}", false);
             }
+        }
+
+        // Remove LOB command
+        [RelayCommand]
+        private void RemoveLOB(LOBTarget lobTarget)
+        {
+            if (lobTarget != null)
+            {
+                LobTargets.Remove(lobTarget);
+                ShowStatusMessage($"已移除產品線 {lobTarget.LOB}", true);
+            }
+        }
+
+        // Change fiscal year for individual and LOB targets
+        partial void OnSelectedFiscalYearChanged(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return;
+
+            Debug.WriteLine($"所選財年變更為: {value}");
+
+            // Load targets for the selected fiscal year
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                IsLoading = true;
+                try
+                {
+                    await LoadSalesRepTargets();
+                    await LoadLOBTargets();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"載入財年 {value} 的目標時出錯: {ex.Message}");
+                    ShowStatusMessage($"載入目標時出錯: {ex.Message}", false);
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
+            });
+        }
+
+        private void ShowStatusMessage(string message, bool isSuccess)
+        {
+            StatusMessage = message;
+            IsStatusSuccess = isSuccess;
+            IsStatusMessageVisible = true;
+
+            // Hide the message after a delay
+            MainThread.BeginInvokeOnMainThread(async () =>
+            {
+                await Task.Delay(5000);
+                IsStatusMessageVisible = false;
+            });
         }
     }
 }
