@@ -21,7 +21,7 @@
 
     <Grid RowDefinitions="Auto,*,Auto">
         <!-- Header with tabs -->
-        <Grid Grid.Row="0" Padding="20,0" BackgroundColor="White">
+        <Grid Grid.Row="0" Padding="20,10" BackgroundColor="White">
             <HorizontalStackLayout Spacing="0">
                 <!-- Company Target Tab -->
                 <Border Stroke="#E5E7EB"
@@ -66,7 +66,7 @@
 
         <!-- Main content area -->
         <Grid Grid.Row="1" Padding="20">
-            <!-- Edit/Save button in top-right corner -->
+            <!-- Top control area -->
             <Grid ColumnDefinitions="Auto,*,Auto" HorizontalOptions="Fill" VerticalOptions="Start" Margin="0,10,0,20">
                 <!-- Fiscal Year Selector (for Individual and LOB tabs) -->
                 <Picker Grid.Column="0" 
@@ -74,7 +74,8 @@
                         ItemsSource="{Binding FiscalYears}"
                         SelectedItem="{Binding SelectedFiscalYear}"
                         IsVisible="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='CompanyTarget,False,True'}"
-                        WidthRequest="150"/>
+                        WidthRequest="150"
+                        Margin="0,0,10,0"/>
 
                 <!-- Add Fiscal Year Button (only for Company Target tab) -->
                 <Button Grid.Column="0"
@@ -121,8 +122,8 @@
                         <VerticalStackLayout>
                             <!-- Table Header -->
                             <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
-                                BackgroundColor="#F9FAFB"
-                                Padding="16,12">
+                                  BackgroundColor="#F9FAFB"
+                                  Padding="16,12">
                                 <Label Grid.Column="0" Text="Fiscal Year" FontAttributes="Bold"/>
                                 <Label Grid.Column="1" Text="Annual Target" FontAttributes="Bold"/>
                                 <Label Grid.Column="2" Text="Q1 Target" FontAttributes="Bold"/>
@@ -137,64 +138,64 @@
                                 <CollectionView.ItemTemplate>
                                     <DataTemplate x:DataType="models:FiscalYearTarget">
                                         <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
-                                            Padding="16,12">
+                                              Padding="16,12">
                                             <Label Grid.Column="0" Text="{Binding FiscalYear, StringFormat='FY {0}'}"/>
 
                                             <!-- Targets - conditionally editable -->
                                             <Grid Grid.Column="1">
                                                 <Label Text="{Binding AnnualTarget, StringFormat='${0:N0}'}"
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
                                                 <Entry Text="{Binding AnnualTarget, StringFormat='{0:N0}'}" 
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                    Keyboard="Numeric"
-                                                    ReturnType="Done"
-                                                    ClearButtonVisibility="WhileEditing"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                                                       Keyboard="Numeric"
+                                                       ReturnType="Done"
+                                                       ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
                                             <Grid Grid.Column="2">
                                                 <Label Text="{Binding Q1Target, StringFormat='${0:N0}'}"
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
                                                 <Entry Text="{Binding Q1Target, StringFormat='{0:N0}'}" 
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                    Keyboard="Numeric"
-                                                    ReturnType="Done"
-                                                    ClearButtonVisibility="WhileEditing"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                                                       Keyboard="Numeric"
+                                                       ReturnType="Done"
+                                                       ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
                                             <Grid Grid.Column="3">
                                                 <Label Text="{Binding Q2Target, StringFormat='${0:N0}'}"
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
                                                 <Entry Text="{Binding Q2Target, StringFormat='{0:N0}'}" 
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                    Keyboard="Numeric"
-                                                    ReturnType="Done"
-                                                    ClearButtonVisibility="WhileEditing"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                                                       Keyboard="Numeric"
+                                                       ReturnType="Done"
+                                                       ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
                                             <Grid Grid.Column="4">
                                                 <Label Text="{Binding Q3Target, StringFormat='${0:N0}'}"
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
                                                 <Entry Text="{Binding Q3Target, StringFormat='{0:N0}'}" 
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                    Keyboard="Numeric"
-                                                    ReturnType="Done"
-                                                    ClearButtonVisibility="WhileEditing"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                                                       Keyboard="Numeric"
+                                                       ReturnType="Done"
+                                                       ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
                                             <Grid Grid.Column="5">
                                                 <Label Text="{Binding Q4Target, StringFormat='${0:N0}'}"
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets, Converter={StaticResource InverseBoolToStringConverter}}"/>
                                                 <Entry Text="{Binding Q4Target, StringFormat='{0:N0}'}" 
-                                                    IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                    Keyboard="Numeric"
-                                                    ReturnType="Done"
-                                                    ClearButtonVisibility="WhileEditing"/>
+                                                       IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                                                       Keyboard="Numeric"
+                                                       ReturnType="Done"
+                                                       ClearButtonVisibility="WhileEditing"/>
                                             </Grid>
 
                                             <!-- Actions for editing -->
                                             <HorizontalStackLayout Grid.Column="6" 
-                                                                IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                                Spacing="5">
+                                                                  IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                                                                  Spacing="5">
                                                 <!-- Update Annual Target based on quarters -->
                                                 <Button Text="↑"
                                                         ToolTipProperties.Text="Update Annual Target from Quarters"
@@ -231,7 +232,7 @@
                     <Grid ColumnDefinitions="*,Auto" VerticalOptions="Start">
                         <!-- Add Reps Button -->
                         <Button Grid.Column="1"
-                                Text="+ Add Reps"
+                                Text="+ Add Rep"
                                 Command="{Binding AddSalesRepCommand}"
                                 IsVisible="{Binding IsEditingTargets}"
                                 BackgroundColor="#3B82F6"
@@ -247,8 +248,8 @@
                         <VerticalStackLayout>
                             <!-- Table Header -->
                             <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
-                                BackgroundColor="#F9FAFB"
-                                Padding="16,12">
+                                  BackgroundColor="#F9FAFB"
+                                  Padding="16,12">
                                 <Label Grid.Column="0" Text="Sales Rep" FontAttributes="Bold"/>
                                 <Label Grid.Column="1" Text="Annual Target" FontAttributes="Bold"/>
                                 <Label Grid.Column="2" Text="Q1 Target" FontAttributes="Bold"/>
@@ -259,9 +260,10 @@
                             </Grid>
 
                             <!-- Table Content -->
-                            <CollectionView ItemsSource="{Binding SalesRepTargets}">
+                            <CollectionView ItemsSource="{Binding SalesRepTargets}" 
+                                          EmptyView="No sales rep targets defined for this fiscal year.">
                                 <CollectionView.ItemTemplate>
-                                    <DataTemplate x:DataType="viewmodels:SalesRepTarget">
+                                    <DataTemplate x:DataType="models:SalesRepTarget">
                                         <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
                                               Padding="16,12">
                                             <Grid Grid.Column="0">
@@ -402,9 +404,10 @@
                             </Grid>
 
                             <!-- Table Content -->
-                            <CollectionView ItemsSource="{Binding LobTargets}">
+                            <CollectionView ItemsSource="{Binding LobTargets}"
+                                          EmptyView="No LOB targets defined for this fiscal year.">
                                 <CollectionView.ItemTemplate>
-                                    <DataTemplate x:DataType="viewmodels:LOBTarget">
+                                    <DataTemplate x:DataType="models:LOBTarget">
                                         <Grid ColumnDefinitions="2*,*,*,*,*,*,Auto"
                                               Padding="16,12">
                                             <Grid Grid.Column="0">
@@ -468,39 +471,40 @@
 
                                             <!-- Actions for editing -->
                                             <HorizontalStackLayout Grid.Column="6" 
-                                                                  IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
-                                                                  Spacing="5">
+                      IsVisible="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=IsEditingTargets}"
+                      Spacing="5">
                                                 <!-- Update Annual Target based on quarters -->
                                                 <Button Text="↑"
-                                                        ToolTipProperties.Text="Update Annual Target from Quarters"Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        BackgroundColor="#4CAF50"
-                                                        TextColor="White"
-                                                        WidthRequest="36"
-                                                        HeightRequest="36"
-                                                        Padding="0"/>
+            ToolTipProperties.Text="Update Annual Target from Quarters"
+            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=UpdateAnnualTargetCommand}"
+            CommandParameter="{Binding}"
+            BackgroundColor="#4CAF50"
+            TextColor="White"
+            WidthRequest="36"
+            HeightRequest="36"
+            Padding="0"/>
 
                                                 <!-- Distribute Annual Target to quarters -->
                                                 <Button Text="↓"
-                                                        ToolTipProperties.Text="Distribute Annual Target to Quarters"
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=DistributeTargetCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        BackgroundColor="#2196F3"
-                                                        TextColor="White"
-                                                        WidthRequest="36"
-                                                        HeightRequest="36"
-                                                        Padding="0"/>
+            ToolTipProperties.Text="Distribute Annual Target to Quarters"
+            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=DistributeTargetCommand}"
+            CommandParameter="{Binding}"
+            BackgroundColor="#2196F3"
+            TextColor="White"
+            WidthRequest="36"
+            HeightRequest="36"
+            Padding="0"/>
 
                                                 <!-- Remove LOB -->
                                                 <Button Text="🗑"
-                                                        ToolTipProperties.Text="Remove LOB"
-                                                        Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=RemoveLOBCommand}"
-                                                        CommandParameter="{Binding}"
-                                                        BackgroundColor="#F44336"
-                                                        TextColor="White"
-                                                        WidthRequest="36"
-                                                        HeightRequest="36"
-                                                        Padding="0"/>
+            ToolTipProperties.Text="Remove LOB"
+            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:SettingsViewModel}}, Path=RemoveLOBCommand}"
+            CommandParameter="{Binding}"
+            BackgroundColor="#F44336"
+            TextColor="White"
+            WidthRequest="36"
+            HeightRequest="36"
+            Padding="0"/>
                                             </HorizontalStackLayout>
                                         </Grid>
                                     </DataTemplate>

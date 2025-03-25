@@ -17,6 +17,7 @@ namespace ScoreCard.ViewModels
     public partial class SettingsViewModel : ObservableObject
     {
         private readonly IExcelService _excelService;
+        private readonly ITargetService _targetService;
         private IConfiguration _configuration;
 
         // Selected tab
@@ -63,9 +64,10 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private bool _isStatusSuccess;
 
-        public SettingsViewModel(IExcelService excelService)
+        public SettingsViewModel(IExcelService excelService, ITargetService targetService)
         {
             _excelService = excelService;
+            _targetService = targetService;
             InitializeAsync();
         }
 
@@ -74,6 +76,9 @@ namespace ScoreCard.ViewModels
             try
             {
                 IsLoading = true;
+
+                // Initialize target service
+                await _targetService.InitializeAsync();
 
                 // Load configuration
                 _configuration = new ConfigurationBuilder()
@@ -87,7 +92,7 @@ namespace ScoreCard.ViewModels
                 // Setup fiscal years
                 SetupFiscalYears();
 
-                // Load sales reps and LOB data from Excel service
+                // Load sales reps and LOB data
                 await LoadSalesRepTargets();
                 await LoadLOBTargets();
             }
@@ -123,12 +128,26 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                var targetSettings = _configuration.GetSection("TargetSettings").Get<TargetSettings>();
+                // Get company targets from target service
+                var companyTargets = new List<FiscalYearTarget>();
+                
+                // Get current fiscal year and several previous/next years
+                var currentDate = DateTime.Now;
+                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+                
+                for (int year = currentFiscalYear - 2; year <= currentFiscalYear + 2; year++)
+                {
+                    var target = _targetService.GetCompanyTarget(year);
+                    if (target != null)
+                    {
+                        companyTargets.Add(target);
+                    }
+                }
 
-                if (targetSettings?.CompanyTargets != null)
+                if (companyTargets.Any())
                 {
                     CompanyTargets = new ObservableCollection<FiscalYearTarget>(
-                        targetSettings.CompanyTargets.OrderByDescending(t => t.FiscalYear));
+                        companyTargets.OrderByDescending(t => t.FiscalYear));
                 }
                 else
                 {
@@ -137,7 +156,7 @@ namespace ScoreCard.ViewModels
                     {
                         new FiscalYearTarget
                         {
-                            FiscalYear = DateTime.Now.Year + 1,
+                            FiscalYear = currentFiscalYear + 1,
                             AnnualTarget = 5000000,
                             Q1Target = 1250000,
                             Q2Target = 1250000,
@@ -146,7 +165,7 @@ namespace ScoreCard.ViewModels
                         },
                         new FiscalYearTarget
                         {
-                            FiscalYear = DateTime.Now.Year,
+                            FiscalYear = currentFiscalYear,
                             AnnualTarget = 4500000,
                             Q1Target = 1125000,
                             Q2Target = 1125000,
@@ -155,7 +174,7 @@ namespace ScoreCard.ViewModels
                         },
                         new FiscalYearTarget
                         {
-                            FiscalYear = DateTime.Now.Year - 1,
+                            FiscalYear = currentFiscalYear - 1,
                             AnnualTarget = 4000000,
                             Q1Target = 1000000,
                             Q2Target = 1000000,
@@ -179,12 +198,13 @@ namespace ScoreCard.ViewModels
                 // Get the current fiscal year (parsed from the selected fiscal year string)
                 int currentFiscalYear = GetSelectedFiscalYearValue();
 
-                // Try to load saved sales rep targets for the current fiscal year
-                var savedTargets = await LoadSalesRepTargetsFromFileAsync(currentFiscalYear);
+                // Get sales rep targets from target service
+                var savedTargets = _targetService.GetSalesRepTargets(currentFiscalYear);
+                
                 if (savedTargets?.Any() == true)
                 {
                     SalesRepTargets = new ObservableCollection<SalesRepTarget>(savedTargets);
-                    Debug.WriteLine($"Loaded {savedTargets.Count} sales rep targets from file");
+                    Debug.WriteLine($"Loaded {savedTargets.Count} sales rep targets");
                     return;
                 }
 
@@ -205,27 +225,30 @@ namespace ScoreCard.ViewModels
                         decimal annualTarget = companyTarget?.AnnualTarget ?? 4000000;
 
                         // Calculate a weighted target based on the rep's ranking
-                        decimal weight = 1.0m / (item.Rank + 1);  // Higher rank gets lower weight
+                        decimal weight = 1.0m / Math.Max(1, item.Rank + 1);  // 確保除數至少為1
                         decimal repTarget = annualTarget * weight;
 
                         // Ensure a minimum target
                         repTarget = Math.Max(repTarget, annualTarget * 0.05m);
 
+                        var roundedAnnualTarget = Math.Round(repTarget, -3);  // Round to nearest thousand
+                        var quarterlyTarget = Math.Round(roundedAnnualTarget / 4, 0);  // Round to nearest whole number
+
                         SalesRepTargets.Add(new SalesRepTarget
                         {
                             SalesRep = item.SalesRep,
                             FiscalYear = currentFiscalYear,
-                            AnnualTarget = Math.Round(repTarget, -3),  // Round to nearest thousand
-                            Q1Target = Math.Round(repTarget / 4, -3),
-                            Q2Target = Math.Round(repTarget / 4, -3),
-                            Q3Target = Math.Round(repTarget / 4, -3),
-                            Q4Target = Math.Round(repTarget / 4, -3)
+                            AnnualTarget = roundedAnnualTarget,
+                            Q1Target = quarterlyTarget,
+                            Q2Target = quarterlyTarget,
+                            Q3Target = quarterlyTarget,
+                            Q4Target = quarterlyTarget
                         });
                     }
                 }
                 else
                 {
-                    // Add default sample data
+                    // Add default sample data if no leaderboard data
                     SalesRepTargets.Add(new SalesRepTarget
                     {
                         SalesRep = "Brandon",
@@ -250,7 +273,7 @@ namespace ScoreCard.ViewModels
 
                     SalesRepTargets.Add(new SalesRepTarget
                     {
-                        SalesRep = "Tania",
+                        SalesRep = "Isaac",
                         FiscalYear = currentFiscalYear,
                         AnnualTarget = 850000,
                         Q1Target = 212500,
@@ -274,12 +297,13 @@ namespace ScoreCard.ViewModels
                 // Get the current fiscal year
                 int currentFiscalYear = GetSelectedFiscalYearValue();
 
-                // Try to load saved LOB targets for the current fiscal year
-                var savedTargets = await LoadLobTargetsFromFileAsync(currentFiscalYear);
+                // Get LOB targets from target service
+                var savedTargets = _targetService.GetLOBTargets(currentFiscalYear);
+                
                 if (savedTargets?.Any() == true)
                 {
                     LobTargets = new ObservableCollection<LOBTarget>(savedTargets);
-                    Debug.WriteLine($"Loaded {savedTargets.Count} LOB targets from file");
+                    Debug.WriteLine($"Loaded {savedTargets.Count} LOB targets");
                     return;
                 }
 
@@ -296,7 +320,7 @@ namespace ScoreCard.ViewModels
                         {
                             LOB = item.LOB,
                             FiscalYear = currentFiscalYear,
-                            AnnualTarget = item.MarginTarget * 10, // Just an example multiplier
+                            AnnualTarget = item.MarginTarget,
                             Q1Target = item.MarginTarget / 4,
                             Q2Target = item.MarginTarget / 4,
                             Q3Target = item.MarginTarget / 4,
@@ -364,7 +388,8 @@ namespace ScoreCard.ViewModels
             if (string.IsNullOrEmpty(SelectedFiscalYear))
             {
                 // Default to current year if nothing is selected
-                return DateTime.Now.Year;
+                var currentDate = DateTime.Now;
+                return currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
             }
 
             if (int.TryParse(SelectedFiscalYear.Replace("FY", ""), out int result))
@@ -373,7 +398,8 @@ namespace ScoreCard.ViewModels
             }
 
             // Default to current year if parsing fails
-            return DateTime.Now.Year;
+            var date = DateTime.Now;
+            return date.Month >= 8 ? date.Year + 1 : date.Year;
         }
 
         // Tab switching command
@@ -494,6 +520,9 @@ namespace ScoreCard.ViewModels
 
                 // Save LOB targets to file
                 await SaveLOBTargetsAsync();
+
+                // Notify target service that targets have been updated
+                _targetService.NotifyTargetsUpdated();
 
                 // Show success message
                 ShowStatusMessage("All target settings have been saved successfully.", true);
@@ -623,46 +652,6 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"Error saving LOB targets: {ex.Message}");
                 throw; // Re-throw to be caught by the caller
-            }
-        }
-
-        private async Task<List<SalesRepTarget>> LoadSalesRepTargetsFromFileAsync(int fiscalYear)
-        {
-            try
-            {
-                string targetDir = Path.Combine(AppContext.BaseDirectory, "Targets");
-                string filePath = Path.Combine(targetDir, $"SalesRepTargets_{fiscalYear}.json");
-
-                if (!File.Exists(filePath))
-                    return null;
-
-                string json = await File.ReadAllTextAsync(filePath);
-                return JsonSerializer.Deserialize<List<SalesRepTarget>>(json);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading sales rep targets: {ex.Message}");
-                return null;
-            }
-        }
-
-        private async Task<List<LOBTarget>> LoadLobTargetsFromFileAsync(int fiscalYear)
-        {
-            try
-            {
-                string targetDir = Path.Combine(AppContext.BaseDirectory, "Targets");
-                string filePath = Path.Combine(targetDir, $"LOBTargets_{fiscalYear}.json");
-
-                if (!File.Exists(filePath))
-                    return null;
-
-                string json = await File.ReadAllTextAsync(filePath);
-                return JsonSerializer.Deserialize<List<LOBTarget>>(json);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading LOB targets: {ex.Message}");
-                return null;
             }
         }
 

@@ -29,6 +29,10 @@ namespace ScoreCard.Services
         decimal GetLOBTarget(int fiscalYear, string lob);
         decimal GetLOBQuarterlyTarget(int fiscalYear, string lob, int quarter);
 
+        // File monitoring and update notifications
+        void MonitorTargetFiles();
+        void NotifyTargetsUpdated();
+
         // Events
         event EventHandler TargetsUpdated;
     }
@@ -40,6 +44,7 @@ namespace ScoreCard.Services
         private readonly Dictionary<int, List<LOBTarget>> _lobTargetsByYear = new();
         private List<FiscalYearTarget> _companyTargets = new();
         private bool _isInitialized = false;
+        private FileSystemWatcher _watcher;
 
         public event EventHandler TargetsUpdated;
 
@@ -69,6 +74,9 @@ namespace ScoreCard.Services
                     }
                 });
 
+                // Setup file monitoring for target files
+                MonitorTargetFiles();
+
                 _isInitialized = true;
                 Debug.WriteLine("Target service initialized successfully");
             }
@@ -92,11 +100,14 @@ namespace ScoreCard.Services
                 else
                 {
                     // Default targets if none found in settings
+                    var currentYear = DateTime.Now.Year;
+                    var currentFiscalYear = DateTime.Now.Month >= 8 ? currentYear + 1 : currentYear;
+
                     _companyTargets = new List<FiscalYearTarget>
                     {
                         new FiscalYearTarget
                         {
-                            FiscalYear = DateTime.Now.Year + 1,
+                            FiscalYear = currentFiscalYear + 1,
                             AnnualTarget = 5000000,
                             Q1Target = 1250000,
                             Q2Target = 1250000,
@@ -105,7 +116,7 @@ namespace ScoreCard.Services
                         },
                         new FiscalYearTarget
                         {
-                            FiscalYear = DateTime.Now.Year,
+                            FiscalYear = currentFiscalYear,
                             AnnualTarget = 4500000,
                             Q1Target = 1125000,
                             Q2Target = 1125000,
@@ -114,7 +125,7 @@ namespace ScoreCard.Services
                         },
                         new FiscalYearTarget
                         {
-                            FiscalYear = DateTime.Now.Year - 1,
+                            FiscalYear = currentFiscalYear - 1,
                             AnnualTarget = 4000000,
                             Q1Target = 1000000,
                             Q2Target = 1000000,
@@ -208,9 +219,30 @@ namespace ScoreCard.Services
             if (target == null)
             {
                 // If no target found, use the most recent available target
-                var mostRecentYear = _companyTargets.Max(t => t.FiscalYear);
-                target = _companyTargets.First(t => t.FiscalYear == mostRecentYear);
-                Debug.WriteLine($"No company target found for fiscal year {fiscalYear}, using {mostRecentYear} instead");
+                if (_companyTargets.Any())
+                {
+                    var mostRecentYear = _companyTargets.Max(t => t.FiscalYear);
+                    var nearestYear = _companyTargets
+                        .OrderBy(t => Math.Abs(t.FiscalYear - fiscalYear))
+                        .First().FiscalYear;
+
+                    target = _companyTargets.First(t => t.FiscalYear == nearestYear);
+                    Debug.WriteLine($"No company target found for fiscal year {fiscalYear}, using {nearestYear} instead");
+                }
+                else
+                {
+                    // Create a default target if we don't have any targets at all
+                    target = new FiscalYearTarget
+                    {
+                        FiscalYear = fiscalYear,
+                        AnnualTarget = 4000000,
+                        Q1Target = 1000000,
+                        Q2Target = 1000000,
+                        Q3Target = 1000000,
+                        Q4Target = 1000000
+                    };
+                    Debug.WriteLine($"No company targets found, created default target for {fiscalYear}");
+                }
             }
 
             return target;
@@ -347,10 +379,90 @@ namespace ScoreCard.Services
             }
         }
 
+        // Monitor target files for changes
+        public void MonitorTargetFiles()
+        {
+            try
+            {
+                string targetDir = Path.Combine(AppContext.BaseDirectory, "Targets");
+
+                // Create directory if it doesn't exist
+                if (!Directory.Exists(targetDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                }
+
+                // Setup file watcher
+                _watcher = new FileSystemWatcher(targetDir)
+                {
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName,
+                    Filter = "*.json",
+                    EnableRaisingEvents = true
+                };
+
+                _watcher.Changed += OnTargetFileChanged;
+                _watcher.Created += OnTargetFileChanged;
+                _watcher.Renamed += OnTargetFileChanged;
+
+                Debug.WriteLine($"Started monitoring target files in {targetDir}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error setting up file monitoring: {ex.Message}");
+            }
+        }
+
+        private void OnTargetFileChanged(object sender, FileSystemEventArgs e)
+        {
+            try
+            {
+                Debug.WriteLine($"Target file changed: {e.Name}, {e.ChangeType}");
+
+                // Allow the file to be completely written
+                Task.Delay(500).Wait();
+
+                // Reload the affected file
+                if (e.Name.StartsWith("SalesRepTargets_"))
+                {
+                    string yearStr = e.Name.Replace("SalesRepTargets_", "").Replace(".json", "");
+                    if (int.TryParse(yearStr, out int year))
+                    {
+                        LoadSalesRepTargetsFromFile(year);
+                    }
+                }
+                else if (e.Name.StartsWith("LOBTargets_"))
+                {
+                    string yearStr = e.Name.Replace("LOBTargets_", "").Replace(".json", "");
+                    if (int.TryParse(yearStr, out int year))
+                    {
+                        LoadLOBTargetsFromFile(year);
+                    }
+                }
+
+                // Notify that targets have been updated
+                NotifyTargetsUpdated();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error processing target file change: {ex.Message}");
+            }
+        }
+
         // Method to notify other components when targets are updated
         public void NotifyTargetsUpdated()
         {
-            TargetsUpdated?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    TargetsUpdated?.Invoke(this, EventArgs.Empty);
+                    Debug.WriteLine("Target update notification sent");
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error notifying of target updates: {ex.Message}");
+            }
         }
     }
 }
