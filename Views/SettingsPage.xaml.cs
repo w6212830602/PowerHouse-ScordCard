@@ -22,10 +22,10 @@ namespace ScoreCard.Views
             Debug.WriteLine("SettingsPage loaded");
         }
 
-        protected override void OnAppearing()
+        protected override async void OnAppearing()
         {
             base.OnAppearing();
-            Debug.WriteLine("SettingsPage appeared");
+            await _viewModel.InitializeAsync();
         }
 
         protected override void OnDisappearing()

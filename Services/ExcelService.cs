@@ -1144,6 +1144,10 @@ namespace ScoreCard.Services
         }
 
 
+        /// <summary>
+        /// 獲取所有銷售代表列表
+        /// </summary>
+        /// <returns>銷售代表列表</returns>
         public List<string> GetAllSalesReps()
         {
             try
@@ -1176,6 +1180,10 @@ namespace ScoreCard.Services
             }
         }
 
+        /// <summary>
+        /// 獲取所有產品線(LOB)列表
+        /// </summary>
+        /// <returns>產品線列表</returns>
         public List<string> GetAllLOBs()
         {
             try

@@ -22,6 +22,7 @@ namespace ScoreCard.ViewModels
         private bool _isEditingRow;
         private string _editingRowId;
         private FiscalYearTarget _originalCompanyTarget;
+        private bool _isInitialized = false;
 
         // Selected tab
         [ObservableProperty]
@@ -113,38 +114,65 @@ namespace ScoreCard.ViewModels
         {
             _excelService = excelService;
             _targetService = targetService;
-            InitializeAsync();
+
+            // 注意：不在構造函數中調用 InitializeAsync，而是在頁面出現時調用
+            SetupDefaultValues();
         }
 
-        private async void InitializeAsync()
+        // 設置一些默認值，以便在初始化完成前頁面顯示不會為空
+        private void SetupDefaultValues()
         {
+            var currentDate = DateTime.Now;
+            var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+
+            // 設置默認財年列表
+            FiscalYears.Clear();
+            for (int year = currentFiscalYear - 2; year <= currentFiscalYear + 2; year++)
+            {
+                FiscalYears.Add($"FY{year}");
+            }
+
+            // 默認選擇當前財年
+            SelectedFiscalYear = $"FY{currentFiscalYear}";
+        }
+
+        // 在頁面出現時調用此方法
+        public async Task InitializeAsync()
+        {
+            // 如果已初始化，則不重複執行
+            if (_isInitialized) return;
+
             try
             {
                 IsLoading = true;
 
-                // Initialize target service
+                // 初始化目標服務（異步）
                 await _targetService.InitializeAsync();
 
-                // Load configuration
+                // 載入設定
                 _configuration = new ConfigurationBuilder()
                     .SetBasePath(AppContext.BaseDirectory)
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                     .Build();
 
-                // Load company targets from settings
+                // 載入公司目標
                 LoadCompanyTargetsFromSettings();
 
-                // Setup fiscal years
+                // 設置財年選項
                 SetupFiscalYears();
 
-                // Load sales reps and LOB data
+                // 載入銷售代表目標
                 await LoadSalesRepTargets();
+
+                // 載入LOB目標
                 await LoadLOBTargets();
+
+                _isInitialized = true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error initializing SettingsViewModel: {ex.Message}");
-                ShowStatusMessage($"Error initializing settings: {ex.Message}", false);
+                Debug.WriteLine($"初始化SettingsViewModel時出錯: {ex.Message}");
+                ShowStatusMessage($"載入設定時出錯: {ex.Message}", false);
             }
             finally
             {
@@ -154,7 +182,6 @@ namespace ScoreCard.ViewModels
 
         private void SetupFiscalYears()
         {
-            // Create list of available fiscal years based on company targets
             FiscalYears.Clear();
 
             foreach (var target in CompanyTargets)
@@ -162,7 +189,19 @@ namespace ScoreCard.ViewModels
                 FiscalYears.Add($"FY{target.FiscalYear}");
             }
 
-            // Select the most recent fiscal year by default
+            // 如果沒有找到財年，添加默認值
+            if (!FiscalYears.Any())
+            {
+                var currentDate = DateTime.Now;
+                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+
+                for (int year = currentFiscalYear - 2; year <= currentFiscalYear + 2; year++)
+                {
+                    FiscalYears.Add($"FY{year}");
+                }
+            }
+
+            // 選擇第一個財年（通常是最新的）
             if (FiscalYears.Any())
             {
                 SelectedFiscalYear = FiscalYears.First();
@@ -173,10 +212,8 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                // Get company targets from target service
                 var companyTargets = new List<FiscalYearTarget>();
 
-                // Get current fiscal year and several previous/next years
                 var currentDate = DateTime.Now;
                 var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
 
@@ -196,7 +233,7 @@ namespace ScoreCard.ViewModels
                 }
                 else
                 {
-                    // Default targets if none found in settings
+                    // 如果沒有找到目標，創建默認目標
                     CompanyTargets = new ObservableCollection<FiscalYearTarget>
                     {
                         new FiscalYearTarget
@@ -231,8 +268,8 @@ namespace ScoreCard.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading company targets: {ex.Message}");
-                ShowStatusMessage($"Error loading company targets: {ex.Message}", false);
+                Debug.WriteLine($"載入公司目標時出錯: {ex.Message}");
+                ShowStatusMessage($"載入公司目標時出錯: {ex.Message}", false);
             }
         }
 
@@ -240,43 +277,38 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                // 獲取當前選擇的財年值
                 int currentFiscalYear = GetSelectedFiscalYearValue();
-                Debug.WriteLine($"正在加載 {currentFiscalYear} 財年的銷售代表目標");
 
-                // 嘗試從目標服務中獲取已保存的目標
+                // 從目標服務獲取已保存的目標
                 var savedTargets = _targetService.GetSalesRepTargets(currentFiscalYear);
 
                 if (savedTargets?.Any() == true)
                 {
-                    // 如果已有保存的目標，直接使用
+                    // 直接使用已保存的目標
                     SalesRepTargets = new ObservableCollection<SalesRepTarget>(savedTargets);
-                    Debug.WriteLine($"已加載 {savedTargets.Count} 個銷售代表目標");
                     return;
                 }
 
-                // 從 Excel 獲取所有銷售代表
-                var allReps = _excelService.GetAllSalesReps();
-                Debug.WriteLine($"從 Excel 讀取到 {allReps.Count} 個銷售代表");
+                // 從Excel獲取銷售代表列表（注意這裡使用異步方法）
+                List<string> allReps = await Task.Run(() => GetSalesRepsAsync());
 
-                // 獲取公司年度總目標用於分配
+                // 獲取公司目標用於計算平均目標
                 var companyTarget = CompanyTargets.FirstOrDefault(t => t.FiscalYear == currentFiscalYear);
                 decimal annualTarget = companyTarget?.AnnualTarget ?? 4000000m;
 
-                // 為每個銷售代表創建目標
-                SalesRepTargets = new ObservableCollection<SalesRepTarget>();
+                // 創建新的銷售代表目標列表
+                var salesRepTargets = new List<SalesRepTarget>();
 
                 if (allReps.Any())
                 {
-                    // 計算每位代表的平均目標值
+                    // 計算平均目標
                     decimal avgTarget = annualTarget / allReps.Count;
-                    // 四捨五入到最接近的 1000
                     avgTarget = Math.Round(avgTarget / 1000) * 1000;
                     decimal quarterlyTarget = avgTarget / 4;
 
                     foreach (var rep in allReps)
                     {
-                        SalesRepTargets.Add(new SalesRepTarget
+                        salesRepTargets.Add(new SalesRepTarget
                         {
                             SalesRep = rep,
                             FiscalYear = currentFiscalYear,
@@ -287,34 +319,45 @@ namespace ScoreCard.ViewModels
                             Q4Target = quarterlyTarget
                         });
                     }
-
-                    Debug.WriteLine($"已為 {allReps.Count} 個銷售代表創建目標");
                 }
                 else
                 {
                     // 如果沒有找到銷售代表，添加默認數據
-                    AddDefaultSalesRepTargets(currentFiscalYear);
+                    AddDefaultSalesRepTargets(salesRepTargets, currentFiscalYear);
                 }
+
+                // 更新UI
+                SalesRepTargets = new ObservableCollection<SalesRepTarget>(salesRepTargets);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"加載銷售代表目標時出錯: {ex.Message}");
-                Debug.WriteLine(ex.StackTrace);
+                Debug.WriteLine($"載入銷售代表目標時出錯: {ex.Message}");
 
-                // 確保視圖始終有數據顯示
-                if (SalesRepTargets == null || !SalesRepTargets.Any())
-                {
-                    SalesRepTargets = new ObservableCollection<SalesRepTarget>();
-                    AddDefaultSalesRepTargets(GetSelectedFiscalYearValue());
-                }
+                // 創建默認數據，確保UI不為空
+                var defaultTargets = new List<SalesRepTarget>();
+                AddDefaultSalesRepTargets(defaultTargets, GetSelectedFiscalYearValue());
+                SalesRepTargets = new ObservableCollection<SalesRepTarget>(defaultTargets);
 
-                // 向用戶顯示錯誤消息
-                ShowStatusMessage($"加載銷售代表目標失敗: {ex.Message}", false);
+                ShowStatusMessage($"載入銷售代表目標時出錯: {ex.Message}", false);
             }
         }
 
-        // 辅助方法：添加默认销售代表目标
-        private void AddDefaultSalesRepTargets(int fiscalYear)
+        // 從Excel異步獲取銷售代表列表
+        private async Task<List<string>> GetSalesRepsAsync()
+        {
+            try
+            {
+                return await Task.Run(() => _excelService.GetAllSalesReps());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"獲取銷售代表列表時出錯: {ex.Message}");
+                return new List<string> { "Brandon", "Chris", "Isaac", "Mark", "Nathan", "Tania" };
+            }
+        }
+
+        // 添加默認銷售代表目標
+        private void AddDefaultSalesRepTargets(List<SalesRepTarget> targets, int fiscalYear)
         {
             var defaultReps = new[]
             {
@@ -328,7 +371,7 @@ namespace ScoreCard.ViewModels
             foreach (var (name, target) in defaultReps)
             {
                 decimal quarterlyTarget = target / 4;
-                SalesRepTargets.Add(new SalesRepTarget
+                targets.Add(new SalesRepTarget
                 {
                     SalesRep = name,
                     FiscalYear = fiscalYear,
@@ -339,48 +382,44 @@ namespace ScoreCard.ViewModels
                     Q4Target = quarterlyTarget
                 });
             }
-
-            Debug.WriteLine($"已添加 {defaultReps.Length} 个默认销售代表目标");
         }
 
         private async Task LoadLOBTargets()
         {
             try
             {
-                // 獲取當前財年
                 int currentFiscalYear = GetSelectedFiscalYearValue();
 
-                // 獲取 LOB 目標從目標服務
+                // 從目標服務獲取已保存的目標
                 var savedTargets = _targetService.GetLOBTargets(currentFiscalYear);
 
                 if (savedTargets?.Any() == true)
                 {
+                    // 直接使用已保存的目標
                     LobTargets = new ObservableCollection<LOBTarget>(savedTargets);
-                    Debug.WriteLine($"已加載 {savedTargets.Count} 個 LOB 目標");
                     return;
                 }
 
-                // 從 Excel 獲取所有 LOB
-                var allLOBs = _excelService.GetAllLOBs();
-                Debug.WriteLine($"從 Excel 讀取到 {allLOBs.Count} 個 LOB");
+                // 從Excel獲取LOB列表（使用異步方法）
+                List<string> allLOBs = await Task.Run(() => GetLOBsAsync());
 
-                // 獲取公司年度總目標用於分配
+                // 獲取公司目標用於計算平均目標
                 var companyTarget = CompanyTargets.FirstOrDefault(t => t.FiscalYear == currentFiscalYear);
                 decimal annualTarget = companyTarget?.AnnualTarget ?? 4000000m;
 
-                LobTargets = new ObservableCollection<LOBTarget>();
+                // 創建新的LOB目標列表
+                var lobTargets = new List<LOBTarget>();
 
                 if (allLOBs.Any())
                 {
-                    // 計算每個 LOB 的平均目標值
+                    // 計算平均目標
                     decimal avgTarget = annualTarget / allLOBs.Count;
-                    // 四捨五入到最接近的 1000
                     avgTarget = Math.Round(avgTarget / 1000) * 1000;
                     decimal quarterlyTarget = avgTarget / 4;
 
                     foreach (var lob in allLOBs)
                     {
-                        LobTargets.Add(new LOBTarget
+                        lobTargets.Add(new LOBTarget
                         {
                             LOB = lob,
                             FiscalYear = currentFiscalYear,
@@ -391,32 +430,45 @@ namespace ScoreCard.ViewModels
                             Q4Target = quarterlyTarget
                         });
                     }
-
-                    Debug.WriteLine($"已為 {allLOBs.Count} 個 LOB 創建目標");
                 }
                 else
                 {
-                    // 如果沒有找到 LOB，添加默認數據
-                    AddDefaultLOBTargets(currentFiscalYear);
+                    // 如果沒有找到LOB，添加默認數據
+                    AddDefaultLOBTargets(lobTargets, currentFiscalYear);
                 }
+
+                // 更新UI
+                LobTargets = new ObservableCollection<LOBTarget>(lobTargets);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"加載 LOB 目標時出錯: {ex.Message}");
+                Debug.WriteLine($"載入LOB目標時出錯: {ex.Message}");
 
-                // 確保視圖始終有數據顯示
-                if (LobTargets == null || !LobTargets.Any())
-                {
-                    LobTargets = new ObservableCollection<LOBTarget>();
-                    AddDefaultLOBTargets(GetSelectedFiscalYearValue());
-                }
+                // 創建默認數據，確保UI不為空
+                var defaultTargets = new List<LOBTarget>();
+                AddDefaultLOBTargets(defaultTargets, GetSelectedFiscalYearValue());
+                LobTargets = new ObservableCollection<LOBTarget>(defaultTargets);
 
-                ShowStatusMessage($"加載 LOB 目標失敗: {ex.Message}", false);
+                ShowStatusMessage($"載入LOB目標時出錯: {ex.Message}", false);
             }
         }
 
-        // 添加默認 LOB 目標的輔助方法
-        private void AddDefaultLOBTargets(int fiscalYear)
+        // 從Excel異步獲取LOB列表
+        private async Task<List<string>> GetLOBsAsync()
+        {
+            try
+            {
+                return await Task.Run(() => _excelService.GetAllLOBs());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"獲取LOB列表時出錯: {ex.Message}");
+                return new List<string> { "Power", "Thermal", "Channel", "Service", "Batts & Caps" };
+            }
+        }
+
+        // 添加默認LOB目標
+        private void AddDefaultLOBTargets(List<LOBTarget> targets, int fiscalYear)
         {
             var defaultLOBs = new[]
             {
@@ -430,7 +482,7 @@ namespace ScoreCard.ViewModels
             foreach (var (name, target) in defaultLOBs)
             {
                 decimal quarterlyTarget = target / 4;
-                LobTargets.Add(new LOBTarget
+                targets.Add(new LOBTarget
                 {
                     LOB = name,
                     FiscalYear = fiscalYear,
@@ -441,15 +493,13 @@ namespace ScoreCard.ViewModels
                     Q4Target = quarterlyTarget
                 });
             }
-
-            Debug.WriteLine($"已添加 {defaultLOBs.Length} 個默認 LOB 目標");
         }
 
         private int GetSelectedFiscalYearValue()
         {
             if (string.IsNullOrEmpty(SelectedFiscalYear))
             {
-                // Default to current year if nothing is selected
+                // 如果未選擇財年，使用當前財年
                 var currentDate = DateTime.Now;
                 return currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
             }
@@ -459,50 +509,49 @@ namespace ScoreCard.ViewModels
                 return result;
             }
 
-            // Default to current year if parsing fails
+            // 如果解析失敗，使用當前財年
             var date = DateTime.Now;
             return date.Month >= 8 ? date.Year + 1 : date.Year;
         }
 
-        // Tab switching command
+        // 切換標籤
         [RelayCommand]
-        private void SwitchTab(string tabName)
+        private async Task SwitchTab(string tabName)
         {
             if (!string.IsNullOrEmpty(tabName) && SelectedTab != tabName)
             {
                 SelectedTab = tabName;
 
-                // Load appropriate data for selected tab
+                // 載入相應標籤的數據
+                if (!_isInitialized) return; // 如果尚未初始化完成，不進行數據載入
+
                 if (tabName == "IndividualTarget" || tabName == "LOBTargets")
                 {
-                    MainThread.BeginInvokeOnMainThread(async () =>
+                    IsLoading = true;
+                    try
                     {
-                        IsLoading = true;
-                        try
+                        if (tabName == "IndividualTarget")
                         {
-                            if (tabName == "IndividualTarget")
-                            {
-                                await LoadSalesRepTargets();
-                            }
-                            else if (tabName == "LOBTargets")
-                            {
-                                await LoadLOBTargets();
-                            }
+                            await LoadSalesRepTargets();
                         }
-                        catch (Exception ex)
+                        else if (tabName == "LOBTargets")
                         {
-                            Debug.WriteLine($"Error loading data for tab {tabName}: {ex.Message}");
+                            await LoadLOBTargets();
                         }
-                        finally
-                        {
-                            IsLoading = false;
-                        }
-                    });
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"切換到標籤 {tabName} 時載入數據出錯: {ex.Message}");
+                    }
+                    finally
+                    {
+                        IsLoading = false;
+                    }
                 }
             }
         }
 
-        // Update annual target based on quarterly targets
+        // 根據季度目標更新年度目標
         [RelayCommand]
         private void UpdateAnnualTarget(object parameter)
         {
@@ -523,7 +572,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // Distribute annual target to quarters
+        // 將年度目標平均分配到季度
         [RelayCommand]
         private void DistributeTarget(object parameter)
         {
@@ -556,7 +605,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // Save changes command
+        // 保存更改
         [RelayCommand]
         private async Task SaveChanges()
         {
@@ -564,27 +613,27 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = true;
 
-                // Set edit mode to false
+                // 關閉編輯模式
                 IsEditingTargets = false;
 
-                // Save company targets to appsettings.json
+                // 保存公司目標
                 await SaveCompanyTargetsAsync();
 
-                // Save sales rep targets to file
+                // 保存銷售代表目標
                 await SaveSalesRepTargetsAsync();
 
-                // Save LOB targets to file
+                // 保存LOB目標
                 await SaveLOBTargetsAsync();
 
-                // Notify target service that targets have been updated
+                // 通知目標服務目標已更新
                 _targetService.NotifyTargetsUpdated();
 
-                // Show success message
+                // 顯示成功消息
                 ShowStatusMessage("所有目標設定已成功儲存。", true);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error saving changes: {ex.Message}");
+                Debug.WriteLine($"保存更改時出錯: {ex.Message}");
                 ShowStatusMessage($"儲存目標設定失敗: {ex.Message}", false);
             }
             finally
@@ -597,46 +646,44 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                // Update TargetSettings object
+                // 建立 TargetSettings 物件
                 var targetSettings = new TargetSettings
                 {
                     CompanyTargets = CompanyTargets.ToList()
                 };
 
-                // Get the path to the appsettings.json file
+                // 獲取 appsettings.json 文件路徑
                 string settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
 
-                // Read the existing file content
+                // 讀取現有文件內容
                 string json = await File.ReadAllTextAsync(settingsPath);
 
-                // Deserialize to a dictionary
+                // 反序列化為字典
                 var jsonDoc = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
 
-                // Serialize the updated TargetSettings
+                // 序列化更新後的 TargetSettings
                 var targetSettingsJson = JsonSerializer.Serialize(targetSettings, new JsonSerializerOptions
                 {
                     WriteIndented = true
                 });
 
-                // Update the TargetSettings node in the jsonDoc
+                // 更新 jsonDoc 中的 TargetSettings 節點
                 var targetSettingsElement = JsonSerializer.Deserialize<JsonElement>(targetSettingsJson);
                 jsonDoc["TargetSettings"] = targetSettingsElement;
 
-                // Serialize back to JSON
+                // 重新序列化為 JSON
                 var updatedJson = JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions
                 {
                     WriteIndented = true
                 });
 
-                // Write back to the file
+                // 寫回文件
                 await File.WriteAllTextAsync(settingsPath, updatedJson);
-
-                Debug.WriteLine("公司目標已儲存至 appsettings.json");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"儲存公司目標時發生錯誤: {ex.Message}");
-                throw; // Re-throw to be caught by the caller
+                Debug.WriteLine($"保存公司目標時出錯: {ex.Message}");
+                throw; // 重新拋出異常，由調用者捕獲
             }
         }
 
@@ -647,18 +694,18 @@ namespace ScoreCard.ViewModels
 
             try
             {
-                // Set the current fiscal year for all targets
+                // 設置當前財年
                 int currentFY = GetSelectedFiscalYearValue();
                 foreach (var target in SalesRepTargets)
                 {
                     target.FiscalYear = currentFY;
                 }
 
-                // Create directory if it doesn't exist
+                // 創建目錄（如果不存在）
                 string targetDir = Path.Combine(AppContext.BaseDirectory, "Targets");
                 Directory.CreateDirectory(targetDir);
 
-                // Save to file
+                // 保存到文件
                 string filePath = Path.Combine(targetDir, $"SalesRepTargets_{currentFY}.json");
                 string json = JsonSerializer.Serialize(SalesRepTargets, new JsonSerializerOptions
                 {
@@ -666,12 +713,11 @@ namespace ScoreCard.ViewModels
                 });
 
                 await File.WriteAllTextAsync(filePath, json);
-                Debug.WriteLine($"銷售代表目標已儲存至 {filePath}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"儲存銷售代表目標時發生錯誤: {ex.Message}");
-                throw; // Re-throw to be caught by the caller
+                Debug.WriteLine($"保存銷售代表目標時出錯: {ex.Message}");
+                throw; // 重新拋出異常，由調用者捕獲
             }
         }
 
@@ -682,18 +728,18 @@ namespace ScoreCard.ViewModels
 
             try
             {
-                // Set the current fiscal year for all targets
+                // 設置當前財年
                 int currentFY = GetSelectedFiscalYearValue();
                 foreach (var target in LobTargets)
                 {
                     target.FiscalYear = currentFY;
                 }
 
-                // Create directory if it doesn't exist
+                // 創建目錄（如果不存在）
                 string targetDir = Path.Combine(AppContext.BaseDirectory, "Targets");
                 Directory.CreateDirectory(targetDir);
 
-                // Save to file
+                // 保存到文件
                 string filePath = Path.Combine(targetDir, $"LOBTargets_{currentFY}.json");
                 string json = JsonSerializer.Serialize(LobTargets, new JsonSerializerOptions
                 {
@@ -701,59 +747,58 @@ namespace ScoreCard.ViewModels
                 });
 
                 await File.WriteAllTextAsync(filePath, json);
-                Debug.WriteLine($"LOB 目標已儲存至 {filePath}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"儲存 LOB 目標時發生錯誤: {ex.Message}");
-                throw; // Re-throw to be caught by the caller
+                Debug.WriteLine($"保存LOB目標時出錯: {ex.Message}");
+                throw; // 重新拋出異常，由調用者捕獲
             }
         }
 
-        // Add new fiscal year
+        // 添加新財年
         [RelayCommand]
         private void AddFiscalYear()
         {
             try
             {
-                // Find the highest fiscal year
+                // 找出最高財年
                 int maxYear = CompanyTargets.Max(t => t.FiscalYear);
 
-                // Create new fiscal year with values copied from the previous year
+                // 創建新財年，複製上一年的值並增加5%
                 var previousYear = CompanyTargets.FirstOrDefault(t => t.FiscalYear == maxYear);
                 var newTarget = new FiscalYearTarget
                 {
                     FiscalYear = maxYear + 1,
-                    AnnualTarget = previousYear?.AnnualTarget * 1.05m ?? 5000000m, // 5% increase or default
+                    AnnualTarget = previousYear?.AnnualTarget * 1.05m ?? 5000000m,
                     Q1Target = previousYear?.Q1Target * 1.05m ?? 1250000m,
                     Q2Target = previousYear?.Q2Target * 1.05m ?? 1250000m,
                     Q3Target = previousYear?.Q3Target * 1.05m ?? 1250000m,
                     Q4Target = previousYear?.Q4Target * 1.05m ?? 1250000m
                 };
 
-                // Round values to nearest 10,000
+                // 四捨五入到最接近的10,000
                 newTarget.AnnualTarget = Math.Round(newTarget.AnnualTarget / 10000) * 10000;
                 newTarget.Q1Target = Math.Round(newTarget.Q1Target / 10000) * 10000;
                 newTarget.Q2Target = Math.Round(newTarget.Q2Target / 10000) * 10000;
                 newTarget.Q3Target = Math.Round(newTarget.Q3Target / 10000) * 10000;
                 newTarget.Q4Target = Math.Round(newTarget.Q4Target / 10000) * 10000;
 
-                // Add new fiscal year to the collection (at the beginning)
+                // 將新財年添加到集合開頭
                 CompanyTargets.Insert(0, newTarget);
 
-                // Update fiscal years list
+                // 更新財年列表
                 SetupFiscalYears();
 
                 ShowStatusMessage($"已新增財年 FY{maxYear + 1}", true);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"新增財年時發生錯誤: {ex.Message}");
-                ShowStatusMessage($"新增財年時發生錯誤: {ex.Message}", false);
+                Debug.WriteLine($"新增財年時出錯: {ex.Message}");
+                ShowStatusMessage($"新增財年時出錯: {ex.Message}", false);
             }
         }
 
-        // Add sales rep command
+        // 添加銷售代表
         [RelayCommand]
         private void AddRep()
         {
@@ -769,11 +814,11 @@ namespace ScoreCard.ViewModels
                     avgTarget = SalesRepTargets.Average(r => r.AnnualTarget);
                 }
 
-                // 四捨五入到最接近的 50,000
+                // 四捨五入到最接近的50,000
                 avgTarget = Math.Round(avgTarget / 50000) * 50000;
                 decimal quarterlyTarget = avgTarget / 4;
 
-                // 創建新的銷售代表目標
+                // 創建新銷售代表目標
                 var newTarget = new SalesRepTarget
                 {
                     SalesRep = "新代表",
@@ -788,7 +833,6 @@ namespace ScoreCard.ViewModels
                 // 添加到集合
                 SalesRepTargets.Add(newTarget);
 
-                // 顯示成功消息
                 ShowStatusMessage("已添加新銷售代表，請更改代表名稱並設定目標值", true);
             }
             catch (Exception ex)
@@ -798,7 +842,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // Remove sales rep command
+        // 移除銷售代表
         [RelayCommand]
         private void RemoveSalesRep(SalesRepTarget repTarget)
         {
@@ -809,7 +853,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // Add LOB command
+        // 添加LOB
         [RelayCommand]
         private void AddLOB()
         {
@@ -825,11 +869,11 @@ namespace ScoreCard.ViewModels
                     avgTarget = LobTargets.Average(l => l.AnnualTarget);
                 }
 
-                // 四捨五入到最接近的 50,000
+                // 四捨五入到最接近的50,000
                 avgTarget = Math.Round(avgTarget / 50000) * 50000;
                 decimal quarterlyTarget = avgTarget / 4;
 
-                // 創建新的 LOB 目標
+                // 創建新LOB目標
                 var newTarget = new LOBTarget
                 {
                     LOB = "新產品線",
@@ -844,17 +888,16 @@ namespace ScoreCard.ViewModels
                 // 添加到集合
                 LobTargets.Add(newTarget);
 
-                // 顯示成功消息
                 ShowStatusMessage("已添加新產品線，請更改名稱並設定目標值", true);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"添加 LOB 時出錯: {ex.Message}");
+                Debug.WriteLine($"添加LOB時出錯: {ex.Message}");
                 ShowStatusMessage($"添加產品線失敗: {ex.Message}", false);
             }
         }
 
-        // Remove LOB command
+        // 移除LOB
         [RelayCommand]
         private void RemoveLOB(LOBTarget lobTarget)
         {
@@ -865,15 +908,15 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // Change fiscal year for individual and LOB targets
+        // 當選擇的財年變更時
         partial void OnSelectedFiscalYearChanged(string value)
         {
-            if (string.IsNullOrEmpty(value))
+            if (string.IsNullOrEmpty(value) || !_isInitialized)
                 return;
 
             Debug.WriteLine($"所選財年變更為: {value}");
 
-            // Load targets for the selected fiscal year
+            // 為選擇的財年載入目標
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 IsLoading = true;
@@ -894,13 +937,14 @@ namespace ScoreCard.ViewModels
             });
         }
 
+        // 顯示狀態消息
         private void ShowStatusMessage(string message, bool isSuccess)
         {
             StatusMessage = message;
             IsStatusSuccess = isSuccess;
             IsStatusMessageVisible = true;
 
-            // Hide the message after a delay
+            // 延遲後隱藏消息
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 await Task.Delay(5000);

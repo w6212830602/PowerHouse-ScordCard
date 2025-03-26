@@ -17,6 +17,10 @@ namespace ScoreCard.Services
         List<SalesLeaderboardItem> GetSalesLeaderboardData();
         List<DepartmentLobData> GetDepartmentLobData();
 
+        // 新增獲取銷售代表和LOB列表的方法
+        List<string> GetAllSalesReps();
+        List<string> GetAllLOBs();
+
         event EventHandler<DateTime> DataUpdated;
     }
 }
