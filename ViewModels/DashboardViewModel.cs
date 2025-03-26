@@ -397,7 +397,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Q1 未達成通知: ${Q1Carried:N0}");
                 newNotifications.Add(new NotificationItem
                 {
-                    Message = $"Q1 目標未達成! ${Q1Carried:N0} 轉移至 Q2"
+                    Message = $"Q1 target not achieved! ${Q1Carried:N0} carried over to Q2"
                 });
             }
 
@@ -407,7 +407,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Q2 未達成通知: ${Q2Carried:N0}");
                 newNotifications.Add(new NotificationItem
                 {
-                    Message = $"Q2 目標未達成! ${Q2Carried:N0} 轉移至 Q3"
+                    Message = $"Q2 target not achieved! ${Q2Carried:N0} carried over to Q3"
                 });
             }
 
@@ -417,7 +417,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Q3 未達成通知: ${Q3Carried:N0}");
                 newNotifications.Add(new NotificationItem
                 {
-                    Message = $"Q3 目標未達成! ${Q3Carried:N0} 轉移至 Q4"
+                    Message = $"Q3 target not achieved! ${Q3Carried:N0} carried over to Q4"
                 });
             }
 

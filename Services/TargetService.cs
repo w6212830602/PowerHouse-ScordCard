@@ -60,32 +60,73 @@ namespace ScoreCard.Services
 
             try
             {
-                await Task.Run(() =>
+                Debug.WriteLine("TargetService: Starting initialization");
+
+                // Load company targets with error handling
+                try
                 {
-                    // Load company targets from appsettings.json
                     LoadCompanyTargetsFromSettings();
-
-                    // Load sales rep and LOB targets for all fiscal years
-                    foreach (var target in _companyTargets)
-                    {
-                        int fiscalYear = target.FiscalYear;
-                        LoadSalesRepTargetsFromFile(fiscalYear);
-                        LoadLOBTargetsFromFile(fiscalYear);
-                    }
-                });
-
-                // Setup file monitoring for target files
-                MonitorTargetFiles();
+                    Debug.WriteLine("TargetService: Company targets loaded successfully");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"TargetService: Error loading company targets: {ex.Message}");
+                    // Create default company targets
+                    _companyTargets = CreateDefaultCompanyTargets();
+                }
 
                 _isInitialized = true;
-                Debug.WriteLine("Target service initialized successfully");
+                Debug.WriteLine("TargetService: Initialization completed");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error initializing target service: {ex.Message}");
-                throw;
+                Debug.WriteLine($"TargetService: Critical error in initialization: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+
+                // Ensure we mark as initialized even on error
+                _isInitialized = true;
+                throw; // Re-throw to be handled by caller
             }
         }
+
+        private List<FiscalYearTarget> CreateDefaultCompanyTargets()
+        {
+            var currentDate = DateTime.Now;
+            var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
+
+            return new List<FiscalYearTarget>
+    {
+        new FiscalYearTarget
+        {
+            FiscalYear = currentFiscalYear + 1,
+            AnnualTarget = 5000000,
+            Q1Target = 1250000,
+            Q2Target = 1250000,
+            Q3Target = 1250000,
+            Q4Target = 1250000
+        },
+        new FiscalYearTarget
+        {
+            FiscalYear = currentFiscalYear,
+            AnnualTarget = 4500000,
+            Q1Target = 1125000,
+            Q2Target = 1125000,
+            Q3Target = 1125000,
+            Q4Target = 1125000
+        },
+        new FiscalYearTarget
+        {
+            FiscalYear = currentFiscalYear - 1,
+            AnnualTarget = 4000000,
+            Q1Target = 1000000,
+            Q2Target = 1000000,
+            Q3Target = 1000000,
+            Q4Target = 1000000
+        }
+    };
+        }
+
+
 
         private void LoadCompanyTargetsFromSettings()
         {

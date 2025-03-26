@@ -51,12 +51,12 @@
 
                 <!-- LOB 目標標籤 -->
                 <Border Stroke="#E5E7EB"
-                        StrokeThickness="1"
-                        BackgroundColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,#EFF6FF,White'}"
-                        Padding="20,10">
-                    <Label Text="產品線目標"
-                           TextColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,#2563EB,#6B7280'}"
-                           FontAttributes="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,Bold,None'}"/>
+        StrokeThickness="1"
+        BackgroundColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,#EFF6FF,White'}"
+        Padding="20,10">
+                    <Label Text="Product Line Target"
+           TextColor="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,#2563EB,#6B7280'}"
+           FontAttributes="{Binding SelectedTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter='LOBTargets,Bold,None'}"/>
                     <Border.GestureRecognizers>
                         <TapGestureRecognizer Command="{Binding SwitchTabCommand}" CommandParameter="LOBTargets"/>
                     </Border.GestureRecognizers>

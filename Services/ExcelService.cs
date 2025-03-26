@@ -18,6 +18,7 @@ namespace ScoreCard.Services
         private readonly string _byRepSheetName = "By Rep";
         private FileSystemWatcher _watcher;
         public event EventHandler<DateTime> DataUpdated;
+        private List<SalesData> _allSalesData = new List<SalesData>();
 
         private List<ProductSalesData> _productSalesCache = new List<ProductSalesData>();
         private List<SalesLeaderboardItem> _salesLeaderboardCache = new List<SalesLeaderboardItem>();
@@ -988,7 +989,6 @@ namespace ScoreCard.Services
             if (string.IsNullOrWhiteSpace(department))
                 return "Other";
 
-            // 簡單映射，根據實際數據調整
             if (department.Contains("Power", StringComparison.OrdinalIgnoreCase))
                 return "Power";
             if (department.Contains("Thermal", StringComparison.OrdinalIgnoreCase))
@@ -997,9 +997,11 @@ namespace ScoreCard.Services
                 return "Channel";
             if (department.Contains("Service", StringComparison.OrdinalIgnoreCase))
                 return "Service";
+            if (department.Contains("Batts", StringComparison.OrdinalIgnoreCase) ||
+                department.Contains("Caps", StringComparison.OrdinalIgnoreCase))
+                return "Batts & Caps";
 
-            // 未知的Department歸類為"Other"
-            return "Other";
+            return department; // Keep original if not matching predefined categories
         }
 
         // 輔助函數：將產品類型映射到LOB
@@ -1188,33 +1190,42 @@ namespace ScoreCard.Services
         {
             try
             {
-                // 如果 _recentDataCache 有數據，從中獲取
-                if (_recentDataCache != null && _recentDataCache.Any())
+                Debug.WriteLine("Getting all LOBs from Excel");
+
+                // Try to load data if needed
+                if (_allSalesData == null || !_allSalesData.Any())
                 {
-                    return _recentDataCache
-                        .Where(x => !string.IsNullOrWhiteSpace(x.Department))
-                        .Select(x => NormalizeDepartment(x.Department))
-                        .Distinct()
-                        .OrderBy(x => x)
-                        .ToList();
+                    var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                    _allSalesData = data;
                 }
 
-                // 否則，嘗試從主資料源讀取
-                var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
-                return data
+                // Extract LOBs from Department field
+                var lobs = _allSalesData
                     .Where(x => !string.IsNullOrWhiteSpace(x.Department))
                     .Select(x => NormalizeDepartment(x.Department))
                     .Distinct()
                     .OrderBy(x => x)
                     .ToList();
+
+                Debug.WriteLine($"Found {lobs.Count} unique LOBs from Excel");
+
+                // If no LOBs found, return default values
+                if (!lobs.Any())
+                {
+                    Debug.WriteLine("No LOBs found, returning default values");
+                    return new List<string> { "Power", "Thermal", "Channel", "Service", "Batts & Caps" };
+                }
+
+                return lobs;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"獲取 LOB 列表時出錯: {ex.Message}");
-                // 返回一些默認數據
+                Debug.WriteLine($"Error getting LOB list: {ex.Message}");
+                // Return default values in case of error
                 return new List<string> { "Power", "Thermal", "Channel", "Service", "Batts & Caps" };
             }
         }
+
 
     }
 }

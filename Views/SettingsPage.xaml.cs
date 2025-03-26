@@ -25,8 +25,23 @@ namespace ScoreCard.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            await _viewModel.InitializeAsync();
+
+            try
+            {
+                Debug.WriteLine("SettingsPage OnAppearing");
+                await _viewModel.InitializeAsync();
+                Debug.WriteLine("SettingsPage initialization completed");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error in SettingsPage.OnAppearing: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+
+                // Show error to user
+                await DisplayAlert("Error", "Failed to initialize settings page. Please try again later.", "OK");
+            }
         }
+
 
         protected override void OnDisappearing()
         {
