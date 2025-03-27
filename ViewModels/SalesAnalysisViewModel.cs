@@ -148,7 +148,7 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                await Shell.Current.GoToAsync("DetailedAnalysis");
+                await Shell.Current.GoToAsync("//DetailedAnalysis");
             }
             catch (Exception ex)
             {

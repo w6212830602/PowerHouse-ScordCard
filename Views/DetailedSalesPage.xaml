@@ -23,12 +23,12 @@
         <DataTemplate x:Key="NoDataTemplate">
             <Grid Padding="20" HeightRequest="100">
                 <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
-                    <Label Text="暫無匹配數據" 
+                    <Label Text="No mached data" 
                            FontSize="16" 
                            TextColor="#666666" 
                            FontAttributes="Bold"
                            HorizontalOptions="Center"/>
-                    <Label Text="請嘗試調整日期範圍或選擇其他銷售代表" 
+                    <Label Text="Please try adjust the date or try another sales rep" 
                            FontSize="14" 
                            TextColor="#888888"
                            HorizontalOptions="Center"/>

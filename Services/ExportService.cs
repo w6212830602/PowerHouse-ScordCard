@@ -64,7 +64,7 @@ namespace ScoreCard.Services
                     worksheet.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                     // 生成日期
-                    worksheet.Cells[2, 1].Value = $"生成日期: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                    worksheet.Cells[2, 1].Value = $"Generate date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
                     worksheet.Cells[2, 1, 2, 10].Merge = true;
                     worksheet.Cells[2, 1].Style.Font.Size = 12;
                     worksheet.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -109,7 +109,7 @@ namespace ScoreCard.Services
                 }
 
                 // 顯示成功消息
-                await ShowSuccessMessage("Excel報表已生成", $"檔案已保存到: {fullPath}");
+                await ShowSuccessMessage("Excel Report Generated", $"File saved to: {fullPath}");
 
                 // 嘗試打開文件夾
 #if WINDOWS
@@ -385,7 +385,7 @@ namespace ScoreCard.Services
                 using (var writer = new StreamWriter(fullPath))
                 {
                     await writer.WriteLineAsync($"*** {title} ***");
-                    await writer.WriteLineAsync($"生成日期: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    await writer.WriteLineAsync($"Generate date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                     await writer.WriteLineAsync("");
 
                     var firstItem = data.FirstOrDefault();

@@ -663,9 +663,9 @@ namespace ScoreCard.ViewModels
                     MainThread.BeginInvokeOnMainThread(async () =>
                     {
                         await Application.Current.MainPage.DisplayAlert(
-                            "無數據",
-                            $"在 {currentStartDate:yyyy-MM-dd} 至 {currentEndDate:yyyy-MM-dd} 期間沒有找到任何銷售數據。",
-                            "確定");
+                            "No Data",
+    $"No sales data found in the period from {currentStartDate:yyyy-MM-dd} to {currentEndDate:yyyy-MM-dd}.",
+    "OK");
                     });
 
                     // 保持_filteredSalesData為空列表，這樣UI將顯示無數據狀態
@@ -702,9 +702,9 @@ namespace ScoreCard.ViewModels
                         MainThread.BeginInvokeOnMainThread(async () =>
                         {
                             await Application.Current.MainPage.DisplayAlert(
-                                "部分代表無數據",
-                                $"以下選中的銷售代表在選定日期範圍內沒有數據記錄: {string.Join(", ", missingReps)}",
-                                "確定");
+                                "Some Representatives Have No Data",
+                                $"The following selected sales representatives have no data records in the selected date range: {string.Join(", ", missingReps)}",
+                                "OK");
                         });
                     }
 
@@ -739,9 +739,9 @@ namespace ScoreCard.ViewModels
                         MainThread.BeginInvokeOnMainThread(async () =>
                         {
                             await Application.Current.MainPage.DisplayAlert(
-                                "無匹配數據",
-                                $"選中的銷售代表在當前日期範圍內沒有匹配的數據記錄。",
-                                "確定");
+                                "No Matching Data",
+                                $"The selected sales representatives have no matching data records in the current date range.",
+                                "OK");
                         });
                     }
                 }
