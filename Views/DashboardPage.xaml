@@ -16,12 +16,39 @@
     <ScrollView>
         <VerticalStackLayout Padding="16" Spacing="24">
             <!-- 頂部選擇器和時間 -->
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
                 <Picker Title="Pick an option"
                         ItemsSource="{Binding Options}"
                         SelectedItem="{Binding SelectedOption}"/>
 
-                <Label Grid.Column="1" 
+                <!-- Edit Mode Toggle and Save Button -->
+                <Button Grid.Column="1"
+                        Text="Edit Target"
+                        Command="{Binding ToggleEditModeCommand}"
+                        BackgroundColor="#FF3B30"
+                        TextColor="White"
+                        IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"
+                        Padding="10,5" />
+
+                <HorizontalStackLayout Grid.Column="1" Spacing="10" IsVisible="{Binding IsEditMode}">
+                    <Button Text="Save"
+                            Command="{Binding SaveChangesCommand}"
+                            BackgroundColor="#4CAF50"
+                            TextColor="White"
+                            Padding="10,5" />
+                    <Button Text="Cancel"
+                            Command="{Binding CancelEditingCommand}"
+                            BackgroundColor="#607D8B"
+                            TextColor="White"
+                            Padding="10,5" />
+                    <Button Text="Reset"
+                            Command="{Binding ResetQuarterlyTargetsCommand}"
+                            BackgroundColor="#2196F3"
+                            TextColor="White"
+                            Padding="10,5" />
+                </HorizontalStackLayout>
+
+                <Label Grid.Column="2" 
                        Text="{Binding LastUpdated, StringFormat='Last Updated: {0}'}"
                        TextColor="#6B7280"
                        VerticalOptions="Center"/>
@@ -35,9 +62,19 @@
                         <Label Text="Annual Target" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
-                        <Label Text="{Binding AnnualTargetDisplay}"
-                               FontSize="24"
-                               FontAttributes="Bold"/>
+                        <!-- Editable Annual Target when in edit mode -->
+                        <Grid>
+                            <Label Text="{Binding AnnualTargetDisplay}"
+                                   FontSize="24"
+                                   FontAttributes="Bold"
+                                   IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
+
+                            <Entry Text="{Binding AnnualTarget}"
+                                   FontSize="24"
+                                   FontAttributes="Bold"
+                                   Keyboard="Numeric"
+                                   IsVisible="{Binding IsEditMode}"/>
+                        </Grid>
                     </VerticalStackLayout>
 
                     <!-- Achievement -->
@@ -120,11 +157,21 @@
                                     <Label Text="Target:" 
                                            FontAttributes="Bold"
                                            FontSize="14"/>
-                                    <Label Grid.Column="1"
-                                           Text="{Binding Q1TargetDisplay}"
-                                           FontAttributes="Bold"
-                                           FontSize="14"
-                                           HorizontalOptions="End"/>
+                                    <!-- Editable Q1 Target -->
+                                    <Grid Grid.Column="1" HorizontalOptions="End">
+                                        <Label Text="{Binding Q1TargetDisplay}"
+                                               FontAttributes="Bold"
+                                               FontSize="14"
+                                               IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
+
+                                        <Entry Text="{Binding Q1Target}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               Keyboard="Numeric"
+                                               WidthRequest="120"
+                                               HorizontalTextAlignment="End"
+                                               IsVisible="{Binding IsEditMode}"/>
+                                    </Grid>
                                 </Grid>
                                 <Label Text="{Binding Q1BaseDisplay}"
                                        FontSize="12"
@@ -172,11 +219,21 @@
                                     <Label Text="Target:" 
                                            FontAttributes="Bold"
                                            FontSize="14"/>
-                                    <Label Grid.Column="1"
-                                           Text="{Binding Q2TargetDisplay}"
-                                           FontAttributes="Bold"
-                                           FontSize="14"
-                                           HorizontalOptions="End"/>
+                                    <!-- Editable Q2 Target -->
+                                    <Grid Grid.Column="1" HorizontalOptions="End">
+                                        <Label Text="{Binding Q2TargetDisplay}"
+                                               FontAttributes="Bold"
+                                               FontSize="14"
+                                               IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
+
+                                        <Entry Text="{Binding Q2Target}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               Keyboard="Numeric"
+                                               WidthRequest="120"
+                                               HorizontalTextAlignment="End"
+                                               IsVisible="{Binding IsEditMode}"/>
+                                    </Grid>
                                 </Grid>
                                 <Label Text="{Binding Q2BaseDisplay}"
                                        FontSize="12"
@@ -228,11 +285,21 @@
                                     <Label Text="Target:" 
                                            FontAttributes="Bold"
                                            FontSize="14"/>
-                                    <Label Grid.Column="1"
-                                           Text="{Binding Q3TargetDisplay}"
-                                           FontAttributes="Bold"
-                                           FontSize="14"
-                                           HorizontalOptions="End"/>
+                                    <!-- Editable Q3 Target -->
+                                    <Grid Grid.Column="1" HorizontalOptions="End">
+                                        <Label Text="{Binding Q3TargetDisplay}"
+                                               FontAttributes="Bold"
+                                               FontSize="14"
+                                               IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
+
+                                        <Entry Text="{Binding Q3Target}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               Keyboard="Numeric"
+                                               WidthRequest="120"
+                                               HorizontalTextAlignment="End"
+                                               IsVisible="{Binding IsEditMode}"/>
+                                    </Grid>
                                 </Grid>
                                 <Label Text="{Binding Q3BaseDisplay}"
                                        FontSize="12"
@@ -284,11 +351,21 @@
                                     <Label Text="Target:" 
                                            FontAttributes="Bold"
                                            FontSize="14"/>
-                                    <Label Grid.Column="1"
-                                           Text="{Binding Q4TargetDisplay}"
-                                           FontAttributes="Bold"
-                                           FontSize="14"
-                                           HorizontalOptions="End"/>
+                                    <!-- Editable Q4 Target -->
+                                    <Grid Grid.Column="1" HorizontalOptions="End">
+                                        <Label Text="{Binding Q4TargetDisplay}"
+                                               FontAttributes="Bold"
+                                               FontSize="14"
+                                               IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
+
+                                        <Entry Text="{Binding Q4Target}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               Keyboard="Numeric"
+                                               WidthRequest="120"
+                                               HorizontalTextAlignment="End"
+                                               IsVisible="{Binding IsEditMode}"/>
+                                    </Grid>
                                 </Grid>
                                 <Label Text="{Binding Q4BaseDisplay}"
                                        FontSize="12"
@@ -321,7 +398,7 @@
                 <CollectionView ItemsSource="{Binding Notifications}"
                                 EmptyView="No notifications">
                     <CollectionView.ItemTemplate>
-                        <DataTemplate x:DataType="viewmodels:NotificationItem">
+                        <DataTemplate x:DataType="models:NotificationItem">
                             <Border Margin="0,0,0,8"
                                     Stroke="#E5E7EB"
                                     StrokeThickness="1"
@@ -335,6 +412,23 @@
                     </CollectionView.ItemTemplate>
                 </CollectionView>
             </VerticalStackLayout>
+
+            <!-- Status Message -->
+            <Border IsVisible="{Binding IsStatusMessageVisible}"
+                    Stroke="#E5E7EB"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 8"
+                    BackgroundColor="{Binding IsStatusSuccess, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#D1FAE5,#FEE2E2'}"
+                    Padding="16">
+                <Label Text="{Binding StatusMessage}"
+                       TextColor="{Binding IsStatusSuccess, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#065F46,#991B1B'}"
+                       HorizontalOptions="Center"/>
+            </Border>
+
+            <!-- Loading Indicator -->
+            <Grid IsVisible="{Binding IsLoading}" BackgroundColor="#80000000" HorizontalOptions="Fill" VerticalOptions="Fill">
+                <ActivityIndicator IsRunning="True" Color="#FF3B30" HorizontalOptions="Center" VerticalOptions="Center"/>
+            </Grid>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using ScoreCard.Models;
 using ScoreCard.Services;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 
@@ -568,6 +569,7 @@ namespace ScoreCard.ViewModels
 
         private void UpdateRemainingValues()
         {
+
             // Calculate total achieved value
             var totalAchieved = Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved;
 
@@ -812,7 +814,7 @@ namespace ScoreCard.ViewModels
 
                 ResetEditFlags();
 
-                ShowStatusMessage("進入編輯模式。您可以更改目標值。", true);
+                ShowStatusMessage("Edit mode on, you can change targets now", true);
                 Debug.WriteLine("進入編輯模式");
             }
             else
@@ -825,7 +827,7 @@ namespace ScoreCard.ViewModels
                 Q4Target = _originalQ4Target;
 
                 ResetEditFlags();
-                ShowStatusMessage("已退出編輯模式，目標值已恢復。", false);
+                ShowStatusMessage("Edit mode off，Targets resets", false);
                 Debug.WriteLine("退出編輯模式而不儲存");
             }
         }
@@ -850,21 +852,28 @@ namespace ScoreCard.ViewModels
                 };
 
                 // Save to target service
-                await _targetService.UpdateCompanyTargetAsync(companyTarget);
+                bool success = await _targetService.UpdateCompanyTargetAsync(companyTarget);
+                if (success)
+                {
+                    // Update originals
+                    _originalAnnualTarget = AnnualTarget;
+                    _originalQ1Target = Q1Target;
+                    _originalQ2Target = Q2Target;
+                    _originalQ3Target = Q3Target;
+                    _originalQ4Target = Q4Target;
 
-                // Update originals
-                _originalAnnualTarget = AnnualTarget;
-                _originalQ1Target = Q1Target;
-                _originalQ2Target = Q2Target;
-                _originalQ3Target = Q3Target;
-                _originalQ4Target = Q4Target;
+                    // Exit edit mode
+                    IsEditMode = false;
+                    ResetEditFlags();
 
-                // Exit edit mode
-                IsEditMode = false;
-                ResetEditFlags();
-
-                ShowStatusMessage("目標設定已成功儲存。", true);
-                Debug.WriteLine("目標設定已儲存");
+                    ShowStatusMessage("目標設定已成功儲存。", true);
+                    Debug.WriteLine("目標設定已儲存");
+                }
+                else
+                {
+                    ShowStatusMessage("儲存目標設定失敗，請再試一次。", false);
+                    Debug.WriteLine("儲存目標設定失敗");
+                }
             }
             catch (Exception ex)
             {

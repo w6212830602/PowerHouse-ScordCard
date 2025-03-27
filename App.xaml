@@ -18,6 +18,9 @@
 
             <!-- 值轉換器 -->
             <converters:InverseBoolToStringConverter x:Key="InverseBoolToStringConverter"/>
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+
 
             <!-- 顏色 -->
             <Color x:Key="Primary">#512BD4</Color>

@@ -35,6 +35,8 @@ namespace ScoreCard.Services
 
         // Events
         event EventHandler TargetsUpdated;
+
+        Task<bool> UpdateCompanyTargetAsync(FiscalYearTarget target);
     }
 
     public class TargetService : ITargetService
@@ -51,6 +53,77 @@ namespace ScoreCard.Services
         public TargetService(IConfiguration configuration)
         {
             _configuration = configuration;
+        }
+
+        public async Task<bool> UpdateCompanyTargetAsync(FiscalYearTarget target)
+        {
+            try
+            {
+                Debug.WriteLine($"Updating company target for fiscal year {target.FiscalYear}");
+
+                // Find and update the target in the _companyTargets list
+                var existingTarget = _companyTargets.FirstOrDefault(t => t.FiscalYear == target.FiscalYear);
+                if (existingTarget != null)
+                {
+                    // Update existing target
+                    existingTarget.AnnualTarget = target.AnnualTarget;
+                    existingTarget.Q1Target = target.Q1Target;
+                    existingTarget.Q2Target = target.Q2Target;
+                    existingTarget.Q3Target = target.Q3Target;
+                    existingTarget.Q4Target = target.Q4Target;
+                }
+                else
+                {
+                    // Add new target
+                    _companyTargets.Add(target);
+                }
+
+                // Save to appsettings.json
+                string settingsPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+
+                // Read existing file content
+                string json = await File.ReadAllTextAsync(settingsPath);
+
+                // Deserialize to dictionary
+                var jsonDoc = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
+                // Update TargetSettings
+                var targetSettings = new TargetSettings
+                {
+                    CompanyTargets = _companyTargets.ToList()
+                };
+
+                // Serialize updated TargetSettings
+                var targetSettingsJson = JsonSerializer.Serialize(targetSettings, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                // Update jsonDoc with new TargetSettings
+                var targetSettingsElement = JsonSerializer.Deserialize<JsonElement>(targetSettingsJson);
+                jsonDoc["TargetSettings"] = targetSettingsElement;
+
+                // Reserialize to JSON
+                var updatedJson = JsonSerializer.Serialize(jsonDoc, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                // Write back to file
+                await File.WriteAllTextAsync(settingsPath, updatedJson);
+
+                // Notify that targets have been updated
+                NotifyTargetsUpdated();
+
+                Debug.WriteLine($"Company target for fiscal year {target.FiscalYear} updated successfully");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error updating company target: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+                return false;
+            }
         }
 
         public async Task InitializeAsync()
