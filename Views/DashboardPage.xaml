@@ -59,7 +59,7 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
                     <!-- Annual Target -->
                     <VerticalStackLayout Grid.Column="0">
-                        <Label Text="Annual Target" 
+                        <Label Text="Annual Margin Target" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
                         <!-- Editable Annual Target when in edit mode -->

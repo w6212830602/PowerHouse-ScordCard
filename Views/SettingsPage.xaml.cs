@@ -41,8 +41,6 @@ namespace ScoreCard.Views
                 await DisplayAlert("Error", "Failed to initialize settings page. Please try again later.", "OK");
             }
         }
-
-
         protected override void OnDisappearing()
         {
             base.OnDisappearing();

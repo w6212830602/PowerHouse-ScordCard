@@ -474,14 +474,17 @@ namespace ScoreCard.ViewModels
                 var quarterlyData = yearData.GroupBy(x => x.Quarter)
                                        .ToDictionary(g => g.Key, g => new
                                        {
-                                           Achieved = g.Sum(x => x.POValue),
+                                           // 将POValue改为TotalCommission
+                                           Achieved = g.Sum(x => x.TotalCommission),
                                            MonthlyBreakdown = g.GroupBy(x => x.ReceivedDate.Month)
                                                              .Select(m => new
                                                              {
                                                                  Month = m.Key,
-                                                                 POValue = m.Sum(x => x.POValue)
+                                                                 // 这里也从POValue改为TotalCommission
+                                                                 Value = m.Sum(x => x.TotalCommission)
                                                              }).ToList()
                                        });
+
 
                 // Update quarterly achievement values
                 Q1Achieved = quarterlyData.GetValueOrDefault(1)?.Achieved ?? 0;

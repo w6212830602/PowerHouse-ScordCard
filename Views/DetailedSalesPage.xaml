@@ -347,7 +347,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <Label Text="Sales Rep Margin by Product Type"
+                            <Label Text="Detailed Reports"
                                    Padding="15"
                                    FontSize="16"
                                    FontAttributes="Bold"/>

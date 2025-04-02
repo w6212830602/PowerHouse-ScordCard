@@ -288,8 +288,8 @@ namespace ScoreCard.ViewModels
                 var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
                 decimal targetValue = companyTarget?.AnnualTarget ?? 4000000m;
 
-                // 計算總體達成值
-                decimal totalAchievement = _filteredData?.Sum(x => x.POValue) ?? 0;
+                // 修改：使用TotalCommission而不是POValue计算总体达成值
+                decimal totalAchievement = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
                 decimal totalMargin = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
 
                 // 更新摘要
@@ -306,6 +306,7 @@ namespace ScoreCard.ViewModels
                     remainingTargetPercentage = Math.Round((remainingTarget / targetValue) * 100, 1);
                 }
 
+                // 这里totalAchievement和totalMargin现在基本相同，可能需要调整逻辑
                 if (totalAchievement > 0)
                 {
                     marginPercentage = Math.Round((totalMargin / totalAchievement) * 100, 1);
@@ -323,7 +324,6 @@ namespace ScoreCard.ViewModels
                     {
                         Summary = new SalesAnalysisSummary();
                     }
-
                     Summary.TotalTarget = targetValue;
                     Summary.TotalAchievement = totalAchievement;
                     Summary.TotalMargin = totalMargin;
@@ -338,7 +338,6 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入摘要數據時發生錯誤: {ex.Message}");
-
                 // 確保摘要不為空
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
@@ -378,8 +377,12 @@ namespace ScoreCard.ViewModels
                     })
                     .Select(g => new {
                         YearMonth = g.Key,
+                        // 保留POValue以便理解变化
                         POValue = g.Sum(x => x.POValue),
-                        MarginValue = g.Sum(x => x.TotalCommission)
+                        // 使用TotalCommission作为Margin值
+                        MarginValue = g.Sum(x => x.TotalCommission),
+                        // 添加一个新字段用于图表数据
+                        CommissionValue = g.Sum(x => x.TotalCommission)
                     })
                     .OrderBy(x => x.YearMonth.Year)
                     .ThenBy(x => x.YearMonth.Month)
@@ -392,7 +395,8 @@ namespace ScoreCard.ViewModels
                 foreach (var month in monthlyData)
                 {
                     var label = $"{month.YearMonth.Year}/{month.YearMonth.Month:D2}";
-                    decimal poValueInMillions = Math.Round(month.POValue / 1000000m, 2);
+                    // 修改：使用CommissionValue替代POValue
+                    decimal commissionValueInMillions = Math.Round(month.CommissionValue / 1000000m, 2);
                     decimal marginValueInMillions = Math.Round(month.MarginValue / 1000000m, 2);
 
                     // 從目標服務獲取該月份的目標值
@@ -401,20 +405,20 @@ namespace ScoreCard.ViewModels
                     decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 將季度目標平均分配到月
                     decimal targetValueInMillions = Math.Round(targetValue / 1000000m, 2);
 
-                    // 添加到目標與達成對比圖表
+                    // 添加到目標與達成對比圖表 - 使用CommissionValue替代POValue
                     newTargetVsAchievementData.Add(new ChartData
                     {
                         Label = label,
                         Target = targetValueInMillions,
-                        Achievement = poValueInMillions
+                        Achievement = commissionValueInMillions
                     });
 
-                    // 添加到達成趨勢圖表
+                    // 添加到達成趨勢圖表 - 使用CommissionValue替代POValue
                     newAchievementTrendData.Add(new ChartData
                     {
                         Label = label,
                         Target = targetValueInMillions,
-                        Achievement = poValueInMillions
+                        Achievement = commissionValueInMillions
                     });
                 }
 
