@@ -900,34 +900,33 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                Debug.WriteLine("載入產品視圖數據");
+                Debug.WriteLine("Loading product view data");
 
-                // 這裡錯誤使用了filteredData，應改為_filteredSalesData
                 if (_filteredSalesData == null || !_filteredSalesData.Any())
                 {
-                    Debug.WriteLine("沒有過濾後的數據可用");
+                    Debug.WriteLine("No filtered data available");
                     ProductSalesData = new ObservableCollection<ProductSalesData>();
                     return;
                 }
 
-                // 按產品類型（AD列）分組，並計算每個類型的PO Value（G列）總和
+                // Group by product type and calculate totals
                 var productData = _filteredSalesData
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // 直接從Excel的相應列獲取數值
+                        // Direct from Excel's corresponding columns
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                        // TotalMargin是兩個Margin的總和
-                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
+                        // Use TotalCommission directly from the N column instead of summing
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // 計算PO Value百分比
+                // Calculate PO Value percentages
                 decimal totalPOValue = productData.Sum(p => p.POValue);
                 foreach (var product in productData)
                 {
@@ -937,13 +936,13 @@ namespace ScoreCard.ViewModels
                 }
 
                 ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                Debug.WriteLine($"已載入 {productData.Count} 條產品數據");
+                Debug.WriteLine($"Loaded {productData.Count} product data items");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"Error loading product data: {ex.Message}");
 
-                // 發生錯誤時顯示空數據
+                // In case of error, display empty data
                 var emptyProductData = new List<ProductSalesData>();
                 foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
                 {
@@ -964,6 +963,7 @@ namespace ScoreCard.ViewModels
                 });
             }
         }
+
 
         // 標準化產品類型名稱，處理可能的大小寫或拼寫差異
         private string NormalizeProductType(string productType)

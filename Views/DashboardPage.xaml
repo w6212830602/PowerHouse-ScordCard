@@ -79,10 +79,10 @@
 
                     <!-- Achievement -->
                     <VerticalStackLayout Grid.Column="1">
-                        <Label Text="Achievement" 
+                        <Label Text="Achieved" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
-                        <Label Text="{Binding AchievementDisplay}"
+                        <Label Text="{Binding TotalAchievedDisplay}"
                                TextColor="#EF4444"
                                FontSize="24"
                                FontAttributes="Bold"/>
@@ -113,7 +113,7 @@
 
                 <!-- Progress Labels -->
                 <Grid ColumnDefinitions="*,*">
-                    <Label Text="{Binding TotalAchievedDisplay}"
+                    <Label Text="{Binding AchievementDisplay}"
                            TextColor="#6B7280"
                            FontSize="12"/>
                     <Label Grid.Column="1" 

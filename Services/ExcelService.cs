@@ -39,7 +39,7 @@ namespace ScoreCard.Services
                 try
                 {
                     string fullPath = Path.Combine(Constants.BASE_PATH, filePath);
-                    Debug.WriteLine($"嘗試載入 Excel 檔案: {fullPath}");
+                    Debug.WriteLine($"Attempting to load Excel file: {fullPath}");
 
                     ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
                     var data = new List<SalesData>();
@@ -47,44 +47,44 @@ namespace ScoreCard.Services
 
                     using (var package = new ExcelPackage(new FileInfo(fullPath)))
                     {
-                        // 1. 讀取原始數據
+                        // 1. Read the original data
                         var worksheet = package.Workbook.Worksheets[_worksheetName];
                         if (worksheet == null)
                         {
-                            Debug.WriteLine($"找不到工作表: '{_worksheetName}'");
+                            Debug.WriteLine($"Worksheet not found: '{_worksheetName}'");
 
-                            // 嘗試使用索引查找工作表
+                            // Try to find the worksheet by index
                             if (package.Workbook.Worksheets.Count > 0)
                             {
                                 worksheet = package.Workbook.Worksheets[0];
-                                Debug.WriteLine($"改用第一個工作表: {worksheet.Name}");
+                                Debug.WriteLine($"Using first worksheet instead: {worksheet.Name}");
                             }
                             else
                             {
-                                throw new Exception("Excel 檔案中沒有工作表");
+                                throw new Exception("No worksheets in Excel file");
                             }
                         }
 
-                        Debug.WriteLine($"成功找到工作表: {worksheet.Name}");
+                        Debug.WriteLine($"Successfully found worksheet: {worksheet.Name}");
                         var rowCount = worksheet.Dimension?.Rows ?? 0;
-                        Debug.WriteLine($"工作表有 {rowCount} 行數據");
+                        Debug.WriteLine($"Worksheet has {rowCount} rows of data");
 
                         if (rowCount > 0)
                         {
-                            // 繪製表頭，確認列名稱
+                            // Print headers for debugging
                             var headers = new List<string>();
                             for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                             {
                                 var headerValue = worksheet.Cells[1, col].Text;
                                 headers.Add(headerValue);
                             }
-                            Debug.WriteLine($"表頭: {string.Join(", ", headers)}");
+                            Debug.WriteLine($"Headers: {string.Join(", ", headers)}");
 
                             for (int row = 2; row <= rowCount; row++)
                             {
                                 try
                                 {
-                                    // 檢查日期列是否為空
+                                    // Check if date cell is empty
                                     var dateCell = worksheet.Cells[row, 1];
                                     if (dateCell.Value == null) continue;
 
@@ -95,17 +95,17 @@ namespace ScoreCard.Services
                                     }
                                     else
                                     {
-                                        // 嘗試解析日期
+                                        // Try to parse date
                                         if (!DateTime.TryParse(dateCell.Text, out receivedDate))
                                         {
-                                            Debug.WriteLine($"無法解析第 {row} 行的日期: {dateCell.Text}");
+                                            Debug.WriteLine($"Could not parse date at row {row}: {dateCell.Text}");
                                             continue;
                                         }
                                     }
 
-                                    // 讀取完成日期（Y列）
+                                    // Read completion date (column Y)
                                     DateTime? completionDate = null;
-                                    var completionDateCell = worksheet.Cells[row, 25]; // Y列是第25列
+                                    var completionDateCell = worksheet.Cells[row, 25]; // Y column is 25th
                                     if (completionDateCell.Value != null)
                                     {
                                         if (completionDateCell.Value is DateTime completionDateTime)
@@ -114,7 +114,6 @@ namespace ScoreCard.Services
                                         }
                                         else
                                         {
-                                            // 嘗試解析完成日期
                                             DateTime parsedCompletionDate;
                                             if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
                                             {
@@ -123,29 +122,30 @@ namespace ScoreCard.Services
                                         }
                                     }
 
-                                    // 根據完成日期設置訂單狀態
+                                    // Set status based on completion date
                                     string status = completionDate.HasValue ? "Completed" : "Booked";
 
                                     var salesData = new SalesData
                                     {
                                         ReceivedDate = receivedDate,
-                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G列 - PO Value
-                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
-                                        BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J列 - Buy Resell
-                                        AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
-                                        TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]), // N列
-                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
-                                        Status = status,      // 根據Y列的完成日期確定狀態
-                                        CompletionDate = completionDate, // 新增的完成日期欄位
-                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
-                                        ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
-                                        Department = worksheet.Cells[row, 29].GetValue<string>()   // AC列 - Department/LOB
+                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G column - PO Value
+                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H column
+                                        BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J column - Buy Resell
+                                        AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M column - Agency Margin
+                                        TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]), // N column - Total Commission
+                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P column
+                                        Status = status,
+                                        CompletionDate = completionDate,
+                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z column
+                                        ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD column - Product Type
+                                        Department = worksheet.Cells[row, 29].GetValue<string>()   // AC column - Department/LOB
                                     };
 
                                     if (row <= 5)
                                     {
-                                        Debug.WriteLine($"第 {row} 行: 日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                        Debug.WriteLine($"Row {row}: Date={salesData.ReceivedDate:yyyy-MM-dd}, " +
                                                        $"POValue=${salesData.POValue}, " +
+                                                       $"TotalCommission=${salesData.TotalCommission}, " +
                                                        $"SalesRep={salesData.SalesRep}, " +
                                                        $"ProductType={salesData.ProductType}, " +
                                                        $"Status={salesData.Status}");
@@ -153,7 +153,7 @@ namespace ScoreCard.Services
 
                                     if (IsValidSalesData(salesData))
                                     {
-                                        // 跳過 cancelled 狀態的數據
+                                        // Skip records with 'cancelled' status
                                         if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
                                         {
                                             data.Add(salesData);
@@ -162,52 +162,44 @@ namespace ScoreCard.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.WriteLine($"載入 Excel 數據時發生錯誤: {ex.Message}\n{ex.StackTrace}");
-
-                                    // 即使發生錯誤，也返回一些測試數據
-                                    var testData = CreateTestSalesData();
-                                    _recentDataCache = testData; // 保存測試數據以供後續使用
-                                    AddHardcodedTestData(_productSalesCache, _salesLeaderboardCache, _departmentLobCache);
-                                    Debug.WriteLine($"由於錯誤，返回 {testData.Count} 條測試數據");
-
-                                    return (testData, DateTime.Now);
+                                    Debug.WriteLine($"Error loading Excel data: {ex.Message}\n{ex.StackTrace}");
                                 }
                             }
                         }
 
-                        // 直接加入測試數據
+                        // Add test data regardless
                         AddHardcodedTestData(_productSalesCache, _salesLeaderboardCache, _departmentLobCache);
 
-                        // 嘗試讀取摘要工作表
+                        // Try to read summary sheets
                         try
                         {
                             LoadSummarySheets(package);
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"讀取摘要工作表時發生錯誤: {ex.Message}");
+                            Debug.WriteLine($"Error reading summary sheets: {ex.Message}");
                         }
                     }
 
-                    // 即使有真實數據，也確保測試數據覆蓋廣泛的日期範圍，便於測試
-                    if (data.Count == 0 || data.Count < 100) // 如果數據太少，添加測試數據
+                    // Add test data if real data is insufficient
+                    if (data.Count == 0 || data.Count < 100)
                     {
                         var testData = CreateTestSalesData();
                         data.AddRange(testData);
-                        Debug.WriteLine($"添加了 {testData.Count} 條測試數據，總計 {data.Count} 條");
+                        Debug.WriteLine($"Added {testData.Count} test records, total {data.Count}");
                     }
 
-                    Debug.WriteLine($"成功載入 {data.Count} 條有效記錄");
+                    Debug.WriteLine($"Successfully loaded {data.Count} valid records");
                     return (data, lastUpdated);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"載入 Excel 數據時發生錯誤: {ex.Message}\n{ex.StackTrace}");
+                    Debug.WriteLine($"Error loading Excel data: {ex.Message}\n{ex.StackTrace}");
 
-                    // 即使發生錯誤，也返回一些測試數據
+                    // Return test data on error
                     var testData = CreateTestSalesData();
                     AddHardcodedTestData(_productSalesCache, _salesLeaderboardCache, _departmentLobCache);
-                    Debug.WriteLine($"由於錯誤，返回 {testData.Count} 條測試數據");
+                    Debug.WriteLine($"Returning {testData.Count} test records due to error");
 
                     return (testData, DateTime.Now);
                 }

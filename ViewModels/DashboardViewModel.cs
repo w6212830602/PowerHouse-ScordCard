@@ -202,9 +202,9 @@ namespace ScoreCard.ViewModels
 
         // Format display properties
         public string AnnualTargetDisplay => $"${AnnualTarget:N0}";
-        public string AchievementDisplay => $"{Achievement:0.0}%";
+        public string AchievementDisplay => $"Achievement:{Achievement:0.0}%";
         public string RemainingDisplay => $"${Remaining:N0}";
-        public string TotalAchievedDisplay => $"${Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved:N0} Achieved";
+        public string TotalAchievedDisplay => $"${Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved:N0}";
         public string RemainingTargetDisplay => $"${Remaining:N0} Remaining";
 
         // Quarterly achievement percentages

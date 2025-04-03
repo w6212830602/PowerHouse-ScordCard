@@ -496,13 +496,14 @@ namespace ScoreCard.ViewModels
                         ProductType = g.Key,
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2),
+                        // Use TotalCommission directly instead of calculating
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
                         POValue = Math.Round(g.Sum(x => x.POValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // 計算百分比
+                // Calculate percentages
                 decimal totalPOValue = products.Sum(p => p.POValue);
                 foreach (var product in products)
                 {
@@ -516,14 +517,15 @@ namespace ScoreCard.ViewModels
                     ProductSalesData = new ObservableCollection<ProductSalesData>(products);
                 });
 
-                Debug.WriteLine($"產品數據已載入，共 {products.Count} 個項目");
+                Debug.WriteLine($"Product data loaded, {products.Count} items");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"Error loading product data: {ex.Message}");
                 LoadSampleProductData();
             }
         }
+
 
         // 載入銷售代表數據
         private async Task LoadSalesRepDataAsync(List<SalesData> data)
@@ -538,12 +540,13 @@ namespace ScoreCard.ViewModels
                         SalesRep = g.Key,
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
+                        // Use TotalCommission directly instead of summing
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2)
                     })
                     .OrderByDescending(x => x.TotalMargin)
                     .ToList();
 
-                // 設置排名
+                // Set ranking
                 for (int i = 0; i < reps.Count; i++)
                 {
                     reps[i].Rank = i + 1;
@@ -554,14 +557,15 @@ namespace ScoreCard.ViewModels
                     SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>(reps);
                 });
 
-                Debug.WriteLine($"銷售代表數據已載入，共 {reps.Count} 個項目");
+                Debug.WriteLine($"Sales rep data loaded, {reps.Count} items");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入銷售代表數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"Error loading sales rep data: {ex.Message}");
                 LoadSampleSalesRepData();
             }
         }
+
 
         // 載入部門/LOB數據
         private async Task LoadDeptLobDataAsync(List<SalesData> data)
