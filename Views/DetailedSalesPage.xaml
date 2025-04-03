@@ -446,7 +446,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <Label Text="Sexy Report - Who's POs are bigger"
+                            <Label Text="PO Value"
                                    Padding="15"
                                    FontSize="16"
                                    FontAttributes="Bold"/>
