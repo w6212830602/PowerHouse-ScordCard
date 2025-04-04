@@ -117,7 +117,7 @@
                            TextColor="#6B7280"
                            FontSize="12"/>
                     <Label Grid.Column="1" 
-                           Text="{Binding RemainingTargetDisplay}"
+                           Text="{Binding NotInvoicedDisplay}"
                            TextColor="#6B7280"
                            FontSize="12"
                            HorizontalOptions="End"/>

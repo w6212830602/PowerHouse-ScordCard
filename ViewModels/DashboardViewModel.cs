@@ -205,7 +205,7 @@ namespace ScoreCard.ViewModels
         public string AchievementDisplay => $"Achievement:{Achievement:0.0}%";
         public string RemainingDisplay => $"${Remaining:N0}";
         public string TotalAchievedDisplay => $"${Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved:N0}";
-        public string RemainingTargetDisplay => $"${Remaining:N0} Remaining";
+        public string NotInvoicedDisplay => $"${NotInvoiced:N0} Not invoiced";
 
         // Quarterly achievement percentages
         public double Q1Achievement => Q1FinalTarget > 0 ? (double)Math.Round((Q1Achieved / Q1FinalTarget) * 100, 1) : 0;
@@ -260,6 +260,8 @@ namespace ScoreCard.ViewModels
         public decimal Q2FinalTarget => Q2Target + Q1Carried;
         public decimal Q3FinalTarget => Q3Target + Q2Carried;
         public decimal Q4FinalTarget => Q4Target + Q3Carried;
+
+        public object NotInvoiced { get; private set; }
 
         public DashboardViewModel(IExcelService excelService, ITargetService targetService)
         {
@@ -522,7 +524,7 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(AchievementDisplay));
             OnPropertyChanged(nameof(RemainingDisplay));
             OnPropertyChanged(nameof(TotalAchievedDisplay));
-            OnPropertyChanged(nameof(RemainingTargetDisplay));
+            OnPropertyChanged(nameof(NotInvoicedDisplay));
 
             OnPropertyChanged(nameof(Q1AchievementDisplay));
             OnPropertyChanged(nameof(Q2AchievementDisplay));
@@ -590,7 +592,9 @@ namespace ScoreCard.ViewModels
                 Achievement = AnnualTarget > 0 ? Math.Round((totalAchieved / AnnualTarget) * 100, 1) : 0;
 
                 // 使用新的計算方式設置剩餘金額 - 使用 Y 欄為空的訂單的 N 欄總和
-                Remaining = remainingAmount;
+                NotInvoiced = remainingAmount;
+
+                Remaining = AnnualTarget - totalAchieved;
 
                 // 確保 Remaining 不會小於 0
                 if (Remaining < 0) Remaining = 0;
