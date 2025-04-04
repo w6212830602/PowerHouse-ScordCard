@@ -87,29 +87,25 @@ namespace ScoreCard.Services
                             {
                                 try
                                 {
-                                    // 檢查日期列是否為空
-                                    var dateCell = worksheet.Cells[row, 1]; // A列 - 接收日期
-                                    var completionDateCell = worksheet.Cells[row, 25]; // Y列 - 完成日期
-
-                                    // 如果A列為空，跳過這一行
-                                    if (dateCell.Value == null) continue;
-
+                                    // 讀取接收日期（A列）
+                                    var receivedDateCell = worksheet.Cells[row, 1];
                                     DateTime receivedDate;
-                                    if (dateCell.Value is DateTime date)
+                                    if (receivedDateCell.Value is DateTime date)
                                     {
                                         receivedDate = date;
                                     }
                                     else
                                     {
                                         // 嘗試解析日期
-                                        if (!DateTime.TryParse(dateCell.Text, out receivedDate))
+                                        if (!DateTime.TryParse(receivedDateCell.Text, out receivedDate))
                                         {
-                                            Debug.WriteLine($"無法解析第 {row} 行的日期: {dateCell.Text}");
+                                            Debug.WriteLine($"無法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
                                             continue;
                                         }
                                     }
 
                                     // 讀取完成日期（Y列）
+                                    var completionDateCell = worksheet.Cells[row, 25]; // Y列
                                     DateTime? completionDate = null;
                                     if (completionDateCell.Value != null)
                                     {
@@ -128,13 +124,34 @@ namespace ScoreCard.Services
                                         }
                                     }
 
+                                    // 讀取產品類型 (AD列) 
+                                    string productType = worksheet.Cells[row, 30].GetValue<string>() ?? "Unknown";
+
+                                    // 讀取銷售代表 (Z列)
+                                    string salesRep = worksheet.Cells[row, 26].GetValue<string>() ?? "Unknown";
+
+                                    // 讀取總佣金 (N列)
+                                    decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
+
+                                    // 讀取 PO 值 (G列)
+                                    decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
+
+                                    // 輸出前幾行的詳細信息用於調試
+                                    if (row <= 10)
+                                    {
+                                        Debug.WriteLine($"行 {row}: " +
+                                                       $"接收日期={receivedDate:yyyy-MM-dd}, " +
+                                                       $"完成日期={completionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                                       $"產品={productType}, " +
+                                                       $"代表={salesRep}, " +
+                                                       $"總佣金=${totalCommission:N2}, " +
+                                                       $"PO值=${poValue:N2}");
+                                    }
+
                                     // 根據完成日期設置訂單狀態
                                     string status = completionDate.HasValue ? "Completed" : "Booked";
 
-                                    // 獲取總佣金（N列）- 第14列
-                                    decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
-
-                                    // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中
+                                    // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中，但不計入季度業績
                                     if (!completionDate.HasValue)
                                     {
                                         remainingAmount += totalCommission;
@@ -155,17 +172,20 @@ namespace ScoreCard.Services
                                         ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
                                         Department = worksheet.Cells[row, 29].GetValue<string>(),   // AC列 - Department/LOB
                                                                                                     // 添加一個標誌，表示這是一個"剩餘"項目（Y列為空）
-                                        IsRemaining = !completionDate.HasValue
+                                        IsRemaining = !completionDate.HasValue,
+                                        // 重要：只有已完成的訂單才設置 QuarterDate，未完成的設置為 null
+                                        HasQuarterAssigned = completionDate.HasValue,
+                                        QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作為季度計算日期
                                     };
 
                                     if (row <= 5)
                                     {
-                                        Debug.WriteLine($"第 {row} 行: 日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                        Debug.WriteLine($"第 {row} 行: 接收日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                                       $"完成日期={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                                       $"計入季度={salesData.HasQuarterAssigned}, " +
+                                                       (salesData.HasQuarterAssigned ? $"季度計算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
                                                        $"POValue=${salesData.POValue}, " +
                                                        $"TotalCommission=${salesData.TotalCommission}, " +
-                                                       $"CompletionDate={salesData.CompletionDate}, " +
-                                                       $"SalesRep={salesData.SalesRep}, " +
-                                                       $"ProductType={salesData.ProductType}, " +
                                                        $"Status={salesData.Status}");
                                     }
 
@@ -225,6 +245,7 @@ namespace ScoreCard.Services
             });
         }
 
+
         // 添加一個靜態變量來存儲剩餘金額
         private static decimal _remainingAmount = 0;
 
@@ -234,76 +255,6 @@ namespace ScoreCard.Services
             return _remainingAmount;
         }
 
-        // 創建測試銷售數據
-        private List<SalesData> CreateBasicTestSalesData()
-        {
-            var data = new List<SalesData>();
-            DateTime now = DateTime.Now;
-
-            // 創建從2022年到當前年份的數據
-            for (int year = 2022; year <= now.Year; year++)
-            {
-                // 每年每月都生成數據
-                for (int month = 1; month <= 12; month++)
-                {
-                    // 如果是當前年份和超過當前月份，則停止
-                    if (year == now.Year && month > now.Month) break;
-
-                    // 每月多個日期
-                    for (int day = 1; day <= 28; day += 5)
-                    {
-                        DateTime recordDate = new DateTime(year, month, day);
-
-                        // 為每種產品類型創建記錄
-                        foreach (var product in new[] { "Power", "Thermal", "Channel", "Service", "Batts & Caps" })
-                        {
-                            // 每個產品對應到不同銷售代表
-                            string rep = product switch
-                            {
-                                "Power" => "Isaac",
-                                "Thermal" => "Brandon",
-                                "Channel" => "Chris",
-                                "Service" => "Mark",
-                                "Batts & Caps" => "Nathan",
-                                _ => "Isaac"
-                            };
-
-                            // 基本金額 + 季度變化
-                            int quarter = (month - 1) / 3 + 1;
-                            decimal baseAmount = 10000 + quarter * 2000 + day * 100;
-
-                            // 根據產品類型調整金額
-                            decimal productMultiplier = product switch
-                            {
-                                "Thermal" => 5.0m,
-                                "Power" => 3.0m,
-                                "Batts & Caps" => 2.0m,
-                                "Channel" => 1.5m,
-                                "Service" => 1.0m,
-                                _ => 1.0m
-                            };
-
-                            decimal finalAmount = baseAmount * productMultiplier;
-
-                            data.Add(new SalesData
-                            {
-                                ReceivedDate = recordDate,
-                                SalesRep = rep,
-                                Status = day % 10 == 0 ? "Completed" : "Booked",
-                                ProductType = product,
-                                POValue = finalAmount,
-                                VertivValue = finalAmount * 0.9m,
-                                TotalCommission = finalAmount * 0.1m,
-                                CommissionPercentage = 0.1m
-                            });
-                        }
-                    }
-                }
-            }
-
-            Debug.WriteLine($"已創建 {data.Count} 條測試銷售數據，跨越從2022年至今的各個月份");
-            return data;
-        }
 
         private List<SalesData> CreateTestSalesData()
         {

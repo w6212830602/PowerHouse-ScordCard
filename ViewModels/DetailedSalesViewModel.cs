@@ -618,15 +618,6 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("沒有原始數據可以過濾");
                 _filteredSalesData = new List<SalesData>();
-
-                // 顯示警告訊息給用戶
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "無可用數據",
-                        "無法從Excel檔案讀取銷售數據。請確認檔案存在且可訪問。",
-                        "確定");
-                });
                 return;
             }
 
@@ -636,79 +627,23 @@ namespace ScoreCard.ViewModels
                 var currentStartDate = StartDate.Date;
                 var currentEndDate = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含結束日期的整天
 
-                Debug.WriteLine($"過濾日期範圍: {currentStartDate:yyyy-MM-dd HH:mm:ss} 到 {currentEndDate:yyyy-MM-dd HH:mm:ss}");
+                Debug.WriteLine($"過濾日期範圍: {currentStartDate:yyyy-MM-dd} 到 {currentEndDate:yyyy-MM-dd}");
 
-                // 輸出原始數據中的日期範圍，幫助確認有效數據
-                var allDates = _allSalesData.Select(x => x.ReceivedDate.Date).Distinct().OrderBy(d => d).ToList();
-                Debug.WriteLine($"原始數據中的所有不同日期 ({allDates.Count}個): {string.Join(", ", allDates.Take(10))}...");
-
-                // 根據日期範圍過濾
+                // 使用接收日期(A列)進行過濾，這樣同時包含已完成和未完成的訂單
                 _filteredSalesData = _allSalesData
                     .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                               x.ReceivedDate.Date <= currentEndDate.Date)
+                           x.ReceivedDate.Date <= currentEndDate.Date)
                     .ToList();
 
-                Debug.WriteLine($"日期過濾後剩餘 {_filteredSalesData.Count} 條數據");
-
-                // 輸出過濾後的所有日期，確認過濾是否正確
-                var filteredDates = _filteredSalesData.Select(x => x.ReceivedDate.Date).Distinct().OrderBy(d => d).ToList();
-                Debug.WriteLine($"過濾後數據中的所有不同日期 ({filteredDates.Count}個): {string.Join(", ", filteredDates)}");
-
-                // 檢查日期範圍內是否有任何數據
-                if (_filteredSalesData.Count == 0)
-                {
-                    Debug.WriteLine("選擇的日期範圍內沒有數據");
-
-                    // 顯示警告訊息給用戶
-                    MainThread.BeginInvokeOnMainThread(async () =>
-                    {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "No Data",
-    $"No sales data found in the period from {currentStartDate:yyyy-MM-dd} to {currentEndDate:yyyy-MM-dd}.",
-    "OK");
-                    });
-
-                    // 保持_filteredSalesData為空列表，這樣UI將顯示無數據狀態
-                    return;
-                }
-
-                // 記錄過濾前的數據，用於檢查特定銷售代表是否有數據
-                var preFilterSalesReps = _filteredSalesData
-                    .Select(x => x.SalesRep)
-                    .Where(x => !string.IsNullOrEmpty(x))
-                    .Distinct()
-                    .ToList();
-
-                Debug.WriteLine($"日期範圍內的銷售代表: {string.Join(", ", preFilterSalesReps)}");
+                Debug.WriteLine($"日期過濾後剩餘 {_filteredSalesData.Count} 條數據, " +
+                              $"已完成: {_filteredSalesData.Count(x => x.CompletionDate.HasValue)}, " +
+                              $"未完成: {_filteredSalesData.Count(x => !x.CompletionDate.HasValue)}");
 
                 // 根據銷售代表過濾
                 if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
                 {
                     var beforeCount = _filteredSalesData.Count;
 
-                    // 找出選擇的哪些代表在當前日期範圍內沒有數據
-                    var missingReps = SelectedSalesReps
-                        .Where(rep => !preFilterSalesReps.Any(x =>
-                            string.Equals(x, rep, StringComparison.OrdinalIgnoreCase) ||
-                            x.Contains(rep, StringComparison.OrdinalIgnoreCase) ||
-                            rep.Contains(x, StringComparison.OrdinalIgnoreCase)))
-                        .ToList();
-
-                    if (missingReps.Any())
-                    {
-                        Debug.WriteLine($"警告: 以下選中的銷售代表在當前日期範圍內沒有數據: {string.Join(", ", missingReps)}");
-
-                        // 顯示警告訊息給用戶
-                        MainThread.BeginInvokeOnMainThread(async () =>
-                        {
-                            await Application.Current.MainPage.DisplayAlert(
-                                "Some Representatives Have No Data",
-                                $"The following selected sales representatives have no data records in the selected date range: {string.Join(", ", missingReps)}",
-                                "OK");
-                        });
-                    }
-
-                    // 只過濾存在的代表的數據
                     _filteredSalesData = _filteredSalesData
                         .Where(x => !string.IsNullOrEmpty(x.SalesRep) &&
                                 SelectedSalesReps.Any(r =>
@@ -718,167 +653,25 @@ namespace ScoreCard.ViewModels
                         .ToList();
 
                     Debug.WriteLine($"銷售代表過濾: 從 {beforeCount} 條記錄中篩選，" +
-                                   $"剩餘 {_filteredSalesData.Count} 條數據，已選: {string.Join(", ", SelectedSalesReps)}");
-
-                    // 打印一些匹配到的記錄，幫助調試
-                    if (_filteredSalesData.Any())
-                    {
-                        Debug.WriteLine("匹配的記錄示例:");
-                        foreach (var record in _filteredSalesData.Take(Math.Min(3, _filteredSalesData.Count)))
-                        {
-                            Debug.WriteLine($"  SalesRep: {record.SalesRep}, ProductType: {record.ProductType}");
-                        }
-                    }
-
-                    // 如果過濾後沒有任何數據
-                    if (_filteredSalesData.Count == 0)
-                    {
-                        Debug.WriteLine("過濾後沒有任何匹配的數據");
-
-                        // 顯示警告訊息給用戶
-                        MainThread.BeginInvokeOnMainThread(async () =>
-                        {
-                            await Application.Current.MainPage.DisplayAlert(
-                                "No Matching Data",
-                                $"The selected sales representatives have no matching data records in the current date range.",
-                                "OK");
-                        });
-                    }
-                }
-                else
-                {
-                    Debug.WriteLine("使用All Reps設置，顯示所有符合日期範圍的數據");
-                }
-
-                // 輸出最終過濾結果的詳細信息
-                Debug.WriteLine("最終過濾後的數據結果:");
-                foreach (var item in _filteredSalesData.Take(Math.Min(10, _filteredSalesData.Count)))
-                {
-                    Debug.WriteLine($"日期: {item.ReceivedDate:yyyy-MM-dd}, 產品: {item.ProductType}, PO值: ${item.POValue:N2}, 銷售代表: {item.SalesRep}");
-                }
-
-                // 按產品類型分組統計
-                var productStats = _filteredSalesData
-                    .GroupBy(x => x.ProductType)
-                    .Select(g => new
-                    {
-                        ProductType = g.Key,
-                        Count = g.Count(),
-                        TotalPOValue = g.Sum(x => x.POValue)
-                    }).OrderByDescending(x => x.TotalPOValue)
-                    .ToList();
-
-                Debug.WriteLine("產品類型統計:");
-                foreach (var stat in productStats)
-                {
-                    Debug.WriteLine($"產品類型: {stat.ProductType}, 數量: {stat.Count}, 總PO值: ${stat.TotalPOValue:N2}");
+                                   $"剩餘 {_filteredSalesData.Count} 條數據");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"過濾數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 _filteredSalesData = new List<SalesData>();
-
-                // 顯示錯誤訊息給用戶
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "過濾錯誤",
-                        $"處理數據時發生錯誤: {ex.Message}",
-                        "確定");
-                });
             }
         }
 
-        // 新增方法 - 生成適合當前選擇的示例數據
-        private List<SalesData> GenerateMatchingTestData()
-        {
-            var testData = new List<SalesData>();
-
-            // 確定要生成數據的銷售代表列表
-            List<string> repsToGenerate;
-            if (SelectedSalesReps.Contains("All Reps") || !SelectedSalesReps.Any())
-            {
-                // 如果選擇了All Reps或沒有選擇任何代表，為所有可能的銷售代表生成數據
-                repsToGenerate = new List<string> { "Isaac", "Brandon", "Chris", "Mark", "Nathan" };
-            }
-            else
-            {
-                // 僅為選中的銷售代表生成數據
-                repsToGenerate = SelectedSalesReps.ToList();
-            }
-
-            Debug.WriteLine($"為以下銷售代表生成示例數據: {string.Join(", ", repsToGenerate)}");
-
-            // 針對每個銷售代表生成數據
-            foreach (var rep in repsToGenerate)
-            {
-                // 生成不同產品類型的數據
-                foreach (var product in new[] { "Power", "Thermal", "Channel", "Service", "Batts & Caps" })
-                {
-                    // 根據不同代表和產品類型設置不同的基準金額
-                    decimal baseAmount = rep switch
-                    {
-                        "Isaac" => 30000m,
-                        "Brandon" => 25000m,
-                        "Chris" => 20000m,
-                        "Mark" => 18000m,
-                        "Nathan" => 15000m,
-                        _ => 10000m
-                    };
-
-                    // 根據產品類型調整基準金額
-                    decimal productMultiplier = product switch
-                    {
-                        "Thermal" => 2.5m,
-                        "Power" => 2.0m,
-                        "Channel" => 1.5m,
-                        "Batts & Caps" => 1.2m,
-                        "Service" => 1.0m,
-                        _ => 1.0m
-                    };
-
-                    decimal finalAmount = baseAmount * productMultiplier;
-
-                    // 為每個月份生成一條數據
-                    for (int month = 1; month <= 12; month++)
-                    {
-                        // 生成一個在日期範圍內的日期
-                        var year = (month >= 8) ? 2023 : 2024;
-                        var date = new DateTime(year, month, 15);
-
-                        // 如果日期在過濾範圍內才添加
-                        if (date >= StartDate && date <= EndDate)
-                        {
-                            testData.Add(new SalesData
-                            {
-                                ReceivedDate = date,
-                                SalesRep = rep,
-                                Status = month % 2 == 0 ? "Booked" : "Completed",
-                                ProductType = product,
-                                POValue = finalAmount,
-                                VertivValue = finalAmount * 0.85m,
-                                TotalCommission = finalAmount * 0.1m,
-                                CommissionPercentage = 0.1m
-                            });
-                        }
-                    }
-                }
-            }
-
-            Debug.WriteLine($"已生成 {testData.Count} 條匹配當前選擇的示例數據");
-            return testData;
-        }
 
         private void LoadFilteredData()
         {
             try
             {
-                Debug.WriteLine($"載入已過濾數據，當前視圖類型: {ViewType}");
-                Debug.WriteLine($"過濾條件 - 開始日期: {StartDate:yyyy-MM-dd}, 結束日期: {EndDate:yyyy-MM-dd}");
-                Debug.WriteLine($"已選銷售代表: {string.Join(", ", SelectedSalesReps)}");
+                Debug.WriteLine($"载入已过滤数据，当前视图类型: {ViewType}");
 
-                // 根據當前視圖類型載入相應數據
+                // 根据当前视图类型载入相应数据
                 if (ViewType == "ByProduct")
                 {
                     LoadProductData();
@@ -888,11 +681,11 @@ namespace ScoreCard.ViewModels
                     LoadSalesRepData();
                 }
 
-                Debug.WriteLine("數據載入完成");
+                Debug.WriteLine("数据载入完成");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入已過濾數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"载入已过滤数据时发生错误: {ex.Message}");
             }
         }
 
@@ -909,58 +702,75 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
+                // 根據 Booked/Completed 按鈕過濾
+                var statusFilteredData = _filteredSalesData;
+
+                // 假設您有一個變數表示當前是否顯示 Booked 頁籤
+                // 這裡使用臨時邏輯，您需要根據實際情況調整
+                bool isBookedView = true; // 這裡應該從UI取得實際狀態
+
+                if (isBookedView)
+                {
+                    // Booked 視圖顯示未完成訂單 (Y列為空)
+                    statusFilteredData = _filteredSalesData.Where(x => !x.CompletionDate.HasValue).ToList();
+                    Debug.WriteLine($"Booked過濾: 找到 {statusFilteredData.Count} 條未完成訂單");
+                }
+                else
+                {
+                    // Completed 視圖顯示已完成訂單 (Y列有日期)
+                    statusFilteredData = _filteredSalesData.Where(x => x.CompletionDate.HasValue).ToList();
+                    Debug.WriteLine($"Completed過濾: 找到 {statusFilteredData.Count} 條已完成訂單");
+                }
+
+                // 輸出一些樣本數據用於調試
+                foreach (var item in statusFilteredData.Take(Math.Min(5, statusFilteredData.Count)))
+                {
+                    Debug.WriteLine($"樣本: 接收日期={item.ReceivedDate:yyyy-MM-dd}, " +
+                                   $"完成日期={item.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                   $"產品={item.ProductType}, " +
+                                   $"總佣金=${item.TotalCommission:N2}, " +
+                                   $"PO值=${item.POValue:N2}");
+                }
+
                 // Group by product type and calculate totals
-                var productData = _filteredSalesData
+                var productData = statusFilteredData
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // Direct from Excel's corresponding columns
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        // Use TotalCommission directly from the N column instead of summing
                         TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
                         POValue = Math.Round(g.Sum(x => x.POValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // Calculate PO Value percentages
+                Debug.WriteLine($"分組後產品數: {productData.Count}");
+
+                // 計算百分比
                 decimal totalPOValue = productData.Sum(p => p.POValue);
                 foreach (var product in productData)
                 {
                     product.PercentageOfTotal = totalPOValue > 0
                         ? Math.Round((product.POValue / totalPOValue) * 100, 2)
                         : 0;
-                }
 
-                ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                Debug.WriteLine($"Loaded {productData.Count} product data items");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error loading product data: {ex.Message}");
-
-                // In case of error, display empty data
-                var emptyProductData = new List<ProductSalesData>();
-                foreach (var productType in new[] { "Thermal", "Power", "Channel", "Service", "Batts & Caps" })
-                {
-                    emptyProductData.Add(new ProductSalesData
-                    {
-                        ProductType = productType,
-                        AgencyMargin = 0,
-                        BuyResellMargin = 0,
-                        TotalMargin = 0,
-                        POValue = 0,
-                        PercentageOfTotal = 0
-                    });
+                    Debug.WriteLine($"產品: {product.ProductType}, PO值: ${product.POValue:N2}, 比例: {product.PercentageOfTotal}%");
                 }
 
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
-                    ProductSalesData = new ObservableCollection<ProductSalesData>(emptyProductData);
+                    ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
+                    Debug.WriteLine($"UI已更新，顯示 {productData.Count} 項產品數據");
                 });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error loading product data: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+                LoadSampleProductData();
             }
         }
 

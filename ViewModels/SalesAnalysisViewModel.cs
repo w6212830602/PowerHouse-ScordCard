@@ -9,6 +9,7 @@ namespace ScoreCard.ViewModels
 {
     public partial class SalesAnalysisViewModel : ObservableObject
     {
+
         // 服務依賴注入
         private readonly IExcelService _excelService;
         private readonly ITargetService _targetService;
@@ -263,11 +264,15 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"過濾日期範圍: {startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}");
 
+                // 使用接收日期(A列)進行初始過濾，不論是否有完成日期
                 _filteredData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= startDate && x.ReceivedDate.Date <= endDate.Date)
+                    .Where(x => x.ReceivedDate.Date >= startDate &&
+                           x.ReceivedDate.Date <= endDate.Date)
                     .ToList();
 
-                Debug.WriteLine($"過濾後數據: {_filteredData.Count} 條記錄");
+                Debug.WriteLine($"日期過濾後數據: {_filteredData.Count} 條記錄，" +
+                              $"其中已完成: {_filteredData.Count(x => x.CompletionDate.HasValue)}，" +
+                              $"未完成: {_filteredData.Count(x => !x.CompletionDate.HasValue)}");
             }
             catch (Exception ex)
             {
@@ -369,43 +374,39 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
-                // 按月份分組
+                // 按月份分组 - 注意这里使用CompletionDate而不是ReceivedDate
                 var monthlyData = _filteredData
                     .GroupBy(x => new {
-                        Year = x.ReceivedDate.Year,
-                        Month = x.ReceivedDate.Month
+                        Year = x.CompletionDate.Value.Year,
+                        Month = x.CompletionDate.Value.Month
                     })
                     .Select(g => new {
                         YearMonth = g.Key,
-                        // 保留POValue以便理解变化
                         POValue = g.Sum(x => x.POValue),
-                        // 使用TotalCommission作为Margin值
                         MarginValue = g.Sum(x => x.TotalCommission),
-                        // 添加一个新字段用于图表数据
                         CommissionValue = g.Sum(x => x.TotalCommission)
                     })
                     .OrderBy(x => x.YearMonth.Year)
                     .ThenBy(x => x.YearMonth.Month)
                     .ToList();
 
-                // 載入圖表數據
+                // 载入图表数据
                 var newTargetVsAchievementData = new ObservableCollection<ChartData>();
                 var newAchievementTrendData = new ObservableCollection<ChartData>();
 
                 foreach (var month in monthlyData)
                 {
                     var label = $"{month.YearMonth.Year}/{month.YearMonth.Month:D2}";
-                    // 修改：使用CommissionValue替代POValue
                     decimal commissionValueInMillions = Math.Round(month.CommissionValue / 1000000m, 2);
                     decimal marginValueInMillions = Math.Round(month.MarginValue / 1000000m, 2);
 
-                    // 從目標服務獲取該月份的目標值
+                    // 从目标服务获取该月份的目标值
                     int fiscalYear = month.YearMonth.Month >= 8 ? month.YearMonth.Year + 1 : month.YearMonth.Year;
                     int quarter = GetQuarterFromMonth(month.YearMonth.Month);
-                    decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 將季度目標平均分配到月
+                    decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 将季度目标平均分配到月
                     decimal targetValueInMillions = Math.Round(targetValue / 1000000m, 2);
 
-                    // 添加到目標與達成對比圖表 - 使用CommissionValue替代POValue
+                    // 添加到目标与达成对比图表
                     newTargetVsAchievementData.Add(new ChartData
                     {
                         Label = label,
@@ -413,7 +414,7 @@ namespace ScoreCard.ViewModels
                         Achievement = commissionValueInMillions
                     });
 
-                    // 添加到達成趨勢圖表 - 使用CommissionValue替代POValue
+                    // 添加到达成趋势图表
                     newAchievementTrendData.Add(new ChartData
                     {
                         Label = label,
@@ -429,11 +430,11 @@ namespace ScoreCard.ViewModels
                     AchievementTrendData = newAchievementTrendData;
                 });
 
-                Debug.WriteLine($"圖表數據已更新，共 {newTargetVsAchievementData.Count} 個數據點");
+                Debug.WriteLine($"图表数据已更新，共 {newTargetVsAchievementData.Count} 个数据点");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入圖表數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"载入图表数据时发生错误: {ex.Message}");
                 LoadSampleChartData();
             }
         }
@@ -455,10 +456,29 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
-                // 根據狀態過濾
-                var statusFiltered = _filteredData.Where(x =>
-                    (IsBookedStatus && x.Status == "Booked") ||
-                    (!IsBookedStatus && x.Status == "Completed")).ToList();
+                // 按照 Booked/Completed 狀態過濾
+                var statusFiltered = new List<SalesData>();
+
+                if (IsBookedStatus) // "Booked" 狀態 - 顯示完成日期為空的訂單
+                {
+                    // 未完成訂單 = Y列為空
+                    statusFiltered = _filteredData.Where(x => !x.CompletionDate.HasValue).ToList();
+                    Debug.WriteLine($"Booked過濾: 找到 {statusFiltered.Count} 條未完成訂單");
+                }
+                else // "Completed" 狀態 - 顯示完成日期有值的訂單
+                {
+                    // 已完成訂單 = Y列有日期
+                    statusFiltered = _filteredData.Where(x => x.CompletionDate.HasValue).ToList();
+                    Debug.WriteLine($"Completed過濾: 找到 {statusFiltered.Count} 條已完成訂單");
+                }
+
+                // 如果過濾後沒有數據，加載樣本數據
+                if (statusFiltered == null || !statusFiltered.Any())
+                {
+                    Debug.WriteLine("過濾後沒有數據，加載樣本數據");
+                    LoadSampleLeaderboardData();
+                    return;
+                }
 
                 Debug.WriteLine($"狀態過濾後剩餘: {statusFiltered.Count} 條記錄");
 
@@ -479,15 +499,29 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入排行榜數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 LoadSampleLeaderboardData();
             }
         }
+
 
         // 載入產品數據
         private async Task LoadProductDataAsync(List<SalesData> data)
         {
             try
             {
+                Debug.WriteLine($"載入產品數據，資料筆數: {data.Count}");
+
+                // 輸出前幾條記錄的詳細信息，用於調試
+                foreach (var item in data.Take(Math.Min(5, data.Count)))
+                {
+                    Debug.WriteLine($"樣本數據: 接收日期={item.ReceivedDate:yyyy-MM-dd}, " +
+                                   $"完成日期={item.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                   $"產品類型={item.ProductType}, " +
+                                   $"總佣金=${item.TotalCommission}, " +
+                                   $"PO值=${item.POValue}");
+                }
+
                 var products = data
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
@@ -496,32 +530,49 @@ namespace ScoreCard.ViewModels
                         ProductType = g.Key,
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        // Use TotalCommission directly instead of calculating
                         TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
                         POValue = Math.Round(g.Sum(x => x.POValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                // Calculate percentages
-                decimal totalPOValue = products.Sum(p => p.POValue);
-                foreach (var product in products)
+                Debug.WriteLine($"分組後產品數: {products.Count}");
+
+                if (products.Any())
                 {
-                    product.PercentageOfTotal = totalPOValue > 0
-                        ? Math.Round((product.POValue / totalPOValue) * 100, 1)
-                        : 0;
+                    // 計算百分比
+                    decimal totalPOValue = products.Sum(p => p.POValue);
+                    foreach (var product in products)
+                    {
+                        product.PercentageOfTotal = totalPOValue > 0
+                            ? Math.Round((product.POValue / totalPOValue) * 100, 1)
+                            : 0;
+
+                        Debug.WriteLine($"產品: {product.ProductType}, " +
+                                       $"Agency: ${product.AgencyMargin}, " +
+                                       $"BuyResell: ${product.BuyResellMargin}, " +
+                                       $"Total: ${product.TotalMargin}, " +
+                                       $"PO: ${product.POValue}, " +
+                                       $"百分比: {product.PercentageOfTotal}%");
+                    }
+
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        ProductSalesData = new ObservableCollection<ProductSalesData>(products);
+                    });
+
+                    Debug.WriteLine($"成功載入 {products.Count} 項產品數據");
                 }
-
-                await MainThread.InvokeOnMainThreadAsync(() =>
+                else
                 {
-                    ProductSalesData = new ObservableCollection<ProductSalesData>(products);
-                });
-
-                Debug.WriteLine($"Product data loaded, {products.Count} items");
+                    Debug.WriteLine("沒有產品數據可顯示");
+                    LoadSampleProductData();
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading product data: {ex.Message}");
+                Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 LoadSampleProductData();
             }
         }
