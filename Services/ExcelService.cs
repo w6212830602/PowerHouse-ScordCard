@@ -39,7 +39,7 @@ namespace ScoreCard.Services
                 try
                 {
                     string fullPath = Path.Combine(Constants.BASE_PATH, filePath);
-                    Debug.WriteLine($"Attempting to load Excel file: {fullPath}");
+                    Debug.WriteLine($"嘗試載入 Excel 檔案: {fullPath}");
 
                     ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
                     var data = new List<SalesData>();
@@ -47,45 +47,51 @@ namespace ScoreCard.Services
 
                     using (var package = new ExcelPackage(new FileInfo(fullPath)))
                     {
-                        // 1. Read the original data
+                        // 1. 讀取原始數據
                         var worksheet = package.Workbook.Worksheets[_worksheetName];
                         if (worksheet == null)
                         {
-                            Debug.WriteLine($"Worksheet not found: '{_worksheetName}'");
+                            Debug.WriteLine($"找不到工作表: '{_worksheetName}'");
 
-                            // Try to find the worksheet by index
+                            // 嘗試使用索引查找工作表
                             if (package.Workbook.Worksheets.Count > 0)
                             {
                                 worksheet = package.Workbook.Worksheets[0];
-                                Debug.WriteLine($"Using first worksheet instead: {worksheet.Name}");
+                                Debug.WriteLine($"改用第一個工作表: {worksheet.Name}");
                             }
                             else
                             {
-                                throw new Exception("No worksheets in Excel file");
+                                throw new Exception("Excel 檔案中沒有工作表");
                             }
                         }
 
-                        Debug.WriteLine($"Successfully found worksheet: {worksheet.Name}");
+                        Debug.WriteLine($"成功找到工作表: {worksheet.Name}");
                         var rowCount = worksheet.Dimension?.Rows ?? 0;
-                        Debug.WriteLine($"Worksheet has {rowCount} rows of data");
+                        Debug.WriteLine($"工作表有 {rowCount} 行數據");
 
                         if (rowCount > 0)
                         {
-                            // Print headers for debugging
+                            // 繪製表頭，確認列名稱
                             var headers = new List<string>();
                             for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                             {
                                 var headerValue = worksheet.Cells[1, col].Text;
                                 headers.Add(headerValue);
                             }
-                            Debug.WriteLine($"Headers: {string.Join(", ", headers)}");
+                            Debug.WriteLine($"表頭: {string.Join(", ", headers)}");
+
+                            // 保存剩餘金額的計算，計算具有未完成日期的訂單的 TotalCommission 總和
+                            decimal remainingAmount = 0;
 
                             for (int row = 2; row <= rowCount; row++)
                             {
                                 try
                                 {
-                                    // Check if date cell is empty
-                                    var dateCell = worksheet.Cells[row, 1];
+                                    // 檢查日期列是否為空
+                                    var dateCell = worksheet.Cells[row, 1]; // A列 - 接收日期
+                                    var completionDateCell = worksheet.Cells[row, 25]; // Y列 - 完成日期
+
+                                    // 如果A列為空，跳過這一行
                                     if (dateCell.Value == null) continue;
 
                                     DateTime receivedDate;
@@ -95,17 +101,16 @@ namespace ScoreCard.Services
                                     }
                                     else
                                     {
-                                        // Try to parse date
+                                        // 嘗試解析日期
                                         if (!DateTime.TryParse(dateCell.Text, out receivedDate))
                                         {
-                                            Debug.WriteLine($"Could not parse date at row {row}: {dateCell.Text}");
+                                            Debug.WriteLine($"無法解析第 {row} 行的日期: {dateCell.Text}");
                                             continue;
                                         }
                                     }
 
-                                    // Read completion date (column Y)
+                                    // 讀取完成日期（Y列）
                                     DateTime? completionDate = null;
-                                    var completionDateCell = worksheet.Cells[row, 25]; // Y column is 25th
                                     if (completionDateCell.Value != null)
                                     {
                                         if (completionDateCell.Value is DateTime completionDateTime)
@@ -114,6 +119,7 @@ namespace ScoreCard.Services
                                         }
                                         else
                                         {
+                                            // 嘗試解析完成日期
                                             DateTime parsedCompletionDate;
                                             if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
                                             {
@@ -122,30 +128,42 @@ namespace ScoreCard.Services
                                         }
                                     }
 
-                                    // Set status based on completion date
+                                    // 根據完成日期設置訂單狀態
                                     string status = completionDate.HasValue ? "Completed" : "Booked";
+
+                                    // 獲取總佣金（N列）- 第14列
+                                    decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
+
+                                    // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中
+                                    if (!completionDate.HasValue)
+                                    {
+                                        remainingAmount += totalCommission;
+                                    }
 
                                     var salesData = new SalesData
                                     {
                                         ReceivedDate = receivedDate,
-                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G column - PO Value
-                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H column
-                                        BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J column - Buy Resell
-                                        AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M column - Agency Margin
-                                        TotalCommission = GetDecimalValue(worksheet.Cells[row, 14]), // N column - Total Commission
-                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P column
-                                        Status = status,
-                                        CompletionDate = completionDate,
-                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z column
-                                        ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD column - Product Type
-                                        Department = worksheet.Cells[row, 29].GetValue<string>()   // AC column - Department/LOB
+                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G列 - PO Value
+                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
+                                        BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J列 - Buy Resell
+                                        AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
+                                        TotalCommission = totalCommission, // N列 - Total Commission
+                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
+                                        Status = status,      // 根據Y列的完成日期確定狀態
+                                        CompletionDate = completionDate, // Y列 - 完成日期
+                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
+                                        ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
+                                        Department = worksheet.Cells[row, 29].GetValue<string>(),   // AC列 - Department/LOB
+                                                                                                    // 添加一個標誌，表示這是一個"剩餘"項目（Y列為空）
+                                        IsRemaining = !completionDate.HasValue
                                     };
 
                                     if (row <= 5)
                                     {
-                                        Debug.WriteLine($"Row {row}: Date={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                        Debug.WriteLine($"第 {row} 行: 日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
                                                        $"POValue=${salesData.POValue}, " +
                                                        $"TotalCommission=${salesData.TotalCommission}, " +
+                                                       $"CompletionDate={salesData.CompletionDate}, " +
                                                        $"SalesRep={salesData.SalesRep}, " +
                                                        $"ProductType={salesData.ProductType}, " +
                                                        $"Status={salesData.Status}");
@@ -153,7 +171,7 @@ namespace ScoreCard.Services
 
                                     if (IsValidSalesData(salesData))
                                     {
-                                        // Skip records with 'cancelled' status
+                                        // 跳過 cancelled 狀態的數據
                                         if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
                                         {
                                             data.Add(salesData);
@@ -162,48 +180,58 @@ namespace ScoreCard.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.WriteLine($"Error loading Excel data: {ex.Message}\n{ex.StackTrace}");
+                                    Debug.WriteLine($"載入第 {row} 行數據時發生錯誤: {ex.Message}");
+                                    // 繼續處理下一行
                                 }
                             }
+
+                            // 將剩餘金額設置到某個靜態或全局變量，供Dashboard使用
+                            _remainingAmount = remainingAmount;
+                            Debug.WriteLine($"計算得到的剩餘金額: ${_remainingAmount:N2}");
                         }
 
-                        // Add test data regardless
-                        AddHardcodedTestData(_productSalesCache, _salesLeaderboardCache, _departmentLobCache);
-
-                        // Try to read summary sheets
+                        // 嘗試讀取摘要工作表
                         try
                         {
                             LoadSummarySheets(package);
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error reading summary sheets: {ex.Message}");
+                            Debug.WriteLine($"讀取摘要工作表時發生錯誤: {ex.Message}");
                         }
                     }
 
-                    // Add test data if real data is insufficient
-                    if (data.Count == 0 || data.Count < 100)
+                    // 即使有真實數據，也確保測試數據覆蓋廣泛的日期範圍，便於測試
+                    if (data.Count == 0 || data.Count < 100) // 如果數據太少，添加測試數據
                     {
                         var testData = CreateTestSalesData();
                         data.AddRange(testData);
-                        Debug.WriteLine($"Added {testData.Count} test records, total {data.Count}");
+                        Debug.WriteLine($"添加了 {testData.Count} 條測試數據，總計 {data.Count} 條");
                     }
 
-                    Debug.WriteLine($"Successfully loaded {data.Count} valid records");
+                    Debug.WriteLine($"成功載入 {data.Count} 條有效記錄");
                     return (data, lastUpdated);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error loading Excel data: {ex.Message}\n{ex.StackTrace}");
+                    Debug.WriteLine($"載入 Excel 數據時發生錯誤: {ex.Message}\n{ex.StackTrace}");
 
-                    // Return test data on error
+                    // 即使發生錯誤，也返回一些測試數據
                     var testData = CreateTestSalesData();
-                    AddHardcodedTestData(_productSalesCache, _salesLeaderboardCache, _departmentLobCache);
-                    Debug.WriteLine($"Returning {testData.Count} test records due to error");
+                    Debug.WriteLine($"由於錯誤，返回 {testData.Count} 條測試數據");
 
                     return (testData, DateTime.Now);
                 }
             });
+        }
+
+        // 添加一個靜態變量來存儲剩餘金額
+        private static decimal _remainingAmount = 0;
+
+        // 添加一個方法來獲取剩餘金額
+        public decimal GetRemainingAmount()
+        {
+            return _remainingAmount;
         }
 
         // 創建測試銷售數據

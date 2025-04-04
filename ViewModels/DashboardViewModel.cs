@@ -570,25 +570,44 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(Q4ExceededDisplay));
         }
 
+
         private void UpdateRemainingValues()
         {
+            try
+            {
+                // 計算總達成值 - 這是已經完成的部分
+                var totalAchieved = Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved;
 
-            // Calculate total achieved value
-            var totalAchieved = Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved;
+                // 從 ExcelService 獲取未完成訂單的剩餘金額 (即 Y 欄為空的記錄的 N 欄總和)
+                decimal remainingAmount = 0;
+                if (_excelService != null)
+                {
+                    remainingAmount = _excelService.GetRemainingAmount();
+                    Debug.WriteLine($"從 ExcelService 獲取的剩餘金額: ${remainingAmount:N2}");
+                }
 
-            // Calculate achievement percentage
-            Achievement = AnnualTarget > 0 ? Math.Round((totalAchieved / AnnualTarget) * 100, 1) : 0;
+                // 計算達成百分比
+                Achievement = AnnualTarget > 0 ? Math.Round((totalAchieved / AnnualTarget) * 100, 1) : 0;
 
-            // Calculate remaining amount
-            Remaining = AnnualTarget - totalAchieved;
+                // 使用新的計算方式設置剩餘金額 - 使用 Y 欄為空的訂單的 N 欄總和
+                Remaining = remainingAmount;
 
-            // Calculate progress for progress bar
-            AchievementProgress = AnnualTarget > 0 ? (double)(totalAchieved / AnnualTarget) : 0;
+                // 確保 Remaining 不會小於 0
+                if (Remaining < 0) Remaining = 0;
 
-            // Ensure progress doesn't exceed 100%
-            AchievementProgress = Math.Min(AchievementProgress, 1.0);
+                // 計算進度條的進度 - 使用達成百分比計算
+                AchievementProgress = AnnualTarget > 0 ? (double)(totalAchieved / AnnualTarget) : 0;
+
+                // 確保進度不超過 100%
+                AchievementProgress = Math.Min(AchievementProgress, 1.0);
+
+                Debug.WriteLine($"更新值: Achievement=${totalAchieved:N2}, {Achievement}%, Remaining=${Remaining:N2}, Progress={AchievementProgress:P2}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"更新 Remaining 值時發生錯誤: {ex.Message}");
+            }
         }
-
         private void UpdateNotifications()
         {
             Debug.WriteLine("開始更新通知");

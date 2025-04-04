@@ -14,12 +14,15 @@ namespace ScoreCard.Models
         public string ProductType { get; set; }
         public decimal POValue { get; set; }
         public decimal VertivValue { get; set; }
-        public decimal BuyResellValue { get; set; } // 新增: J列
-        public decimal AgencyMargin { get; set; }   // 新增: M列
-        public decimal TotalCommission { get; set; }
+        public decimal BuyResellValue { get; set; } // J列
+        public decimal AgencyMargin { get; set; }   // M列
+        public decimal TotalCommission { get; set; } // N列
         public decimal CommissionPercentage { get; set; }
         public string Department { get; set; }
-        public DateTime? CompletionDate { get; set; } // 新增: Y列的完成日期
+        public DateTime? CompletionDate { get; set; } // Y列的完成日期
+
+        // 添加新屬性，表示這是一個未完成項目（Y列為空）
+        public bool IsRemaining { get; set; }
 
         // 財年計算 (8月以後為新的一年)
         public int FiscalYear
@@ -40,7 +43,7 @@ namespace ScoreCard.Models
             };
         }
 
-        // 訂單是否已完成
+        // 訂單是否已完成 - 使用 CompletionDate 來確定
         public bool IsCompleted => CompletionDate.HasValue;
     }
 }
