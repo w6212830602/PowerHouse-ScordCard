@@ -43,6 +43,13 @@ namespace ScoreCard.Models
             set { _remainingTarget = value; OnPropertyChanged(); }
         }
 
+        private decimal _remainingToTarget;
+        public decimal RemainingToTarget
+        {
+            get => _remainingToTarget;
+            set { _remainingToTarget = value; OnPropertyChanged(); }
+        }
+
         // 百分比屬性
         public decimal AchievementPercentage
         {
@@ -61,6 +68,14 @@ namespace ScoreCard.Models
             get => _remainingTargetPercentage;
             set { _remainingTargetPercentage = value; OnPropertyChanged(); }
         }
+
+        private decimal _actualRemaining;
+        public decimal ActualRemaining
+        {
+            get => _actualRemaining;
+            set { _actualRemaining = value; OnPropertyChanged(); }
+        }
+
 
         // 格式化的顯示字串
         public string AchievementDisplay => $"{AchievementPercentage:N1}%";

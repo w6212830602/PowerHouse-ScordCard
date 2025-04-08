@@ -70,10 +70,6 @@ namespace ScoreCard.ViewModels
         public bool IsRepView => ViewType == "ByRep";
         public bool IsDeptLobView => ViewType == "ByDeptLOB";
 
-        public decimal RemainingToTarget { get; set; }
-        public decimal ActualRemaining { get; set; }
-
-
 
         #endregion
 
@@ -298,12 +294,26 @@ namespace ScoreCard.ViewModels
                 var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
                 decimal targetValue = companyTarget?.AnnualTarget ?? 4000000m;
 
-                // 現在只有已完成的記錄，所以可以直接計算總額
-                decimal totalAchievement = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
-                decimal totalMargin = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
+                // 使用完成日期過濾的數據計算實際達成
+                decimal completedAchievement = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
+
+                // 獲取所有基於接收日期的總額（用於計算Remaining to target）
+                var startDate = StartDate.Date;
+                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1);
+
+                // 基於接收日期過濾數據
+                var receivedDateData = _allSalesData?
+                    .Where(x => x.ReceivedDate.Date >= startDate &&
+                           x.ReceivedDate.Date <= endDate.Date)
+                    .ToList() ?? new List<SalesData>();
+
+                decimal totalByReceivedDate = receivedDateData.Sum(x => x.TotalCommission);
+
+                // 計算"Remaining to target"
+                decimal remainingToTarget = targetValue - totalByReceivedDate;
 
                 // 更新摘要
-                decimal remainingTarget = targetValue - totalAchievement;
+                decimal actualRemaining = targetValue - completedAchievement;
 
                 // 百分比計算
                 decimal achievementPercentage = 0;
@@ -312,20 +322,21 @@ namespace ScoreCard.ViewModels
 
                 if (targetValue > 0)
                 {
-                    achievementPercentage = Math.Round((totalAchievement / targetValue) * 100, 1);
-                    remainingTargetPercentage = Math.Round((remainingTarget / targetValue) * 100, 1);
+                    achievementPercentage = Math.Round((completedAchievement / targetValue) * 100, 1);
+                    remainingTargetPercentage = Math.Round((actualRemaining / targetValue) * 100, 1);
                 }
 
-                if (totalAchievement > 0)
+                // 這裡totalAchievement和totalMargin現在基本相同
+                if (completedAchievement > 0)
                 {
-                    marginPercentage = Math.Round((totalMargin / totalAchievement) * 100, 1);
+                    marginPercentage = Math.Round((completedAchievement / completedAchievement) * 100, 1);
                 }
 
                 // 轉換為百萬單位
                 targetValue = Math.Round(targetValue / 1000000m, 2);
-                totalAchievement = Math.Round(totalAchievement / 1000000m, 2);
-                totalMargin = Math.Round(totalMargin / 1000000m, 2);
-                remainingTarget = Math.Round(remainingTarget / 1000000m, 2);
+                decimal completedAchievementM = Math.Round(completedAchievement / 1000000m, 2);
+                decimal remainingToTargetM = Math.Round(remainingToTarget / 1000000m, 2);
+                decimal actualRemainingM = Math.Round(actualRemaining / 1000000m, 2);
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
@@ -334,15 +345,17 @@ namespace ScoreCard.ViewModels
                         Summary = new SalesAnalysisSummary();
                     }
                     Summary.TotalTarget = targetValue;
-                    Summary.TotalAchievement = totalAchievement;
-                    Summary.TotalMargin = totalMargin;
-                    Summary.RemainingTarget = remainingTarget;
+                    Summary.TotalAchievement = completedAchievementM;
+                    Summary.TotalMargin = completedAchievementM; // 同上
+                    Summary.RemainingTarget = remainingToTargetM; // 原來屬性保留用於Remaining to target
+                    Summary.ActualRemaining = actualRemainingM; // 新屬性用於Actual Remaining
                     Summary.AchievementPercentage = achievementPercentage;
                     Summary.MarginPercentage = marginPercentage;
                     Summary.RemainingTargetPercentage = remainingTargetPercentage;
                 });
 
-                Debug.WriteLine($"摘要數據: Target=${targetValue}M, Achievement=${totalAchievement}M ({achievementPercentage}%), Margin=${totalMargin}M ({marginPercentage}%)");
+                Debug.WriteLine($"摘要數據: Target=${targetValue}M, Achievement=${completedAchievementM}M ({achievementPercentage}%), " +
+                               $"Remaining to target=${remainingToTargetM}M, Actual Remaining=${actualRemainingM}M");
             }
             catch (Exception ex)
             {
@@ -356,10 +369,11 @@ namespace ScoreCard.ViewModels
                         {
                             TotalTarget = 10,
                             TotalAchievement = 5,
-                            TotalMargin = 1,
+                            TotalMargin = 5,
                             RemainingTarget = 5,
+                            ActualRemaining = 5,
                             AchievementPercentage = 50,
-                            MarginPercentage = 20,
+                            MarginPercentage = 100,
                             RemainingTargetPercentage = 50
                         };
                     }

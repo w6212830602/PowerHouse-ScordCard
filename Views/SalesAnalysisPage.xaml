@@ -114,21 +114,21 @@
 
                     <!-- YTD Achievement -->
                     <Border Grid.Column="1"
-                            Stroke="#E5E7EB"
-                            StrokeThickness="1"
-                            BackgroundColor="White">
+        Stroke="#E5E7EB"
+        StrokeThickness="1"
+        BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="YTD Achievement"
-                                   TextColor="#666666"
-                                   FontSize="14"/>
-                            <Label Text="{Binding Summary.AchievementPercentage, StringFormat='{0:N1}%'}"
-                                   TextColor="Black"
-                                   FontSize="24"
-                                   FontAttributes="Bold"
-                                   Margin="0,5,0,0"/>
-                            <Label Text="vs 100% target"
-                                   TextColor="#666666"
-                                   FontSize="12"/>
+                            <Label Text="Remaining to target"
+               TextColor="#666666"
+               FontSize="14"/>
+                            <Label Text="{Binding Summary.RemainingTarget, StringFormat='${0:N2}M'}"
+               TextColor="#0066CC"
+               FontSize="24"
+               FontAttributes="Bold"
+               Margin="0,5,0,0"/>
+                            <Label Text="Based on Received date"
+               TextColor="#666666"
+               FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
 
@@ -154,21 +154,21 @@
 
                     <!-- Remaining Target -->
                     <Border Grid.Column="3"
-                            Stroke="#E5E7EB"
-                            StrokeThickness="1"
-                            BackgroundColor="White">
+        Stroke="#E5E7EB"
+        StrokeThickness="1"
+        BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="Remaining Target"
-                                   TextColor="#666666"
-                                   FontSize="14"/>
-                            <Label Text="{Binding Summary.RemainingTarget, StringFormat='${0:N2}M'}"
-                                   TextColor="#0066CC"
-                                   FontSize="24"
-                                   FontAttributes="Bold"
-                                   Margin="0,5,0,0"/>
+                            <Label Text="Actual Remaining"
+               TextColor="#666666"
+               FontSize="14"/>
+                            <Label Text="{Binding Summary.ActualRemaining, StringFormat='${0:N2}M'}"
+               TextColor="#0066CC"
+               FontSize="24"
+               FontAttributes="Bold"
+               Margin="0,5,0,0"/>
                             <Label Text="{Binding Summary.RemainingTargetPercentage, StringFormat='{0:N1}% to achieve'}"
-                                   TextColor="#666666"
-                                   FontSize="12"/>
+               TextColor="#666666"
+               FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
