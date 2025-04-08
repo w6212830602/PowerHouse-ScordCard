@@ -100,24 +100,29 @@
                 </Grid>
 
                 <!-- Progress Bar -->
-                <Frame Padding="0" 
-                       HeightRequest="4" 
-                       BackgroundColor="#F3F4F6"
-                       BorderColor="Transparent"
-                       CornerRadius="2"
-                       HasShadow="False">
+                <Border Padding="0" 
+        HeightRequest="4" 
+        BackgroundColor="#F3F4F6"
+        Stroke="Transparent"
+        StrokeShape="RoundRectangle 2"
+        StrokeThickness="0">
                     <BoxView Color="#EF4444" 
-                             HorizontalOptions="Start"
-                             WidthRequest="{Binding AchievementProgress, Converter={StaticResource ProgressWidthConverter}}"/>
-                </Frame>
+             HorizontalOptions="Start"
+             WidthRequest="{Binding AchievementProgress, Converter={StaticResource ProgressWidthConverter}}"/>
+                </Border>
 
                 <!-- Progress Labels -->
-                <Grid ColumnDefinitions="*,*">
+                <Grid ColumnDefinitions="*,*,*">
                     <Label Text="{Binding AchievementDisplay}"
                            TextColor="#6B7280"
                            FontSize="12"/>
                     <Label Grid.Column="1" 
                            Text="{Binding NotInvoicedDisplay}"
+                           TextColor="#6B7280"
+                           FontSize="12"
+                           HorizontalOptions="Center"/>
+                    <Label Grid.Column="2" 
+                           Text="{Binding InProgressDisplay}"
                            TextColor="#6B7280"
                            FontSize="12"
                            HorizontalOptions="End"/>

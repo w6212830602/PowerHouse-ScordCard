@@ -15,6 +15,9 @@ namespace ScoreCard.Services
         // 獲取待完成項目的剩餘金額（Y欄為空的記錄的N欄總和）
         decimal GetRemainingAmount();
 
+        // 獲取正在進行中的金額（Y欄和N欄為空的H欄總和*0.12）
+        decimal GetInProgressAmount();
+
         // 新增獲取摘要數據的方法
         List<ProductSalesData> GetProductSalesData();
         List<SalesLeaderboardItem> GetSalesLeaderboardData();

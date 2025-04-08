@@ -183,6 +183,12 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private double _achievementProgress;
 
+        [ObservableProperty]
+        private decimal _notInvoiced;
+
+        [ObservableProperty]
+        private decimal _inProgress;
+
         // Notifications
         [ObservableProperty]
         private ObservableCollection<NotificationItem> _notifications = new();
@@ -206,6 +212,7 @@ namespace ScoreCard.ViewModels
         public string RemainingDisplay => $"${Remaining:N0}";
         public string TotalAchievedDisplay => $"${Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved:N0}";
         public string NotInvoicedDisplay => $"${NotInvoiced:N0} Not invoiced";
+        public string InProgressDisplay => $"${InProgress:N0} In progress";
 
         // Quarterly achievement percentages
         public double Q1Achievement => Q1FinalTarget > 0 ? (double)Math.Round((Q1Achieved / Q1FinalTarget) * 100, 1) : 0;
@@ -260,8 +267,6 @@ namespace ScoreCard.ViewModels
         public decimal Q2FinalTarget => Q2Target + Q1Carried;
         public decimal Q3FinalTarget => Q3Target + Q2Carried;
         public decimal Q4FinalTarget => Q4Target + Q3Carried;
-
-        public object NotInvoiced { get; private set; }
 
         public DashboardViewModel(IExcelService excelService, ITargetService targetService)
         {
@@ -525,6 +530,7 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(RemainingDisplay));
             OnPropertyChanged(nameof(TotalAchievedDisplay));
             OnPropertyChanged(nameof(NotInvoicedDisplay));
+            OnPropertyChanged(nameof(InProgressDisplay));
 
             OnPropertyChanged(nameof(Q1AchievementDisplay));
             OnPropertyChanged(nameof(Q2AchievementDisplay));
@@ -572,7 +578,6 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(Q4ExceededDisplay));
         }
 
-
         private void UpdateRemainingValues()
         {
             try
@@ -582,10 +587,15 @@ namespace ScoreCard.ViewModels
 
                 // 從 ExcelService 獲取未完成訂單的剩餘金額 (即 Y 欄為空的記錄的 N 欄總和)
                 decimal remainingAmount = 0;
+                decimal inProgressAmount = 0;
                 if (_excelService != null)
                 {
                     remainingAmount = _excelService.GetRemainingAmount();
                     Debug.WriteLine($"從 ExcelService 獲取的剩餘金額: ${remainingAmount:N2}");
+
+                    // 獲取正在進行中的金額 (即 Y 欄和 N 欄均為空的記錄的 H 欄總和*0.12)
+                    inProgressAmount = _excelService.GetInProgressAmount();
+                    Debug.WriteLine($"從 ExcelService 獲取的正在進行中金額: ${inProgressAmount:N2}");
                 }
 
                 // 計算達成百分比
@@ -593,6 +603,9 @@ namespace ScoreCard.ViewModels
 
                 // 使用新的計算方式設置剩餘金額 - 使用 Y 欄為空的訂單的 N 欄總和
                 NotInvoiced = remainingAmount;
+
+                // 設置正在進行中金額
+                InProgress = inProgressAmount;
 
                 Remaining = AnnualTarget - totalAchieved;
 
@@ -612,6 +625,7 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"更新 Remaining 值時發生錯誤: {ex.Message}");
             }
         }
+
         private void UpdateNotifications()
         {
             Debug.WriteLine("開始更新通知");
@@ -671,6 +685,7 @@ namespace ScoreCard.ViewModels
             });
         }
 
+        // 處理目標更新通知
         private void OnTargetsUpdated(object sender, EventArgs e)
         {
             Debug.WriteLine("收到目標更新通知");

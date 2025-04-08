@@ -25,6 +25,32 @@ namespace ScoreCard.Services
         private List<DepartmentLobData> _departmentLobCache = new List<DepartmentLobData>();
         private List<SalesData> _recentDataCache = new List<SalesData>();
 
+        // 保存剩餘金額的靜態變量
+        private static decimal _remainingAmount = 0;
+
+        // 保存In Progress金額（記錄Y欄和N欄均為空的H欄總和的12%）
+        private static decimal _inProgressAmount = 0;
+
+        // 保存剩餘金額的計算，計算具有未完成日期的訂單的 TotalCommission 總和
+        decimal remainingAmount = 0;
+
+        // 保存正在進行中的金額，計算Y欄和N欄均為空的記錄的H欄總和的12%
+        decimal inProgressAmount = 0;
+
+
+
+        // 添加一個方法來獲取剩餘金額
+        public decimal GetRemainingAmount()
+        {
+            return _remainingAmount;
+        }
+
+        // 添加一個方法來獲取正在進行中的金額（Y欄和N欄為空的H欄總和*0.12）
+        public decimal GetInProgressAmount()
+        {
+            return _inProgressAmount;
+        }
+
 
         public ExcelService()
         {
@@ -155,8 +181,16 @@ namespace ScoreCard.Services
                                     if (!completionDate.HasValue)
                                     {
                                         remainingAmount += totalCommission;
-                                    }
 
+                                        // 檢查N列（Total Margin）是否也為空，如果是則視為"進行中"
+                                        decimal nColumnValue = GetDecimalValue(worksheet.Cells[row, 14]); // N欄是第14列
+                                        if (nColumnValue == 0)
+                                        {
+                                            // 獲取H列（PO Value）的值，並添加其12%到inProgressAmount
+                                            decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H欄是第8列
+                                            inProgressAmount += hColumnValue * 0.12m;
+                                        }
+                                    }
                                     var salesData = new SalesData
                                     {
                                         ReceivedDate = receivedDate,
@@ -208,6 +242,11 @@ namespace ScoreCard.Services
                             // 將剩餘金額設置到某個靜態或全局變量，供Dashboard使用
                             _remainingAmount = remainingAmount;
                             Debug.WriteLine($"計算得到的剩餘金額: ${_remainingAmount:N2}");
+
+                            // 將正在進行中的金額設置到靜態變量
+                            _inProgressAmount = inProgressAmount;
+                            Debug.WriteLine($"計算得到的正在進行中金額: ${_inProgressAmount:N2}");
+
                         }
 
                         // 嘗試讀取摘要工作表
@@ -245,15 +284,6 @@ namespace ScoreCard.Services
             });
         }
 
-
-        // 添加一個靜態變量來存儲剩餘金額
-        private static decimal _remainingAmount = 0;
-
-        // 添加一個方法來獲取剩餘金額
-        public decimal GetRemainingAmount()
-        {
-            return _remainingAmount;
-        }
 
 
         private List<SalesData> CreateTestSalesData()
