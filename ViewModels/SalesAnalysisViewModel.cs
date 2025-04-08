@@ -545,7 +545,7 @@ namespace ScoreCard.ViewModels
                     foreach (var product in products)
                     {
                         product.PercentageOfTotal = totalPOValue > 0
-                            ? Math.Round((product.POValue / totalPOValue) * 100, 1)
+                            ? Math.Round((product.POValue / totalPOValue) , 1)
                             : 0;
 
                         Debug.WriteLine($"產品: {product.ProductType}, " +

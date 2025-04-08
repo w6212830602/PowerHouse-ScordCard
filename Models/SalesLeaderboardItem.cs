@@ -16,10 +16,5 @@ namespace ScoreCard.Models
         public decimal BuyResellMargin { get; set; }
         public decimal TotalMargin { get; set; }
 
-
-
     }
-
-
-
 }
