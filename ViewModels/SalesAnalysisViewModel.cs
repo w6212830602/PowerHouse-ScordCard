@@ -70,6 +70,11 @@ namespace ScoreCard.ViewModels
         public bool IsRepView => ViewType == "ByRep";
         public bool IsDeptLobView => ViewType == "ByDeptLOB";
 
+        public decimal RemainingToTarget { get; set; }
+        public decimal ActualRemaining { get; set; }
+
+
+
         #endregion
 
         #region 構造函數
@@ -264,15 +269,15 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"過濾日期範圍: {startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}");
 
-                // 使用接收日期(A列)進行初始過濾，不論是否有完成日期
+                // 修改：使用完成日期(Y列)進行過濾，而不是接收日期(A列)
                 _filteredData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= startDate &&
-                           x.ReceivedDate.Date <= endDate.Date)
+                    .Where(x => x.CompletionDate.HasValue &&
+                           x.CompletionDate.Value.Date >= startDate &&
+                           x.CompletionDate.Value.Date <= endDate.Date)
                     .ToList();
 
                 Debug.WriteLine($"日期過濾後數據: {_filteredData.Count} 條記錄，" +
-                              $"其中已完成: {_filteredData.Count(x => x.CompletionDate.HasValue)}，" +
-                              $"未完成: {_filteredData.Count(x => !x.CompletionDate.HasValue)}");
+                              $"全部為已完成記錄");
             }
             catch (Exception ex)
             {
@@ -293,7 +298,7 @@ namespace ScoreCard.ViewModels
                 var companyTarget = _targetService.GetCompanyTarget(currentFiscalYear);
                 decimal targetValue = companyTarget?.AnnualTarget ?? 4000000m;
 
-                // 修改：使用TotalCommission而不是POValue计算总体达成值
+                // 現在只有已完成的記錄，所以可以直接計算總額
                 decimal totalAchievement = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
                 decimal totalMargin = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
 
@@ -311,7 +316,6 @@ namespace ScoreCard.ViewModels
                     remainingTargetPercentage = Math.Round((remainingTarget / targetValue) * 100, 1);
                 }
 
-                // 这里totalAchievement和totalMargin现在基本相同，可能需要调整逻辑
                 if (totalAchievement > 0)
                 {
                     marginPercentage = Math.Round((totalMargin / totalAchievement) * 100, 1);
@@ -374,10 +378,10 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
-                // 按月份分组 - 注意这里使用CompletionDate而不是ReceivedDate
+                // 按月份分組 - 使用已過濾的數據，現在全部都是有完成日期的記錄
                 var monthlyData = _filteredData
                     .GroupBy(x => new {
-                        Year = x.CompletionDate.Value.Year,
+                        Year = x.CompletionDate.Value.Year,  // 這裡不再需要做空值檢查，因為已過濾
                         Month = x.CompletionDate.Value.Month
                     })
                     .Select(g => new {
@@ -390,7 +394,7 @@ namespace ScoreCard.ViewModels
                     .ThenBy(x => x.YearMonth.Month)
                     .ToList();
 
-                // 载入图表数据
+                // 載入圖表數據
                 var newTargetVsAchievementData = new ObservableCollection<ChartData>();
                 var newAchievementTrendData = new ObservableCollection<ChartData>();
 
@@ -400,13 +404,13 @@ namespace ScoreCard.ViewModels
                     decimal commissionValueInMillions = Math.Round(month.CommissionValue / 1000000m, 2);
                     decimal marginValueInMillions = Math.Round(month.MarginValue / 1000000m, 2);
 
-                    // 从目标服务获取该月份的目标值
+                    // 從目標服務獲取該月份的目標值
                     int fiscalYear = month.YearMonth.Month >= 8 ? month.YearMonth.Year + 1 : month.YearMonth.Year;
                     int quarter = GetQuarterFromMonth(month.YearMonth.Month);
-                    decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 将季度目标平均分配到月
+                    decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 將季度目標平均分配到月
                     decimal targetValueInMillions = Math.Round(targetValue / 1000000m, 2);
 
-                    // 添加到目标与达成对比图表
+                    // 添加到目標與達成對比圖表
                     newTargetVsAchievementData.Add(new ChartData
                     {
                         Label = label,
@@ -414,7 +418,7 @@ namespace ScoreCard.ViewModels
                         Achievement = commissionValueInMillions
                     });
 
-                    // 添加到达成趋势图表
+                    // 添加到達成趨勢圖表
                     newAchievementTrendData.Add(new ChartData
                     {
                         Label = label,
@@ -430,11 +434,12 @@ namespace ScoreCard.ViewModels
                     AchievementTrendData = newAchievementTrendData;
                 });
 
-                Debug.WriteLine($"图表数据已更新，共 {newTargetVsAchievementData.Count} 个数据点");
+                Debug.WriteLine($"圖表數據已更新，共 {newTargetVsAchievementData.Count} 個數據點");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"载入图表数据时发生错误: {ex.Message}");
+                Debug.WriteLine($"載入圖表數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 LoadSampleChartData();
             }
         }
@@ -456,31 +461,11 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
-                // 按照 Booked/Completed 狀態過濾
-                var statusFiltered = new List<SalesData>();
+                // 因為現在 _filteredData 已經只包含完成日期在選定範圍內的記錄
+                // 所以不需要再根據完成日期進行過濾
+                var statusFiltered = _filteredData;
 
-                if (IsBookedStatus) // "Booked" 狀態 - 顯示完成日期為空的訂單
-                {
-                    // 未完成訂單 = Y列為空
-                    statusFiltered = _filteredData.Where(x => !x.CompletionDate.HasValue).ToList();
-                    Debug.WriteLine($"Booked過濾: 找到 {statusFiltered.Count} 條未完成訂單");
-                }
-                else // "Completed" 狀態 - 顯示完成日期有值的訂單
-                {
-                    // 已完成訂單 = Y列有日期
-                    statusFiltered = _filteredData.Where(x => x.CompletionDate.HasValue).ToList();
-                    Debug.WriteLine($"Completed過濾: 找到 {statusFiltered.Count} 條已完成訂單");
-                }
-
-                // 如果過濾後沒有數據，加載樣本數據
-                if (statusFiltered == null || !statusFiltered.Any())
-                {
-                    Debug.WriteLine("過濾後沒有數據，加載樣本數據");
-                    LoadSampleLeaderboardData();
-                    return;
-                }
-
-                Debug.WriteLine($"狀態過濾後剩餘: {statusFiltered.Count} 條記錄");
+                Debug.WriteLine($"用於計算的記錄數: {statusFiltered.Count} 條");
 
                 // 根據視圖類型載入相應數據
                 switch (ViewType)
