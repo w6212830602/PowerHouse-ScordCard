@@ -114,17 +114,17 @@
                 <!-- Progress Labels -->
                 <Grid ColumnDefinitions="*,*,*">
                     <Label Text="{Binding AchievementDisplay}"
-                           TextColor="#6B7280"
-                           FontSize="12"/>
+                           TextColor="OrangeRed"
+                           FontSize="20"/>
                     <Label Grid.Column="1" 
                            Text="{Binding NotInvoicedDisplay}"
-                           TextColor="#6B7280"
-                           FontSize="12"
+                           TextColor="OrangeRed"
+                           FontSize="20"
                            HorizontalOptions="Center"/>
                     <Label Grid.Column="2" 
                            Text="{Binding InProgressDisplay}"
-                           TextColor="#6B7280"
-                           FontSize="12"
+                           TextColor="OrangeRed"
+                           FontSize="20"
                            HorizontalOptions="End"/>
                 </Grid>
             </VerticalStackLayout>

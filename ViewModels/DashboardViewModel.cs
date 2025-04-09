@@ -211,7 +211,7 @@ namespace ScoreCard.ViewModels
         public string AchievementDisplay => $"Achievement:{Achievement:0.0}%";
         public string RemainingDisplay => $"${Remaining:N0}";
         public string TotalAchievedDisplay => $"${Q1Achieved + Q2Achieved + Q3Achieved + Q4Achieved:N0}";
-        public string NotInvoicedDisplay => $"${NotInvoiced:N0} Not invoiced";
+        public string NotInvoicedDisplay => $"${NotInvoiced:N0} Booked";
         public string InProgressDisplay => $"${InProgress:N0} In progress";
 
         // Quarterly achievement percentages
@@ -907,19 +907,19 @@ namespace ScoreCard.ViewModels
                     IsEditMode = false;
                     ResetEditFlags();
 
-                    ShowStatusMessage("目標設定已成功儲存。", true);
+                    ShowStatusMessage("Target set success", true);
                     Debug.WriteLine("目標設定已儲存");
                 }
                 else
                 {
-                    ShowStatusMessage("儲存目標設定失敗，請再試一次。", false);
+                    ShowStatusMessage("Target set failed, Please try again", false);
                     Debug.WriteLine("儲存目標設定失敗");
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"儲存目標設定時發生錯誤: {ex.Message}");
-                ShowStatusMessage($"儲存失敗: {ex.Message}", false);
+                ShowStatusMessage($"Fail to save: {ex.Message}", false);
             }
             finally
             {

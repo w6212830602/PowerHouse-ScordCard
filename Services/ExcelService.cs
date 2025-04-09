@@ -60,6 +60,9 @@ namespace ScoreCard.Services
         // In ExcelService.cs, modify the LoadDataAsync method to include the completion date
         public async Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME)
         {
+            // 重要：每次调用方法时重置静态计数器
+            _inProgressAmount = 0;
+
             return await Task.Run(() =>
             {
                 try
@@ -109,144 +112,171 @@ namespace ScoreCard.Services
                             // 保存剩餘金額的計算，計算具有未完成日期的訂單的 TotalCommission 總和
                             decimal remainingAmount = 0;
 
+                            // 添加计数器和记录已处理行的集合
+                            int inProgressCount = 0;
+                            decimal totalHValue = 0;
+                            decimal calculatedInProgressAmount = 0; // 本地变量，不使用静态变量进行中间计算
+                            HashSet<int> processedRows = new HashSet<int>();
+
+                            Debug.WriteLine("===== 开始计算进行中金额 =====");
+
                             for (int row = 2; row <= rowCount; row++)
                             {
-                                try
+                                // 检查是否已处理过该行
+                                if (!processedRows.Contains(row))
                                 {
-                                    // 讀取接收日期（A列）
-                                    var receivedDateCell = worksheet.Cells[row, 1];
-                                    DateTime receivedDate;
-                                    if (receivedDateCell.Value is DateTime date)
+                                    try
                                     {
-                                        receivedDate = date;
-                                    }
-                                    else
-                                    {
-                                        // 嘗試解析日期
-                                        if (!DateTime.TryParse(receivedDateCell.Text, out receivedDate))
+                                        // 讀取接收日期（A列）
+                                        var receivedDateCell = worksheet.Cells[row, 1];
+                                        DateTime receivedDate;
+                                        if (receivedDateCell.Value is DateTime date)
                                         {
-                                            Debug.WriteLine($"無法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
-                                            continue;
-                                        }
-                                    }
-
-                                    // 讀取完成日期（Y列）
-                                    var completionDateCell = worksheet.Cells[row, 25]; // Y列
-                                    DateTime? completionDate = null;
-                                    if (completionDateCell.Value != null)
-                                    {
-                                        if (completionDateCell.Value is DateTime completionDateTime)
-                                        {
-                                            completionDate = completionDateTime;
+                                            receivedDate = date;
                                         }
                                         else
                                         {
-                                            // 嘗試解析完成日期
-                                            DateTime parsedCompletionDate;
-                                            if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
+                                            // 嘗試解析日期
+                                            if (!DateTime.TryParse(receivedDateCell.Text, out receivedDate))
                                             {
-                                                completionDate = parsedCompletionDate;
+                                                Debug.WriteLine($"無法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
+                                                continue;
                                             }
                                         }
-                                    }
 
-                                    // 讀取產品類型 (AD列) 
-                                    string productType = worksheet.Cells[row, 30].GetValue<string>() ?? "Unknown";
-
-                                    // 讀取銷售代表 (Z列)
-                                    string salesRep = worksheet.Cells[row, 26].GetValue<string>() ?? "Unknown";
-
-                                    // 讀取總佣金 (N列)
-                                    decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
-
-                                    // 讀取 PO 值 (G列)
-                                    decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
-
-                                    // 輸出前幾行的詳細信息用於調試
-                                    if (row <= 10)
-                                    {
-                                        Debug.WriteLine($"行 {row}: " +
-                                                       $"接收日期={receivedDate:yyyy-MM-dd}, " +
-                                                       $"完成日期={completionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                                       $"產品={productType}, " +
-                                                       $"代表={salesRep}, " +
-                                                       $"總佣金=${totalCommission:N2}, " +
-                                                       $"PO值=${poValue:N2}");
-                                    }
-
-                                    // 根據完成日期設置訂單狀態
-                                    string status = completionDate.HasValue ? "Completed" : "Booked";
-
-                                    // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中，但不計入季度業績
-                                    if (!completionDate.HasValue)
-                                    {
-                                        remainingAmount += totalCommission;
-
-                                        // 檢查N列（Total Margin）是否也為空，如果是則視為"進行中"
-                                        decimal nColumnValue = GetDecimalValue(worksheet.Cells[row, 14]); // N欄是第14列
-                                        if (nColumnValue == 0)
+                                        // 讀取完成日期（Y列）
+                                        var completionDateCell = worksheet.Cells[row, 25]; // Y列
+                                        DateTime? completionDate = null;
+                                        if (completionDateCell.Value != null)
                                         {
-                                            // 獲取H列（PO Value）的值，並添加其12%到inProgressAmount
-                                            decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H欄是第8列
-                                            inProgressAmount += hColumnValue * 0.12m;
+                                            if (completionDateCell.Value is DateTime completionDateTime)
+                                            {
+                                                completionDate = completionDateTime;
+                                            }
+                                            else
+                                            {
+                                                // 嘗試解析完成日期
+                                                DateTime parsedCompletionDate;
+                                                if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
+                                                {
+                                                    completionDate = parsedCompletionDate;
+                                                }
+                                            }
                                         }
-                                    }
-                                    var salesData = new SalesData
-                                    {
-                                        ReceivedDate = receivedDate,
-                                        POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G列 - PO Value
-                                        VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
-                                        BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J列 - Buy Resell
-                                        AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
-                                        TotalCommission = totalCommission, // N列 - Total Commission
-                                        CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
-                                        Status = status,      // 根據Y列的完成日期確定狀態
-                                        CompletionDate = completionDate, // Y列 - 完成日期
-                                        SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
-                                        ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
-                                        Department = worksheet.Cells[row, 29].GetValue<string>(),   // AC列 - Department/LOB
-                                                                                                    // 添加一個標誌，表示這是一個"剩餘"項目（Y列為空）
-                                        IsRemaining = !completionDate.HasValue,
-                                        // 重要：只有已完成的訂單才設置 QuarterDate，未完成的設置為 null
-                                        HasQuarterAssigned = completionDate.HasValue,
-                                        QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作為季度計算日期
-                                    };
 
-                                    if (row <= 5)
-                                    {
-                                        Debug.WriteLine($"第 {row} 行: 接收日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
-                                                       $"完成日期={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                                       $"計入季度={salesData.HasQuarterAssigned}, " +
-                                                       (salesData.HasQuarterAssigned ? $"季度計算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
-                                                       $"POValue=${salesData.POValue}, " +
-                                                       $"TotalCommission=${salesData.TotalCommission}, " +
-                                                       $"Status={salesData.Status}");
-                                    }
+                                        // 讀取產品類型 (AD列) 
+                                        string productType = worksheet.Cells[row, 30].GetValue<string>() ?? "Unknown";
 
-                                    if (IsValidSalesData(salesData))
-                                    {
-                                        // 跳過 cancelled 狀態的數據
-                                        if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
+                                        // 讀取銷售代表 (Z列)
+                                        string salesRep = worksheet.Cells[row, 26].GetValue<string>() ?? "Unknown";
+
+                                        // 讀取總佣金 (N列)
+                                        decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
+
+                                        // 讀取 PO 值 (G列)
+                                        decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
+
+                                        // 輸出前幾行的詳細信息用於調試
+                                        if (row <= 10)
                                         {
-                                            data.Add(salesData);
+                                            Debug.WriteLine($"行 {row}: " +
+                                                           $"接收日期={receivedDate:yyyy-MM-dd}, " +
+                                                           $"完成日期={completionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                                           $"產品={productType}, " +
+                                                           $"代表={salesRep}, " +
+                                                           $"總佣金=${totalCommission:N2}, " +
+                                                           $"PO值=${poValue:N2}");
                                         }
+
+                                        // 根據完成日期設置訂單狀態
+                                        string status = completionDate.HasValue ? "Completed" : "Booked";
+
+                                        // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中，但不計入季度業績
+                                        if (!completionDate.HasValue)
+                                        {
+                                            remainingAmount += totalCommission;
+
+                                            // 檢查N列（Total Margin）是否也為空，如果是則視為"進行中"
+                                            decimal nColumnValue = GetDecimalValue(worksheet.Cells[row, 14]); // N欄是第14列
+                                            if (nColumnValue == 0)
+                                            {
+                                                // 獲取H列（PO Value）的值，並添加其12%到inProgressAmount
+                                                decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H欄是第8列
+                                                decimal commission = hColumnValue * 0.12m;
+                                                totalHValue += hColumnValue;
+                                                calculatedInProgressAmount += commission;
+                                                inProgressCount++;
+                                                Debug.WriteLine($"[主表] 行 {row}: 添加进行中金额 ${hColumnValue} * 12% = ${commission}");
+                                            }
+                                        }
+
+                                        var salesData = new SalesData
+                                        {
+                                            ReceivedDate = receivedDate,
+                                            POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G列 - PO Value
+                                            VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
+                                            BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J列 - Buy Resell
+                                            AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
+                                            TotalCommission = totalCommission, // N列 - Total Commission
+                                            CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
+                                            Status = status,      // 根據Y列的完成日期確定狀態
+                                            CompletionDate = completionDate, // Y列 - 完成日期
+                                            SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
+                                            ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
+                                            Department = worksheet.Cells[row, 29].GetValue<string>(),   // AC列 - Department/LOB
+                                                                                                        // 添加一個標誌，表示這是一個"剩餘"項目（Y列為空）
+                                            IsRemaining = !completionDate.HasValue,
+                                            // 重要：只有已完成的訂單才設置 QuarterDate，未完成的設置為 null
+                                            HasQuarterAssigned = completionDate.HasValue,
+                                            QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作為季度計算日期
+                                        };
+
+                                        if (row <= 5)
+                                        {
+                                            Debug.WriteLine($"第 {row} 行: 接收日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                                           $"完成日期={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                                           $"計入季度={salesData.HasQuarterAssigned}, " +
+                                                           (salesData.HasQuarterAssigned ? $"季度計算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
+                                                           $"POValue=${salesData.POValue}, " +
+                                                           $"TotalCommission=${salesData.TotalCommission}, " +
+                                                           $"Status={salesData.Status}");
+                                        }
+
+                                        if (IsValidSalesData(salesData))
+                                        {
+                                            // 跳過 cancelled 狀態的數據
+                                            if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
+                                            {
+                                                data.Add(salesData);
+                                            }
+                                        }
+
+                                        // 标记该行已处理
+                                        processedRows.Add(row);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Debug.WriteLine($"載入第 {row} 行數據時發生錯誤: {ex.Message}");
+                                        // 繼續處理下一行
                                     }
                                 }
-                                catch (Exception ex)
+                                else
                                 {
-                                    Debug.WriteLine($"載入第 {row} 行數據時發生錯誤: {ex.Message}");
-                                    // 繼續處理下一行
+                                    Debug.WriteLine($"行 {row} 已处理过，跳过");
                                 }
                             }
 
-                            // 將剩餘金額設置到某個靜態或全局變量，供Dashboard使用
+                            // 在所有行处理完毕后，一次性设置静态变量
                             _remainingAmount = remainingAmount;
+                            _inProgressAmount = calculatedInProgressAmount;
+
+                            Debug.WriteLine($"===== 计算完成 =====");
+                            Debug.WriteLine($"进行中订单总数: {inProgressCount}");
+                            Debug.WriteLine($"进行中订单H列总额: ${totalHValue:N2}");
+                            Debug.WriteLine($"计算得到的12%佣金总额: ${calculatedInProgressAmount:N2}");
                             Debug.WriteLine($"計算得到的剩餘金額: ${_remainingAmount:N2}");
-
-                            // 將正在進行中的金額設置到靜態變量
-                            _inProgressAmount = inProgressAmount;
-                            Debug.WriteLine($"計算得到的正在進行中金額: ${_inProgressAmount:N2}");
-
+                            Debug.WriteLine($"設置的正在進行中金額: ${_inProgressAmount:N2}");
+                            Debug.WriteLine($"===== 计算结束 =====");
                         }
 
                         // 嘗試讀取摘要工作表
@@ -283,6 +313,7 @@ namespace ScoreCard.Services
                 }
             });
         }
+
 
 
 
@@ -389,6 +420,8 @@ namespace ScoreCard.Services
         {
             try
             {
+                Debug.WriteLine("===== 开始加载摘要工作表（不再更新进行中金额） =====");
+
                 // 先載入 Sales Leaderboard
                 var leaderboardSheet = FindWorksheet(package, _leaderboardSheetName);
                 if (leaderboardSheet != null)
@@ -412,9 +445,14 @@ namespace ScoreCard.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入摘要工作表時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"讀取摘要工作表時發生錯誤: {ex.Message}");
+            }
+            finally
+            {
+                Debug.WriteLine("===== 摘要工作表加载完成 =====");
             }
         }
+
 
         // 找到工作表，支援名稱或索引查找
         private ExcelWorksheet FindWorksheet(ExcelPackage package, string sheetName)
