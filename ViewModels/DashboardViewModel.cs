@@ -161,6 +161,8 @@ namespace ScoreCard.ViewModels
             }
         }
 
+        public string TestQ1Display => "Test Q1: +$295,671";
+
         // Achievement values
         [ObservableProperty]
         private decimal _q1Achieved;
@@ -246,6 +248,7 @@ namespace ScoreCard.ViewModels
         public decimal Q2Carried => Math.Max(0, Q2FinalTarget - Q2Achieved);
         public decimal Q3Carried => Math.Max(0, Q3FinalTarget - Q3Achieved);
 
+        public decimal Q1Exceeded => Math.Max(0, Q1Achieved - Q1FinalTarget);
         public decimal Q2Exceeded => Math.Max(0, Q2Achieved - Q2FinalTarget);
         public decimal Q3Exceeded => Math.Max(0, Q3Achieved - Q3FinalTarget);
         public decimal Q4Exceeded => Math.Max(0, Q4Achieved - Q4FinalTarget);
@@ -258,6 +261,7 @@ namespace ScoreCard.ViewModels
         public string Q2CarriedAddedDisplay => $"+${Q2Carried:N0}";
         public string Q3CarriedAddedDisplay => $"+${Q3Carried:N0}";
 
+        public string Q1ExceededDisplay => $"Exceeded: +${Q1Exceeded:N0}";
         public string Q2ExceededDisplay => $"Exceeded: +${Q2Exceeded:N0}";
         public string Q3ExceededDisplay => $"Exceeded: +${Q3Exceeded:N0}";
         public string Q4ExceededDisplay => $"Exceeded: +${Q4Exceeded:N0}";
@@ -292,10 +296,11 @@ namespace ScoreCard.ViewModels
 
             // Set default option to current fiscal year
             SelectedOption = $"FY{currentFiscalYear}";
-
+            
             InitializeNotifications();
             InitializeAsync();
             Debug.WriteLine($"DashboardViewModel 初始化完成，選擇的財年: {SelectedOption}");
+
         }
 
         partial void OnSelectedOptionChanged(string value)
@@ -306,6 +311,7 @@ namespace ScoreCard.ViewModels
                 LoadDataAsync();
             }
         }
+
 
         private int GetSelectedFiscalYear()
         {
@@ -352,6 +358,7 @@ namespace ScoreCard.ViewModels
 
         private async Task LoadDataAsync()
         {
+
             try
             {
                 Debug.WriteLine("開始載入數據");
@@ -385,6 +392,15 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = false;
                 Debug.WriteLine("LoadDataAsync 完成");
+
+                Debug.WriteLine($"Q1Achieved (type: {Q1Achieved.GetType()}): {Q1Achieved}");
+                Debug.WriteLine($"Q1FinalTarget (type: {Q1FinalTarget.GetType()}): {Q1FinalTarget}");
+                Debug.WriteLine($"Q1Achieved - Q1FinalTarget = {Q1Achieved - Q1FinalTarget}");
+                Debug.WriteLine($"Q1Exceeded: {Q1Exceeded}");
+                Debug.WriteLine($"{Q1ExceededDisplay}");
+
+
+
             }
         }
 
@@ -561,6 +577,7 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(Q2Carried));
             OnPropertyChanged(nameof(Q3Carried));
 
+            OnPropertyChanged(nameof(Q1Exceeded));
             OnPropertyChanged(nameof(Q2Exceeded));
             OnPropertyChanged(nameof(Q3Exceeded));
             OnPropertyChanged(nameof(Q4Exceeded));
@@ -573,6 +590,7 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(Q2CarriedAddedDisplay));
             OnPropertyChanged(nameof(Q3CarriedAddedDisplay));
 
+            OnPropertyChanged(nameof(Q1ExceededDisplay));
             OnPropertyChanged(nameof(Q2ExceededDisplay));
             OnPropertyChanged(nameof(Q3ExceededDisplay));
             OnPropertyChanged(nameof(Q4ExceededDisplay));
@@ -941,7 +959,7 @@ namespace ScoreCard.ViewModels
             IsEditMode = false;
             ResetEditFlags();
 
-            ShowStatusMessage("已取消編輯，目標值已恢復。", false);
+            ShowStatusMessage("Edit canceled", false);
             Debug.WriteLine("已取消編輯");
         }
 
@@ -953,7 +971,7 @@ namespace ScoreCard.ViewModels
             // Reset all quarters to be evenly distributed
             DistributeAnnualTarget();
 
-            ShowStatusMessage("已重置季度目標為平均分配。", true);
+            ShowStatusMessage("Resetted Target", true);
             Debug.WriteLine("已重置季度目標");
         }
 

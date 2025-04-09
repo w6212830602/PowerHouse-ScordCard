@@ -11,6 +11,7 @@
     <ContentPage.Resources>
         <converts:ProgressWidthConverter x:Key="ProgressWidthConverter"/>
         <converts:GreaterThanZeroConverter x:Key="GreaterThanZeroConverter"/>
+        <converts:AchievementColorConverter x:Key="AchievementColorConverter"/>
     </ContentPage.Resources>
 
     <ScrollView>
@@ -79,7 +80,7 @@
 
                     <!-- Achievement -->
                     <VerticalStackLayout Grid.Column="1">
-                        <Label Text="Achieved" 
+                        <Label Text="Achieved / Invoiced" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
                         <Label Text="{Binding TotalAchievedDisplay}"
@@ -186,11 +187,18 @@
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
-                                       FontSize="14"/>
+           FontSize="14"/>
                                 <Label Text="{Binding Q1AchievedDisplay}"
-                                       TextColor="#EF4444"
-                                       FontSize="14"/>
+           TextColor="{Binding Q1Achievement, Converter={StaticResource AchievementColorConverter}, ConverterParameter='100'}"
+           FontSize="14"/>
                             </VerticalStackLayout>
+
+                            <!-- Exceeded -->
+                            <Label Text="{Binding Q1ExceededDisplay}"
+               TextColor="#10B981"
+               FontSize="12"
+               IsVisible="{Binding Q1Exceeded, Converter={StaticResource GreaterThanZeroConverter}}"/>
+
 
                             <!-- Carried -->
                             <Label Text="{Binding Q1CarriedDisplay}"
@@ -202,67 +210,72 @@
 
                     <!-- Q2 -->
                     <Border Grid.Column="1"
-                            Stroke="#E5E7EB"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 8">
+        Stroke="#E5E7EB"
+        StrokeThickness="1"
+        StrokeShape="RoundRectangle 8">
                         <VerticalStackLayout Padding="16" Spacing="12">
                             <!-- Header with Achievement % -->
                             <Grid ColumnDefinitions="Auto,*">
                                 <Label Text="Q2" 
-                                       FontAttributes="Bold"
-                                       FontSize="16"/>
+                   FontAttributes="Bold"
+                   FontSize="16"/>
                                 <Label Grid.Column="1"
-                                       Text="{Binding Q2AchievementDisplay}"
-                                       TextColor="#10B981"
-                                       HorizontalOptions="End"
-                                       FontSize="16"/>
+                   Text="{Binding Q2AchievementDisplay}"
+                   TextColor="#10B981"
+                   HorizontalOptions="End"
+                   FontSize="16"/>
                             </Grid>
 
                             <!-- Target -->
                             <VerticalStackLayout Spacing="4">
                                 <Grid ColumnDefinitions="Auto,*">
                                     <Label Text="Target:" 
-                                           FontAttributes="Bold"
-                                           FontSize="14"/>
+                       FontAttributes="Bold"
+                       FontSize="14"/>
                                     <!-- Editable Q2 Target -->
                                     <Grid Grid.Column="1" HorizontalOptions="End">
                                         <Label Text="{Binding Q2TargetDisplay}"
-                                               FontAttributes="Bold"
-                                               FontSize="14"
-                                               IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
-
+                           FontAttributes="Bold"
+                           FontSize="14"
+                           IsVisible="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"/>
                                         <Entry Text="{Binding Q2Target}"
-                                               FontSize="14"
-                                               FontAttributes="Bold"
-                                               Keyboard="Numeric"
-                                               WidthRequest="120"
-                                               HorizontalTextAlignment="End"
-                                               IsVisible="{Binding IsEditMode}"/>
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           Keyboard="Numeric"
+                           WidthRequest="120"
+                           HorizontalTextAlignment="End"
+                           IsVisible="{Binding IsEditMode}"/>
                                     </Grid>
                                 </Grid>
                                 <Label Text="{Binding Q2BaseDisplay}"
-                                       FontSize="12"
-                                       TextColor="#6B7280"/>
+                   FontSize="12"
+                   TextColor="#6B7280"/>
                                 <Label Text="{Binding Q1CarriedAddedDisplay}"
-                                       TextColor="#10B981"
-                                       FontSize="12"
-                                       IsVisible="{Binding Q1Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
+                   TextColor="#10B981"
+                   FontSize="12"
+                   IsVisible="{Binding Q1Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
                             </VerticalStackLayout>
 
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
-                                       FontSize="14"/>
+           FontSize="14"/>
                                 <Label Text="{Binding Q2AchievedDisplay}"
-                                       TextColor="#10B981"
-                                       FontSize="14"/>
+           TextColor="{Binding Q2Achievement, Converter={StaticResource AchievementColorConverter}, ConverterParameter='100'}"
+           FontSize="14"/>
                             </VerticalStackLayout>
 
                             <!-- Exceeded -->
                             <Label Text="{Binding Q2ExceededDisplay}"
-                                   TextColor="#10B981"
-                                   FontSize="12"
-                                   IsVisible="{Binding Q2Exceeded, Converter={StaticResource GreaterThanZeroConverter}}"/>
+               TextColor="#10B981"
+               FontSize="12"
+               IsVisible="{Binding Q2Exceeded, Converter={StaticResource GreaterThanZeroConverter}}"/>
+
+                            <!-- 添加的 Carried 信息 -->
+                            <Label Text="{Binding Q2CarriedDisplay}"
+               TextColor="#6B7280"
+               FontSize="12"
+               IsVisible="{Binding Q2Carried, Converter={StaticResource GreaterThanZeroConverter}}"/>
                         </VerticalStackLayout>
                     </Border>
 
@@ -318,11 +331,18 @@
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
-                                       FontSize="14"/>
+           FontSize="14"/>
                                 <Label Text="{Binding Q3AchievedDisplay}"
-                                       TextColor="#EF4444"
-                                       FontSize="14"/>
+           TextColor="{Binding Q3Achievement, Converter={StaticResource AchievementColorConverter}, ConverterParameter='100'}"
+           FontSize="14"/>
                             </VerticalStackLayout>
+
+                            <!-- Exceeded -->
+                            <Label Text="{Binding Q3ExceededDisplay}"
+               TextColor="#10B981"
+               FontSize="12"
+               IsVisible="{Binding Q3Exceeded, Converter={StaticResource GreaterThanZeroConverter}}"/>
+
 
                             <!-- Carried -->
                             <Label Text="{Binding Q3CarriedDisplay}"
@@ -384,11 +404,18 @@
                             <!-- Achieved -->
                             <VerticalStackLayout Spacing="4">
                                 <Label Text="Achieved:" 
-                                       FontSize="14"/>
+           FontSize="14"/>
                                 <Label Text="{Binding Q4AchievedDisplay}"
-                                       TextColor="#EF4444"
-                                       FontSize="14"/>
+           TextColor="{Binding Q4Achievement, Converter={StaticResource AchievementColorConverter}, ConverterParameter='100'}"
+           FontSize="14"/>
                             </VerticalStackLayout>
+
+                            <!-- Exceeded -->
+                            <Label Text="{Binding Q4ExceededDisplay}"
+               TextColor="#10B981"
+               FontSize="12"
+               IsVisible="{Binding Q4Exceeded, Converter={StaticResource GreaterThanZeroConverter}}"/>
+
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
