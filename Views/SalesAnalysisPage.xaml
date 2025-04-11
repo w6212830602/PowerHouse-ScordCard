@@ -307,7 +307,7 @@
 
                             <!-- 視圖類型選擇器和狀態過濾器 -->
                             <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,15">
-                                <!-- 視圖類型選擇器 (By Product, By Rep, By Dept-LOB) -->
+                                <!-- 視圖類型選擇器 (By Product, By Rep) - Removed By Dept-LOB -->
                                 <HorizontalStackLayout Grid.Column="0" Spacing="0">
                                     <!-- By Product 按鈕 -->
                                     <Border Stroke="#E2E8F0" 
@@ -332,7 +332,7 @@
                                     <Border Stroke="#E2E8F0"
                                             StrokeThickness="1"
                                             BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                                            StrokeShape="Rectangle"
+                                            StrokeShape="RoundRectangle 0,4,4,0"
                                             HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByRep"/>
@@ -342,23 +342,6 @@
                                                VerticalOptions="Center"
                                                HorizontalOptions="Center"
                                                FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}}"
-                                               Margin="15,0"/>
-                                    </Border>
-
-                                    <!-- By Dept-LOB 按鈕 -->
-                                    <Border Stroke="#E2E8F0"
-                                            StrokeThickness="1"
-                                            BackgroundColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                                            StrokeShape="RoundRectangle 0,4,4,0"
-                                            HeightRequest="36">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByDeptLOB"/>
-                                        </Border.GestureRecognizers>
-                                        <Label Text="By Dept-LOB"
-                                               TextColor="{Binding IsDeptLobView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                                               VerticalOptions="Center"
-                                               HorizontalOptions="Center"
-                                               FontAttributes="{Binding IsDeptLobView, Converter={StaticResource BoolToStringConverter}}"
                                                Margin="15,0"/>
                                     </Border>
                                 </HorizontalStackLayout>
@@ -487,45 +470,6 @@
            Text="{Binding BuyResellMargin, StringFormat='${0:N0}'}"/>
                                                     <Label Grid.Column="4" 
            Text="{Binding TotalMargin, StringFormat='${0:N0}'}"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </CollectionView.ItemTemplate>
-                                    </CollectionView>
-                                </VerticalStackLayout>
-
-                                <!-- By Department/LOB View -->
-                                <VerticalStackLayout IsVisible="{Binding IsDeptLobView}">
-                                    <!-- 表格標題 -->
-                                    <Grid ColumnDefinitions="60,2*,2*,2*,2*" 
-          BackgroundColor="#F9FAFB"
-          Padding="15,10">
-                                        <Label Grid.Column="0" Text="Rank" FontAttributes="Bold" HorizontalOptions="Center"/>
-                                        <Label Grid.Column="1" Text="LOB" FontAttributes="Bold"/>
-                                        <Label Grid.Column="2" Text="F25 Margin Target" FontAttributes="Bold"/>
-                                        <Label Grid.Column="3" Text="Margin YTD" FontAttributes="Bold"/>
-                                        <Label Grid.Column="4" Text="% of Margin Target" FontAttributes="Bold"/>
-                                    </Grid>
-
-                                    <!-- 部門/LOB數據 -->
-                                    <CollectionView ItemsSource="{Binding DepartmentLobData}"
-                                                    EmptyView="{StaticResource NoDataTemplate}">
-                                        <CollectionView.ItemTemplate>
-                                            <DataTemplate x:DataType="models:DepartmentLobData">
-                                                <Grid ColumnDefinitions="60,2*,2*,2*,2*" 
-                                                      Padding="15,12"
-                                                      BackgroundColor="{Binding LOB, Converter={StaticResource StringEqualsConverter}, ConverterParameter='Total,#F9FAFB,Transparent'}">
-                                                    <Label Grid.Column="0" 
-                                                           Text="{Binding Rank}" 
-                                                           IsVisible="{Binding Rank, Converter={StaticResource GreaterThanZeroConverter}}"
-                                                           HorizontalOptions="Center"/>
-                                                    <Label Grid.Column="1" 
-                                                           Text="{Binding LOB}"/>
-                                                    <Label Grid.Column="2" 
-                                                           Text="{Binding MarginTarget, StringFormat='${0:N0}'}"/>
-                                                    <Label Grid.Column="3" 
-                                                           Text="{Binding MarginYTD, StringFormat='${0:N0}'}"/>
-                                                    <Label Grid.Column="4" 
-                                                           Text="{Binding MarginPercentage, StringFormat='{0:P0}'}"/>
                                                 </Grid>
                                             </DataTemplate>
                                         </CollectionView.ItemTemplate>

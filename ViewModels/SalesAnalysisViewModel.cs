@@ -34,7 +34,7 @@ namespace ScoreCard.ViewModels
         private bool _isSummaryView = true;
 
         [ObservableProperty]
-        private string _viewType = "ByProduct"; // ByProduct, ByRep, ByDeptLOB
+        private string _viewType = "ByProduct"; // ByProduct, ByRep - removed ByDeptLOB
 
         [ObservableProperty]
         private bool _isBookedStatus = true; // true=Booked, false=Completed
@@ -61,15 +61,10 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private ObservableCollection<SalesLeaderboardItem> _salesLeaderboard = new();
 
-        // 部門/LOB 數據
-        [ObservableProperty]
-        private ObservableCollection<DepartmentLobData> _departmentLobData = new();
-
         // 視圖計算屬性
         public bool IsProductView => ViewType == "ByProduct";
         public bool IsRepView => ViewType == "ByRep";
-        public bool IsDeptLobView => ViewType == "ByDeptLOB";
-
+        // Removed IsDeptLobView property
 
         #endregion
 
@@ -112,7 +107,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
-        // 變更視圖類型（產品/代表/部門）
+        // 變更視圖類型（產品/代表）
         [RelayCommand]
         private async Task ChangeViewType(string newViewType)
         {
@@ -121,7 +116,6 @@ namespace ScoreCard.ViewModels
                 ViewType = newViewType;
                 OnPropertyChanged(nameof(IsProductView));
                 OnPropertyChanged(nameof(IsRepView));
-                OnPropertyChanged(nameof(IsDeptLobView));
                 await LoadLeaderboardDataAsync();
             }
             else if (ViewType == newViewType)
@@ -167,9 +161,9 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                IsLoading = true;
+                Debug.WriteLine("開始初始化 Dashboard");
 
-                // 初始化目標服務
+                // Initialize target service
                 await _targetService.InitializeAsync();
 
                 // 載入 Excel 數據
@@ -394,11 +388,13 @@ namespace ScoreCard.ViewModels
 
                 // 按月份分組 - 使用已過濾的數據，現在全部都是有完成日期的記錄
                 var monthlyData = _filteredData
-                    .GroupBy(x => new {
+                    .GroupBy(x => new
+                    {
                         Year = x.CompletionDate.Value.Year,  // 這裡不再需要做空值檢查，因為已過濾
                         Month = x.CompletionDate.Value.Month
                     })
-                    .Select(g => new {
+                    .Select(g => new
+                    {
                         YearMonth = g.Key,
                         POValue = g.Sum(x => x.POValue),
                         MarginValue = g.Sum(x => x.TotalCommission),
@@ -490,9 +486,6 @@ namespace ScoreCard.ViewModels
                     case "ByRep":
                         await LoadSalesRepDataAsync(statusFiltered);
                         break;
-                    case "ByDeptLOB":
-                        await LoadDeptLobDataAsync(statusFiltered);
-                        break;
                 }
             }
             catch (Exception ex)
@@ -544,7 +537,7 @@ namespace ScoreCard.ViewModels
                     foreach (var product in products)
                     {
                         product.PercentageOfTotal = totalPOValue > 0
-                            ? Math.Round((product.POValue / totalPOValue) , 1)
+                            ? Math.Round((product.POValue / totalPOValue), 1)
                             : 0;
 
                         Debug.WriteLine($"產品: {product.ProductType}, " +
@@ -613,75 +606,6 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"Error loading sales rep data: {ex.Message}");
                 LoadSampleSalesRepData();
-            }
-        }
-
-
-        // 載入部門/LOB數據
-        private async Task LoadDeptLobDataAsync(List<SalesData> data)
-        {
-            try
-            {
-                var currentDate = DateTime.Now;
-                var currentFiscalYear = currentDate.Month >= 8 ? currentDate.Year + 1 : currentDate.Year;
-
-                // 按部門分組
-                var departments = data
-                    .GroupBy(x => NormalizeDepartment(x.Department))
-                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                    .Select(g => new DepartmentLobData
-                    {
-                        LOB = g.Key,
-                        MarginYTD = Math.Round(g.Sum(x => x.TotalCommission), 2)
-                    })
-                    .OrderByDescending(x => x.MarginYTD)
-                    .ToList();
-
-                // 獲取目標值
-                foreach (var dept in departments)
-                {
-                    // 從目標服務獲取目標值
-                    dept.MarginTarget = _targetService.GetLOBTarget(currentFiscalYear, dept.LOB);
-                }
-
-                // 添加總計行
-                decimal totalTarget = departments.Sum(d => d.MarginTarget);
-                decimal totalYTD = departments.Sum(d => d.MarginYTD);
-                departments.Add(new DepartmentLobData
-                {
-                    Rank = 0, // 排在最後
-                    LOB = "Total",
-                    MarginTarget = totalTarget,
-                    MarginYTD = totalYTD
-                });
-
-                // 設置排名
-                var rankedDepts = departments
-                    .Where(d => d.LOB != "Total")
-                    .OrderByDescending(d => d.MarginYTD)
-                    .ToList();
-
-                for (int i = 0; i < rankedDepts.Count; i++)
-                {
-                    rankedDepts[i].Rank = i + 1;
-                }
-
-                // 重新組合結果（有排名的 + Total）
-                var result = new List<DepartmentLobData>();
-                result.AddRange(rankedDepts);
-                result.Add(departments.FirstOrDefault(d => d.LOB == "Total"));
-
-                await MainThread.InvokeOnMainThreadAsync(() =>
-                {
-                    DepartmentLobData = new ObservableCollection<DepartmentLobData>(result);
-                });
-
-                Debug.WriteLine($"部門/LOB數據已載入，共 {result.Count} 個項目");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"載入部門/LOB數據時發生錯誤: {ex.Message}");
-                LoadSampleDeptLobData();
             }
         }
 
@@ -819,60 +743,59 @@ namespace ScoreCard.ViewModels
         {
             LoadSampleProductData();
             LoadSampleSalesRepData();
-            LoadSampleDeptLobData();
         }
 
         // 載入樣本產品數據
         private void LoadSampleProductData()
         {
             var productSample = new ObservableCollection<ProductSalesData>
-            {
-                new ProductSalesData
-                {
-                    ProductType = "Thermal",
-                    AgencyMargin = 744855.43m,
-                    BuyResellMargin = 116206.36m,
-                    TotalMargin = 861061.79m,
-                    POValue = 7358201.65m,
-                    PercentageOfTotal = 41.0m
-                },
-                new ProductSalesData
-                {
-                    ProductType = "Power",
-                    AgencyMargin = 296743.08m,
-                    BuyResellMargin = 8737.33m,
-                    TotalMargin = 305481.01m,
-                    POValue = 5466144.65m,
-                    PercentageOfTotal = 31.0m
-                },
-                new ProductSalesData
-                {
-                    ProductType = "Batts & Caps",
-                    AgencyMargin = 250130.95m,
-                    BuyResellMargin = 0.00m,
-                    TotalMargin = 250130.95m,
-                    POValue = 2061423.30m,
-                    PercentageOfTotal = 12.0m
-                },
-                new ProductSalesData
-                {
-                    ProductType = "Channel",
-                    AgencyMargin = 167353.03m,
-                    BuyResellMargin = 8323.03m,
-                    TotalMargin = 175676.06m,
-                    POValue = 1416574.65m,
-                    PercentageOfTotal = 8.0m
-                },
-                new ProductSalesData
-                {
-                    ProductType = "Service",
-                    AgencyMargin = 101556.42m,
-                    BuyResellMargin = 0.00m,
-                    TotalMargin = 101556.42m,
-                    POValue = 1272318.58m,
-                    PercentageOfTotal = 7.0m
-                }
-            };
+    {
+        new ProductSalesData
+        {
+            ProductType = "Thermal",
+            AgencyMargin = 744855.43m,
+            BuyResellMargin = 116206.36m,
+            TotalMargin = 861061.79m,
+            POValue = 7358201.65m,
+            PercentageOfTotal = 41.0m
+        },
+        new ProductSalesData
+        {
+            ProductType = "Power",
+            AgencyMargin = 296743.08m,
+            BuyResellMargin = 8737.33m,
+            TotalMargin = 305481.01m,
+            POValue = 5466144.65m,
+            PercentageOfTotal = 31.0m
+        },
+        new ProductSalesData
+        {
+            ProductType = "Batts & Caps",
+            AgencyMargin = 250130.95m,
+            BuyResellMargin = 0.00m,
+            TotalMargin = 250130.95m,
+            POValue = 2061423.30m,
+            PercentageOfTotal = 12.0m
+        },
+        new ProductSalesData
+        {
+            ProductType = "Channel",
+            AgencyMargin = 167353.03m,
+            BuyResellMargin = 8323.03m,
+            TotalMargin = 175676.06m,
+            POValue = 1416574.65m,
+            PercentageOfTotal = 8.0m
+        },
+        new ProductSalesData
+        {
+            ProductType = "Service",
+            AgencyMargin = 101556.42m,
+            BuyResellMargin = 0.00m,
+            TotalMargin = 101556.42m,
+            POValue = 1272318.58m,
+            PercentageOfTotal = 7.0m
+        }
+    };
 
             ProductSalesData = productSample;
         }
@@ -881,102 +804,50 @@ namespace ScoreCard.ViewModels
         private void LoadSampleSalesRepData()
         {
             var salesRepSample = new ObservableCollection<SalesLeaderboardItem>
-            {
-                new SalesLeaderboardItem
-                {
-                    Rank = 1,
-                    SalesRep = "Isaac",
-                    AgencyMargin = 350186.00m,
-                    BuyResellMargin = 0.00m,
-                    TotalMargin = 350186.00m
-                },
-                new SalesLeaderboardItem
-                {
-                    Rank = 2,
-                    SalesRep = "Brandon",
-                    AgencyMargin = 301802.40m,
-                    BuyResellMargin = 38165.70m,
-                    TotalMargin = 339968.10m
-                },
-                new SalesLeaderboardItem
-                {
-                    Rank = 3,
-                    SalesRep = "Chris",
-                    AgencyMargin = 186411.10m,
-                    BuyResellMargin = 0.00m,
-                    TotalMargin = 186411.10m
-                },
-                new SalesLeaderboardItem
-                {
-                    Rank = 4,
-                    SalesRep = "Mark",
-                    AgencyMargin = 124680.50m,
-                    BuyResellMargin = 18920.30m,
-                    TotalMargin = 143600.80m
-                },
-                new SalesLeaderboardItem
-                {
-                    Rank = 5,
-                    SalesRep = "Nathan",
-                    AgencyMargin = 104582.20m,
-                    BuyResellMargin = 21060.80m,
-                    TotalMargin = 125643.00m
-                }
-            };
+    {
+        new SalesLeaderboardItem
+        {
+            Rank = 1,
+            SalesRep = "Isaac",
+            AgencyMargin = 350186.00m,
+            BuyResellMargin = 0.00m,
+            TotalMargin = 350186.00m
+        },
+        new SalesLeaderboardItem
+        {
+            Rank = 2,
+            SalesRep = "Brandon",
+            AgencyMargin = 301802.40m,
+            BuyResellMargin = 38165.70m,
+            TotalMargin = 339968.10m
+        },
+        new SalesLeaderboardItem
+        {
+            Rank = 3,
+            SalesRep = "Chris",
+            AgencyMargin = 186411.10m,
+            BuyResellMargin = 0.00m,
+            TotalMargin = 186411.10m
+        },
+        new SalesLeaderboardItem
+        {
+            Rank = 4,
+            SalesRep = "Mark",
+            AgencyMargin = 124680.50m,
+            BuyResellMargin = 18920.30m,
+            TotalMargin = 143600.80m
+        },
+        new SalesLeaderboardItem
+        {
+            Rank = 5,
+            SalesRep = "Nathan",
+            AgencyMargin = 104582.20m,
+            BuyResellMargin = 21060.80m,
+            TotalMargin = 125643.00m
+        }
+    };
 
             SalesLeaderboard = salesRepSample;
-        }
-
-        // 載入樣本部門/LOB數據
-        private void LoadSampleDeptLobData()
-        {
-            var deptLobSample = new ObservableCollection<DepartmentLobData>
-            {
-                new DepartmentLobData
-                {
-                    Rank = 1,
-                    LOB = "Power",
-                    MarginTarget = 850000m,
-                    MarginYTD = 650000m
-                },
-                new DepartmentLobData
-                {
-                    Rank = 2,
-                    LOB = "Thermal",
-                    MarginTarget = 720000m,
-                    MarginYTD = 980000m
-                },
-                new DepartmentLobData
-                {
-                    Rank = 3,
-                    LOB = "Channel",
-                    MarginTarget = 650000m,
-                    MarginYTD = 580000m
-                },
-                new DepartmentLobData
-                {
-                    Rank = 4,
-                    LOB = "Service",
-                    MarginTarget = 580000m,
-                    MarginYTD = 520000m
-                },
-                new DepartmentLobData
-                {
-                    Rank = 5,
-                    LOB = "Batts & Caps",
-                    MarginTarget = 450000m,
-                    MarginYTD = 500000m
-                },
-                new DepartmentLobData
-                {
-                    Rank = 0,
-                    LOB = "Total",
-                    MarginTarget = 3250000m,
-                    MarginYTD = 3230000m
-                }
-            };
-            DepartmentLobData = deptLobSample;
-
         }
         #endregion // 结束 #region 樣本數据
 
