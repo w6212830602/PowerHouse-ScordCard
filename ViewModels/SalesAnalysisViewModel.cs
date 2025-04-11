@@ -277,6 +277,7 @@ namespace ScoreCard.ViewModels
         }
 
         // 載入摘要數據
+        // 修改LoadSummaryDataAsync方法中的數值轉換部分
         private async Task LoadSummaryDataAsync()
         {
             try
@@ -306,6 +307,11 @@ namespace ScoreCard.ViewModels
                 // 計算"Remaining to target"
                 decimal remainingToTarget = targetValue - totalByReceivedDate;
 
+                // 計算沒有完成日期的訂單的N欄總和（以A欄日期為基礎）
+                decimal bookedMarginNotInvoiced = receivedDateData
+                    .Where(x => !x.CompletionDate.HasValue) // 沒有完成日期的記錄
+                    .Sum(x => x.TotalCommission); // N欄 - Total Commission
+
                 // 更新摘要
                 decimal actualRemaining = targetValue - completedAchievement;
 
@@ -320,17 +326,21 @@ namespace ScoreCard.ViewModels
                     remainingTargetPercentage = Math.Round((actualRemaining / targetValue) * 100, 1);
                 }
 
-                // 這裡totalAchievement和totalMargin現在基本相同
-                if (completedAchievement > 0)
-                {
-                    marginPercentage = Math.Round((completedAchievement / completedAchievement) * 100, 1);
-                }
+                // 轉換為百萬單位 - 使用更高精度的四捨五入，保留到千位數
+                targetValue = Math.Round(targetValue / 1000000m, 6);
+                decimal completedAchievementM = Math.Round(completedAchievement / 1000000m, 6);
+                decimal remainingToTargetM = Math.Round(remainingToTarget / 1000000m, 6);
+                decimal actualRemainingM = Math.Round(actualRemaining / 1000000m, 6);
 
-                // 轉換為百萬單位
-                targetValue = Math.Round(targetValue / 1000000m, 2);
-                decimal completedAchievementM = Math.Round(completedAchievement / 1000000m, 2);
-                decimal remainingToTargetM = Math.Round(remainingToTarget / 1000000m, 2);
-                decimal actualRemainingM = Math.Round(actualRemaining / 1000000m, 2);
+                // 轉換已Booked但未Invoiced的Margin為百萬單位
+                decimal bookedMarginNotInvoicedM = Math.Round(bookedMarginNotInvoiced / 1000000m, 6);
+
+                // 計算Booked Margin的比率（相對於總目標）
+                decimal bookedMarginRate = 0;
+                if (targetValue > 0)
+                {
+                    bookedMarginRate = Math.Round((bookedMarginNotInvoiced / (targetValue * 1000000m)) * 100, 1);
+                }
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
@@ -340,16 +350,17 @@ namespace ScoreCard.ViewModels
                     }
                     Summary.TotalTarget = targetValue;
                     Summary.TotalAchievement = completedAchievementM;
-                    Summary.TotalMargin = completedAchievementM; // 同上
+                    Summary.TotalMargin = bookedMarginNotInvoicedM; // 改成Booked Margin not Invoiced
                     Summary.RemainingTarget = remainingToTargetM; // 原來屬性保留用於Remaining to target
                     Summary.ActualRemaining = actualRemainingM; // 新屬性用於Actual Remaining
                     Summary.AchievementPercentage = achievementPercentage;
-                    Summary.MarginPercentage = marginPercentage;
+                    Summary.MarginPercentage = bookedMarginRate; // 使用Booked Margin的比率
                     Summary.RemainingTargetPercentage = remainingTargetPercentage;
                 });
 
                 Debug.WriteLine($"摘要數據: Target=${targetValue}M, Achievement=${completedAchievementM}M ({achievementPercentage}%), " +
-                               $"Remaining to target=${remainingToTargetM}M, Actual Remaining=${actualRemainingM}M");
+                               $"Remaining to target=${remainingToTargetM}M, Actual Remaining=${actualRemainingM}M, " +
+                               $"Booked Margin not Invoiced=${bookedMarginNotInvoicedM}M ({bookedMarginRate}%)");
             }
             catch (Exception ex)
             {
@@ -362,12 +373,12 @@ namespace ScoreCard.ViewModels
                         Summary = new SalesAnalysisSummary
                         {
                             TotalTarget = 10,
-                            TotalAchievement = 5,
-                            TotalMargin = 5,
-                            RemainingTarget = 5,
-                            ActualRemaining = 5,
+                            TotalAchievement = 5.123m,
+                            TotalMargin = 3.456m,
+                            RemainingTarget = 5.789m,
+                            ActualRemaining = 5.321m,
                             AchievementPercentage = 50,
-                            MarginPercentage = 100,
+                            MarginPercentage = 30,
                             RemainingTargetPercentage = 50
                         };
                     }

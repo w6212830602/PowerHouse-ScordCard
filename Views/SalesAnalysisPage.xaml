@@ -101,7 +101,7 @@
                             <Label Text="Total Sales"
                                    TextColor="#666666"
                                    FontSize="14"/>
-                            <Label Text="{Binding Summary.TotalAchievement, StringFormat='${0:N2}M'}"
+                            <Label Text="{Binding Summary.TotalAchievement, StringFormat='${0:N3}M'}"
                                    TextColor="#FF3B30"
                                    FontSize="24"
                                    FontAttributes="Bold"
@@ -121,34 +121,34 @@
                             <Label Text="Remaining to target"
                TextColor="#666666"
                FontSize="14"/>
-                            <Label Text="{Binding Summary.RemainingTarget, StringFormat='${0:N2}M'}"
+                            <Label Text="{Binding Summary.RemainingTarget, StringFormat='${0:N3}M'}"
                TextColor="#0066CC"
                FontSize="24"
                FontAttributes="Bold"
                Margin="0,5,0,0"/>
-                            <Label Text="Based on Received date"
+                            <Label Text="Based on Invoiced date"
                TextColor="#666666"
                FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
 
-                    <!-- Total Margin -->
+                    <!-- Booked margin -->
                     <Border Grid.Column="2"
-                            Stroke="#E5E7EB"
-                            StrokeThickness="1"
-                            BackgroundColor="White">
+        Stroke="#E5E7EB"
+        StrokeThickness="1"
+        BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="Total Margin"
-                                   TextColor="#666666"
-                                   FontSize="14"/>
-                            <Label Text="{Binding Summary.TotalMargin, StringFormat='${0:N2}M'}"
-                                   TextColor="#4CAF50"
-                                   FontSize="24"
-                                   FontAttributes="Bold"
-                                   Margin="0,5,0,0"/>
-                            <Label Text="{Binding Summary.MarginPercentage, StringFormat='{0:N1}% margin rate'}"
-                                   TextColor="#666666"
-                                   FontSize="12"/>
+                            <Label Text="Booked Margin not Invoiced"
+               TextColor="#666666"
+               FontSize="14"/>
+                            <Label Text="{Binding Summary.TotalMargin, StringFormat='${0:N3}M'}"
+               TextColor="#4CAF50"
+               FontSize="24"
+               FontAttributes="Bold"
+               Margin="0,5,0,0"/>
+                            <Label Text="{Binding Summary.MarginPercentage, StringFormat='{0:N1}% of target'}"
+               TextColor="#666666"
+               FontSize="12"/>
                         </VerticalStackLayout>
                     </Border>
 
@@ -161,7 +161,7 @@
                             <Label Text="Actual Remaining"
                TextColor="#666666"
                FontSize="14"/>
-                            <Label Text="{Binding Summary.ActualRemaining, StringFormat='${0:N2}M'}"
+                            <Label Text="{Binding Summary.ActualRemaining, StringFormat='${0:N3}M'}"
                TextColor="#0066CC"
                FontSize="24"
                FontAttributes="Bold"
