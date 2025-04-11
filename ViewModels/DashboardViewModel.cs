@@ -208,6 +208,9 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private bool _isStatusSuccess;
 
+        [ObservableProperty]
+        private decimal _totalValue;
+
         // Format display properties
         public string AnnualTargetDisplay => $"${AnnualTarget:N0}";
         public string AchievementDisplay => $"Achievement:{Achievement:0.0}%";
@@ -271,6 +274,7 @@ namespace ScoreCard.ViewModels
         public decimal Q2FinalTarget => Q2Target + Q1Carried;
         public decimal Q3FinalTarget => Q3Target + Q2Carried;
         public decimal Q4FinalTarget => Q4Target + Q3Carried;
+        public string TotalValueDisplay => $"${TotalValue:N0}";
 
         public DashboardViewModel(IExcelService excelService, ITargetService targetService)
         {
@@ -296,7 +300,7 @@ namespace ScoreCard.ViewModels
 
             // Set default option to current fiscal year
             SelectedOption = $"FY{currentFiscalYear}";
-            
+
             InitializeNotifications();
             InitializeAsync();
             Debug.WriteLine($"DashboardViewModel 初始化完成，選擇的財年: {SelectedOption}");
@@ -594,6 +598,8 @@ namespace ScoreCard.ViewModels
             OnPropertyChanged(nameof(Q2ExceededDisplay));
             OnPropertyChanged(nameof(Q3ExceededDisplay));
             OnPropertyChanged(nameof(Q4ExceededDisplay));
+
+            OnPropertyChanged(nameof(TotalValueDisplay));
         }
 
         private void UpdateRemainingValues()
@@ -625,6 +631,9 @@ namespace ScoreCard.ViewModels
                 // 設置正在進行中金額
                 InProgress = inProgressAmount;
 
+                // 計算總值（已完成 + 未開發票 + 進行中）
+                TotalValue = totalAchieved + NotInvoiced + InProgress;
+
                 Remaining = AnnualTarget - totalAchieved;
 
                 // 確保 Remaining 不會小於 0
@@ -636,7 +645,7 @@ namespace ScoreCard.ViewModels
                 // 確保進度不超過 100%
                 AchievementProgress = Math.Min(AchievementProgress, 1.0);
 
-                Debug.WriteLine($"更新值: Achievement=${totalAchieved:N2}, {Achievement}%, Remaining=${Remaining:N2}, Progress={AchievementProgress:P2}");
+                Debug.WriteLine($"更新值: Achievement=${totalAchieved:N2}, {Achievement}%, Remaining=${Remaining:N2}, Progress={AchievementProgress:P2}, Total=${TotalValue:N2}");
             }
             catch (Exception ex)
             {

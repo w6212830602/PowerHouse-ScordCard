@@ -57,7 +57,7 @@
 
             <!-- 年度總覽區塊 -->
             <VerticalStackLayout Spacing="16">
-                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="16">
+                <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="16">
                     <!-- Annual Target -->
                     <VerticalStackLayout Grid.Column="0">
                         <Label Text="Annual Margin Target" 
@@ -89,8 +89,19 @@
                                FontAttributes="Bold"/>
                     </VerticalStackLayout>
 
-                    <!-- Remaining -->
+                    <!-- Total (New) -->
                     <VerticalStackLayout Grid.Column="2">
+                        <Label Text="Total (All)" 
+               TextColor="#6B7280" 
+               FontSize="14"/>
+                        <Label Text="{Binding TotalValueDisplay}"
+               TextColor="#FF9900"
+               FontSize="24"
+               FontAttributes="Bold"/>
+                    </VerticalStackLayout>
+
+                    <!-- Remaining -->
+                    <VerticalStackLayout Grid.Column="3">
                         <Label Text="Remaining" 
                                TextColor="#6B7280" 
                                FontSize="14"/>
