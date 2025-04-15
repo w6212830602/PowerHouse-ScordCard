@@ -98,7 +98,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="Total Sales"
+                            <Label Text="Total Achieved"
                                    TextColor="#666666"
                                    FontSize="14"/>
                             <Label Text="{Binding Summary.TotalAchievement, StringFormat='${0:N3}M'}"

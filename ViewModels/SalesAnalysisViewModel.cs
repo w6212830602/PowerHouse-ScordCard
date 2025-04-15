@@ -207,35 +207,55 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = true;
 
-                // 重新載入原始數據（如果需要）
+                // Reload raw data if needed
                 if (_allSalesData == null || !_allSalesData.Any())
                 {
-                    var (data, lastUpdated) = await _excelService.LoadDataAsync();
-                    _allSalesData = data ?? new List<SalesData>();
+                    try
+                    {
+                        var (data, lastUpdated) = await _excelService.LoadDataAsync();
+                        _allSalesData = data ?? new List<SalesData>();
+                    }
+                    catch (Exception ex)
+                    {
+                        await MainThread.InvokeOnMainThreadAsync(async () =>
+                        {
+                            await Application.Current.MainPage.DisplayAlert(
+                                "Read Error",
+                                $"Unable to read Excel file: {ex.Message}",
+                                "OK");
+                        });
+                        IsLoading = false;
+                        return; // Early return, don't continue processing
+                    }
                 }
 
-                // 過濾數據
+                // Filter data
                 FilterDataByDateRange();
 
-                // 載入摘要數據
+                // Load summary data
                 await LoadSummaryDataAsync();
 
-                // 載入圖表數據
+                // Load chart data
                 await LoadChartDataAsync();
 
-                // 載入排行榜數據
+                // Load leaderboard data
                 await LoadLeaderboardDataAsync();
 
-                // 更新圖表軸
+                // Update chart axes
                 UpdateChartAxes();
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"重新載入數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"Error reloading data: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
-                // 確保有一些默認數據顯示
-                LoadSampleData();
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Error",
+                        $"Error loading data: {ex.Message}",
+                        "OK");
+                });
             }
             finally
             {
@@ -478,7 +498,13 @@ namespace ScoreCard.ViewModels
                 // 再次確認數據可用性
                 if (_filteredData == null || !_filteredData.Any())
                 {
-                    LoadSampleLeaderboardData();
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        await Application.Current.MainPage.DisplayAlert(
+                            "NO Data",
+                            "No Data in selected time fram",
+                            "OK");
+                    });
                     return;
                 }
 
@@ -503,7 +529,14 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"載入排行榜數據時發生錯誤: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
-                LoadSampleLeaderboardData();
+
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Wrong",
+                        $"Something happen when reading data: {ex.Message}",
+                        "OK");
+                });
             }
         }
 
@@ -513,16 +546,16 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                Debug.WriteLine($"載入產品數據，資料筆數: {data.Count}");
+                Debug.WriteLine($"Loading product data, record count: {data.Count}");
 
-                // 輸出前幾條記錄的詳細信息，用於調試
+                // Output detailed info for the first few records for debugging
                 foreach (var item in data.Take(Math.Min(5, data.Count)))
                 {
-                    Debug.WriteLine($"樣本數據: 接收日期={item.ReceivedDate:yyyy-MM-dd}, " +
-                                   $"完成日期={item.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                   $"產品類型={item.ProductType}, " +
-                                   $"總佣金=${item.TotalCommission}, " +
-                                   $"PO值=${item.POValue}");
+                    Debug.WriteLine($"Sample data: Received Date={item.ReceivedDate:yyyy-MM-dd}, " +
+                                   $"Completion Date={item.CompletionDate?.ToString("yyyy-MM-dd") ?? "Not Completed"}, " +
+                                   $"Product Type={item.ProductType}, " +
+                                   $"Total Commission=${item.TotalCommission}, " +
+                                   $"PO Value=${item.POValue}");
                 }
 
                 var products = data
@@ -539,11 +572,11 @@ namespace ScoreCard.ViewModels
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                Debug.WriteLine($"分組後產品數: {products.Count}");
+                Debug.WriteLine($"Number of products after grouping: {products.Count}");
 
                 if (products.Any())
                 {
-                    // 計算百分比
+                    // Calculate percentages
                     decimal totalPOValue = products.Sum(p => p.POValue);
                     foreach (var product in products)
                     {
@@ -551,12 +584,12 @@ namespace ScoreCard.ViewModels
                             ? Math.Round((product.POValue / totalPOValue), 1)
                             : 0;
 
-                        Debug.WriteLine($"產品: {product.ProductType}, " +
+                        Debug.WriteLine($"Product: {product.ProductType}, " +
                                        $"Agency: ${product.AgencyMargin}, " +
                                        $"BuyResell: ${product.BuyResellMargin}, " +
                                        $"Total: ${product.TotalMargin}, " +
                                        $"PO: ${product.POValue}, " +
-                                       $"百分比: {product.PercentageOfTotal}%");
+                                       $"Percentage: {product.PercentageOfTotal}%");
                     }
 
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -564,19 +597,33 @@ namespace ScoreCard.ViewModels
                         ProductSalesData = new ObservableCollection<ProductSalesData>(products);
                     });
 
-                    Debug.WriteLine($"成功載入 {products.Count} 項產品數據");
+                    Debug.WriteLine($"Successfully loaded {products.Count} product data items");
                 }
                 else
                 {
-                    Debug.WriteLine("沒有產品數據可顯示");
-                    LoadSampleProductData();
+                    Debug.WriteLine("No product data to display");
+
+                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        await Application.Current.MainPage.DisplayAlert(
+                            "No Product Data",
+                            "No product data found in the selected date range.",
+                            "OK");
+                    });
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入產品數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"Error loading product data: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
-                LoadSampleProductData();
+
+                await MainThread.InvokeOnMainThreadAsync(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert(
+                        "Error",
+                        $"Error loading product data: {ex.Message}",
+                        "OK");
+                });
             }
         }
 
@@ -616,29 +663,7 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error loading sales rep data: {ex.Message}");
-                LoadSampleSalesRepData();
             }
-        }
-
-        // 標準化部門名稱
-        private string NormalizeDepartment(string department)
-        {
-            if (string.IsNullOrWhiteSpace(department))
-                return "Other";
-
-            if (department.Contains("Power", StringComparison.OrdinalIgnoreCase))
-                return "Power";
-            if (department.Contains("Thermal", StringComparison.OrdinalIgnoreCase))
-                return "Thermal";
-            if (department.Contains("Channel", StringComparison.OrdinalIgnoreCase))
-                return "Channel";
-            if (department.Contains("Service", StringComparison.OrdinalIgnoreCase))
-                return "Service";
-            if (department.Contains("Batts", StringComparison.OrdinalIgnoreCase) ||
-                department.Contains("Caps", StringComparison.OrdinalIgnoreCase))
-                return "Batts & Caps";
-
-            return department;
         }
 
         // 更新圖表軸
@@ -714,13 +739,6 @@ namespace ScoreCard.ViewModels
 
         #region 樣本數據
 
-        // 載入樣本數據（當有錯誤或無數據時使用）
-        private void LoadSampleData()
-        {
-            LoadSampleChartData();
-            LoadSampleLeaderboardData();
-        }
-
         // 載入樣本圖表數據
         private void LoadSampleChartData()
         {
@@ -749,117 +767,6 @@ namespace ScoreCard.ViewModels
             AchievementTrendData = achievementTrendSample;
         }
 
-        // 載入樣本排行榜數據
-        private void LoadSampleLeaderboardData()
-        {
-            LoadSampleProductData();
-            LoadSampleSalesRepData();
-        }
-
-        // 載入樣本產品數據
-        private void LoadSampleProductData()
-        {
-            var productSample = new ObservableCollection<ProductSalesData>
-    {
-        new ProductSalesData
-        {
-            ProductType = "Thermal",
-            AgencyMargin = 744855.43m,
-            BuyResellMargin = 116206.36m,
-            TotalMargin = 861061.79m,
-            POValue = 7358201.65m,
-            PercentageOfTotal = 41.0m
-        },
-        new ProductSalesData
-        {
-            ProductType = "Power",
-            AgencyMargin = 296743.08m,
-            BuyResellMargin = 8737.33m,
-            TotalMargin = 305481.01m,
-            POValue = 5466144.65m,
-            PercentageOfTotal = 31.0m
-        },
-        new ProductSalesData
-        {
-            ProductType = "Batts & Caps",
-            AgencyMargin = 250130.95m,
-            BuyResellMargin = 0.00m,
-            TotalMargin = 250130.95m,
-            POValue = 2061423.30m,
-            PercentageOfTotal = 12.0m
-        },
-        new ProductSalesData
-        {
-            ProductType = "Channel",
-            AgencyMargin = 167353.03m,
-            BuyResellMargin = 8323.03m,
-            TotalMargin = 175676.06m,
-            POValue = 1416574.65m,
-            PercentageOfTotal = 8.0m
-        },
-        new ProductSalesData
-        {
-            ProductType = "Service",
-            AgencyMargin = 101556.42m,
-            BuyResellMargin = 0.00m,
-            TotalMargin = 101556.42m,
-            POValue = 1272318.58m,
-            PercentageOfTotal = 7.0m
-        }
-    };
-
-            ProductSalesData = productSample;
-        }
-
-        // 載入樣本銷售代表數據
-        private void LoadSampleSalesRepData()
-        {
-            var salesRepSample = new ObservableCollection<SalesLeaderboardItem>
-    {
-        new SalesLeaderboardItem
-        {
-            Rank = 1,
-            SalesRep = "Isaac",
-            AgencyMargin = 350186.00m,
-            BuyResellMargin = 0.00m,
-            TotalMargin = 350186.00m
-        },
-        new SalesLeaderboardItem
-        {
-            Rank = 2,
-            SalesRep = "Brandon",
-            AgencyMargin = 301802.40m,
-            BuyResellMargin = 38165.70m,
-            TotalMargin = 339968.10m
-        },
-        new SalesLeaderboardItem
-        {
-            Rank = 3,
-            SalesRep = "Chris",
-            AgencyMargin = 186411.10m,
-            BuyResellMargin = 0.00m,
-            TotalMargin = 186411.10m
-        },
-        new SalesLeaderboardItem
-        {
-            Rank = 4,
-            SalesRep = "Mark",
-            AgencyMargin = 124680.50m,
-            BuyResellMargin = 18920.30m,
-            TotalMargin = 143600.80m
-        },
-        new SalesLeaderboardItem
-        {
-            Rank = 5,
-            SalesRep = "Nathan",
-            AgencyMargin = 104582.20m,
-            BuyResellMargin = 21060.80m,
-            TotalMargin = 125643.00m
-        }
-    };
-
-            SalesLeaderboard = salesRepSample;
-        }
         #endregion // 结束 #region 樣本數据
 
         #endregion // 结束 #region 辅助方法

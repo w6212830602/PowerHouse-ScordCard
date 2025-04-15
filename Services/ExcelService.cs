@@ -60,7 +60,7 @@ namespace ScoreCard.Services
         // In ExcelService.cs, modify the LoadDataAsync method to include the completion date
         public async Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME)
         {
-            // 重要：每次调用方法时重置静态计数器
+            // Reset the static counter every time this method is called
             _inProgressAmount = 0;
 
             return await Task.Run(() =>
@@ -68,66 +68,72 @@ namespace ScoreCard.Services
                 try
                 {
                     string fullPath = Path.Combine(Constants.BASE_PATH, filePath);
-                    Debug.WriteLine($"嘗試載入 Excel 檔案: {fullPath}");
+                    Debug.WriteLine($"Attempting to load Excel file: {fullPath}");
+
+                    if (!File.Exists(fullPath))
+                    {
+                        Debug.WriteLine($"File not found: {fullPath}");
+                        throw new FileNotFoundException($"Excel file not found: {fullPath}");
+                    }
 
                     ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
                     var data = new List<SalesData>();
-                    DateTime lastUpdated = File.Exists(fullPath) ? File.GetLastWriteTime(fullPath) : DateTime.Now;
+                    DateTime lastUpdated = File.GetLastWriteTime(fullPath);
 
                     using (var package = new ExcelPackage(new FileInfo(fullPath)))
                     {
-                        // 1. 讀取原始數據
+                        // 1. Read original data
                         var worksheet = package.Workbook.Worksheets[_worksheetName];
                         if (worksheet == null)
                         {
-                            Debug.WriteLine($"找不到工作表: '{_worksheetName}'");
+                            Debug.WriteLine($"Worksheet not found: '{_worksheetName}'");
 
-                            // 嘗試使用索引查找工作表
+                            // Try to find the worksheet by index
                             if (package.Workbook.Worksheets.Count > 0)
                             {
                                 worksheet = package.Workbook.Worksheets[0];
-                                Debug.WriteLine($"改用第一個工作表: {worksheet.Name}");
+                                Debug.WriteLine($"Using first worksheet instead: {worksheet.Name}");
                             }
                             else
                             {
-                                throw new Exception("Excel 檔案中沒有工作表");
+                                throw new Exception("No worksheets found in Excel file");
                             }
                         }
 
-                        Debug.WriteLine($"成功找到工作表: {worksheet.Name}");
+                        Debug.WriteLine($"Worksheet found successfully: {worksheet.Name}");
                         var rowCount = worksheet.Dimension?.Rows ?? 0;
-                        Debug.WriteLine($"工作表有 {rowCount} 行數據");
+                        Debug.WriteLine($"Worksheet has {rowCount} rows of data");
 
                         if (rowCount > 0)
                         {
-                            // 繪製表頭，確認列名稱
+                            // Print headers to confirm column names
                             var headers = new List<string>();
                             for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                             {
                                 var headerValue = worksheet.Cells[1, col].Text;
                                 headers.Add(headerValue);
                             }
-                            Debug.WriteLine($"表頭: {string.Join(", ", headers)}");
+                            Debug.WriteLine($"Headers: {string.Join(", ", headers)}");
 
-                            // 保存剩餘金額的計算，計算具有未完成日期的訂單的 TotalCommission 總和
+                            // Calculate remaining amount - sum of TotalCommission for orders without completion date
                             decimal remainingAmount = 0;
 
-                            // 添加计数器和记录已处理行的集合
+                            // Add counters and a set of processed rows
                             int inProgressCount = 0;
                             decimal totalHValue = 0;
-                            decimal calculatedInProgressAmount = 0; // 本地变量，不使用静态变量进行中间计算
+                            decimal calculatedInProgressAmount = 0; // Local variable, don't use static variable for intermediate calculation
                             HashSet<int> processedRows = new HashSet<int>();
 
-                            Debug.WriteLine("===== 开始计算进行中金额 =====");
+                            Debug.WriteLine("===== Starting in-progress amount calculation =====");
 
                             for (int row = 2; row <= rowCount; row++)
                             {
-                                // 检查是否已处理过该行
+                                // Check if this row has been processed
                                 if (!processedRows.Contains(row))
                                 {
                                     try
                                     {
-                                        // 讀取接收日期（A列）
+                                        // Read received date (column A)
                                         var receivedDateCell = worksheet.Cells[row, 1];
                                         DateTime receivedDate;
                                         if (receivedDateCell.Value is DateTime date)
@@ -136,16 +142,16 @@ namespace ScoreCard.Services
                                         }
                                         else
                                         {
-                                            // 嘗試解析日期
+                                            // Try to parse the date
                                             if (!DateTime.TryParse(receivedDateCell.Text, out receivedDate))
                                             {
-                                                Debug.WriteLine($"無法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
+                                                Debug.WriteLine($"Could not parse received date at row {row}: {receivedDateCell.Text}");
                                                 continue;
                                             }
                                         }
 
-                                        // 讀取完成日期（Y列）
-                                        var completionDateCell = worksheet.Cells[row, 25]; // Y列
+                                        // Read completion date (column Y)
+                                        var completionDateCell = worksheet.Cells[row, 25]; // Column Y
                                         DateTime? completionDate = null;
                                         if (completionDateCell.Value != null)
                                         {
@@ -155,7 +161,7 @@ namespace ScoreCard.Services
                                             }
                                             else
                                             {
-                                                // 嘗試解析完成日期
+                                                // Try to parse completion date
                                                 DateTime parsedCompletionDate;
                                                 if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
                                                 {
@@ -164,79 +170,79 @@ namespace ScoreCard.Services
                                             }
                                         }
 
-                                        // 讀取產品類型 (AD列) 
+                                        // Read product type (column AD)
                                         string productType = worksheet.Cells[row, 30].GetValue<string>() ?? "Unknown";
 
-                                        // 讀取銷售代表 (Z列)
+                                        // Read sales rep (column Z)
                                         string salesRep = worksheet.Cells[row, 26].GetValue<string>() ?? "Unknown";
 
-                                        // 讀取總佣金 (N列)
+                                        // Read total commission (column N)
                                         decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
 
-                                        // 讀取 PO 值 (G列)
+                                        // Read PO value (column G)
                                         decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
 
-                                        // 輸出前幾行的詳細信息用於調試
+                                        // Output detailed info for the first few rows for debugging
                                         if (row <= 10)
                                         {
-                                            Debug.WriteLine($"行 {row}: " +
-                                                           $"接收日期={receivedDate:yyyy-MM-dd}, " +
-                                                           $"完成日期={completionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                                           $"產品={productType}, " +
-                                                           $"代表={salesRep}, " +
-                                                           $"總佣金=${totalCommission:N2}, " +
-                                                           $"PO值=${poValue:N2}");
+                                            Debug.WriteLine($"Row {row}: " +
+                                                           $"Received Date={receivedDate:yyyy-MM-dd}, " +
+                                                           $"Completion Date={completionDate?.ToString("yyyy-MM-dd") ?? "Not Completed"}, " +
+                                                           $"Product={productType}, " +
+                                                           $"Rep={salesRep}, " +
+                                                           $"Total Commission=${totalCommission:N2}, " +
+                                                           $"PO Value=${poValue:N2}");
                                         }
 
-                                        // 根據完成日期設置訂單狀態
+                                        // Set order status based on completion date
                                         string status = completionDate.HasValue ? "Completed" : "Booked";
 
-                                        // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中，但不計入季度業績
+                                        // If column Y (completion date) is empty, add total commission to remaining amount, but don't count toward quarterly performance
                                         if (!completionDate.HasValue)
                                         {
                                             remainingAmount += totalCommission;
 
-                                            // 檢查N列（Total Margin）是否也為空，如果是則視為"進行中"
-                                            decimal nColumnValue = GetDecimalValue(worksheet.Cells[row, 14]); // N欄是第14列
+                                            // Check if column N (Total Margin) is also empty, if so consider as "in progress"
+                                            decimal nColumnValue = GetDecimalValue(worksheet.Cells[row, 14]); // Column N is the 14th column
                                             if (nColumnValue == 0)
                                             {
-                                                // 獲取H列（PO Value）的值，並添加其12%到inProgressAmount
-                                                decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H欄是第8列
+                                                // Get column H (PO Value) value, and add 12% of it to inProgressAmount
+                                                decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // Column H is the 8th column
                                                 decimal commission = hColumnValue * 0.12m;
                                                 totalHValue += hColumnValue;
                                                 calculatedInProgressAmount += commission;
                                                 inProgressCount++;
-                                                Debug.WriteLine($"[主表] 行 {row}: 添加进行中金额 ${hColumnValue} * 12% = ${commission}");
+                                                Debug.WriteLine($"[Main Table] Row {row}: Adding in-progress amount ${hColumnValue} * 12% = ${commission}");
                                             }
                                         }
 
                                         var salesData = new SalesData
                                         {
                                             ReceivedDate = receivedDate,
-                                            POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // G列 - PO Value
-                                            VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
-                                            BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // J列 - Buy Resell
-                                            AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // M列 - Agency Margin
-                                            TotalCommission = totalCommission, // N列 - Total Commission
-                                            CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
-                                            Status = status,      // 根據Y列的完成日期確定狀態
-                                            CompletionDate = completionDate, // Y列 - 完成日期
-                                            SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Z列
-                                            ProductType = worksheet.Cells[row, 30].GetValue<string>(), // AD列 - Product Type
-                                            Department = worksheet.Cells[row, 29].GetValue<string>(),   // AC列 - Department/LOB
-                                                                                                        // 添加一個標誌，表示這是一個"剩餘"項目（Y列為空）
+                                            POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // Column G - PO Value
+                                            VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // Column H
+                                            BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // Column J - Buy Resell
+                                            AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // Column M - Agency Margin
+                                            TotalCommission = totalCommission, // Column N - Total Commission
+                                            CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // Column P
+                                            Status = status,      // Determine status based on completion date in column Y
+                                            CompletionDate = completionDate, // Column Y - Completion date
+                                            SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Column Z
+                                            ProductType = worksheet.Cells[row, 30].GetValue<string>(), // Column AD - Product Type
+                                            Department = worksheet.Cells[row, 29].GetValue<string>(),   // Column AC - Department/LOB
+                                                                                                        // Add a flag to indicate this is a "remaining" item (column Y is empty)
                                             IsRemaining = !completionDate.HasValue,
-                                            // 重要：只有已完成的訂單才設置 QuarterDate，未完成的設置為 null
+                                            // Important: Only set QuarterDate for completed orders, set to null for others
                                             HasQuarterAssigned = completionDate.HasValue,
-                                            QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作為季度計算日期
+                                            QuarterDate = completionDate ?? DateTime.MinValue // Use completion date as quarter calculation date
                                         };
 
                                         if (row <= 5)
                                         {
-                                            Debug.WriteLine($"第 {row} 行: 接收日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
-                                                           $"完成日期={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                                           $"計入季度={salesData.HasQuarterAssigned}, " +
-                                                           (salesData.HasQuarterAssigned ? $"季度計算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
+                                            Debug.WriteLine($"Row {row}: Received Date={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                                           $"Completion Date={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "Not Completed"}, " +
+                                                           $"Count Toward Quarter={salesData.HasQuarterAssigned}, " +
+                                                           (salesData.HasQuarterAssigned ? $"Quarter Calculation Date={salesData.QuarterDate:yyyy-MM-dd}, Quarter={salesData.Quarter}, " : "") +
                                                            $"POValue=${salesData.POValue}, " +
                                                            $"TotalCommission=${salesData.TotalCommission}, " +
                                                            $"Status={salesData.Status}");
@@ -244,189 +250,81 @@ namespace ScoreCard.Services
 
                                         if (IsValidSalesData(salesData))
                                         {
-                                            // 跳過 cancelled 狀態的數據
+                                            // Skip data with 'cancelled' status
                                             if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
                                             {
                                                 data.Add(salesData);
                                             }
                                         }
 
-                                        // 标记该行已处理
+                                        // Mark this row as processed
                                         processedRows.Add(row);
                                     }
                                     catch (Exception ex)
                                     {
-                                        Debug.WriteLine($"載入第 {row} 行數據時發生錯誤: {ex.Message}");
-                                        // 繼續處理下一行
+                                        Debug.WriteLine($"Error loading data at row {row}: {ex.Message}");
+                                        // Continue processing next row
                                     }
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"行 {row} 已处理过，跳过");
+                                    Debug.WriteLine($"Row {row} already processed, skipping");
                                 }
                             }
 
-                            // 在所有行处理完毕后，一次性设置静态变量
+                            // Set static variables after all rows are processed
                             _remainingAmount = remainingAmount;
                             _inProgressAmount = calculatedInProgressAmount;
 
-                            Debug.WriteLine($"===== 计算完成 =====");
-                            Debug.WriteLine($"进行中订单总数: {inProgressCount}");
-                            Debug.WriteLine($"进行中订单H列总额: ${totalHValue:N2}");
-                            Debug.WriteLine($"计算得到的12%佣金总额: ${calculatedInProgressAmount:N2}");
-                            Debug.WriteLine($"計算得到的剩餘金額: ${_remainingAmount:N2}");
-                            Debug.WriteLine($"設置的正在進行中金額: ${_inProgressAmount:N2}");
-                            Debug.WriteLine($"===== 计算结束 =====");
+                            Debug.WriteLine($"===== Calculation complete =====");
+                            Debug.WriteLine($"Total in-progress orders: {inProgressCount}");
+                            Debug.WriteLine($"Total column H sum for in-progress orders: ${totalHValue:N2}");
+                            Debug.WriteLine($"Calculated 12% commission sum: ${calculatedInProgressAmount:N2}");
+                            Debug.WriteLine($"Calculated remaining amount: ${_remainingAmount:N2}");
+                            Debug.WriteLine($"Set in-progress amount: ${_inProgressAmount:N2}");
+                            Debug.WriteLine($"===== End of calculation =====");
                         }
 
-                        // 嘗試讀取摘要工作表
+                        // Try to read summary worksheets
                         try
                         {
                             LoadSummarySheets(package);
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"讀取摘要工作表時發生錯誤: {ex.Message}");
+                            Debug.WriteLine($"Error reading summary worksheets: {ex.Message}");
+                            throw; // Re-throw to be handled by caller
                         }
                     }
 
-                    // 即使有真實數據，也確保測試數據覆蓋廣泛的日期範圍，便於測試
-                    if (data.Count == 0 || data.Count < 100) // 如果數據太少，添加測試數據
-                    {
-                        var testData = CreateTestSalesData();
-                        data.AddRange(testData);
-                        Debug.WriteLine($"添加了 {testData.Count} 條測試數據，總計 {data.Count} 條");
-                    }
-
-                    Debug.WriteLine($"成功載入 {data.Count} 條有效記錄");
+                    Debug.WriteLine($"Successfully loaded {data.Count} valid records");
                     return (data, lastUpdated);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"載入 Excel 數據時發生錯誤: {ex.Message}\n{ex.StackTrace}");
-
-                    // 即使發生錯誤，也返回一些測試數據
-                    var testData = CreateTestSalesData();
-                    Debug.WriteLine($"由於錯誤，返回 {testData.Count} 條測試數據");
-
-                    return (testData, DateTime.Now);
+                    Debug.WriteLine($"Error loading Excel data: {ex.Message}\n{ex.StackTrace}");
+                    throw; // Re-throw the error, don't generate test data
                 }
             });
         }
 
-
-
-
-        private List<SalesData> CreateTestSalesData()
-        {
-            var data = new List<SalesData>();
-            DateTime now = DateTime.Now;
-
-            // 創建從2022年到當前年份的數據
-            for (int year = 2022; year <= now.Year; year++)
-            {
-                // 每年每月都生成數據
-                for (int month = 1; month <= 12; month++)
-                {
-                    // 如果是當前年份和超過當前月份，則停止
-                    if (year == now.Year && month > now.Month) break;
-
-                    // 每月多個日期
-                    for (int day = 1; day <= 28; day += 5)
-                    {
-                        DateTime recordDate = new DateTime(year, month, day);
-
-                        // 為每種產品類型創建記錄
-                        foreach (var product in new[] { "Power", "Thermal", "Channel", "Service", "Batts & Caps" })
-                        {
-                            // 每個產品對應到不同銷售代表
-                            string rep = product switch
-                            {
-                                "Power" => "Isaac",
-                                "Thermal" => "Brandon",
-                                "Channel" => "Chris",
-                                "Service" => "Mark",
-                                "Batts & Caps" => "Nathan",
-                                _ => "Isaac"
-                            };
-
-                            // 基本金額 + 季度變化
-                            int quarter = (month - 1) / 3 + 1;
-                            decimal baseAmount = 10000 + quarter * 2000 + day * 100;
-
-                            // 根據產品類型調整金額
-                            decimal productMultiplier = product switch
-                            {
-                                "Thermal" => 5.0m,
-                                "Power" => 3.0m,
-                                "Batts & Caps" => 2.0m,
-                                "Channel" => 1.5m,
-                                "Service" => 1.0m,
-                                _ => 1.0m
-                            };
-
-                            decimal finalAmount = baseAmount * productMultiplier;
-
-                            // 設置完成日期與狀態 - 為一半的數據設置完成日期
-                            DateTime? completionDate = null;
-                            if (day % 10 == 0) // 這會給大約30%的數據設置完成日期
-                            {
-                                completionDate = recordDate.AddDays(14); // 訂單兩週後完成
-                            }
-
-                            // 根據完成日期設置狀態 - 這是關鍵部分
-                            string status = completionDate.HasValue ? "Completed" : "Booked";
-
-                            data.Add(new SalesData
-                            {
-                                ReceivedDate = recordDate,
-                                SalesRep = rep,
-                                Status = status,
-                                CompletionDate = completionDate,
-                                ProductType = product,
-                                POValue = finalAmount,
-                                VertivValue = finalAmount * 0.9m,
-                                BuyResellValue = finalAmount * 0.3m,
-                                AgencyMargin = finalAmount * 0.07m,
-                                TotalCommission = finalAmount * 0.1m,
-                                CommissionPercentage = 0.1m,
-                                Department = GetDepartmentFromProduct(product)
-                            });
-                        }
-                    }
-                }
-            }
-
-            Debug.WriteLine($"已創建 {data.Count} 條測試銷售數據，跨越從2022年至今的各個月份");
-            Debug.WriteLine($"其中 Booked 狀態: {data.Count(x => x.Status == "Booked")} 條，Completed 狀態: {data.Count(x => x.Status == "Completed")} 條");
-            return data;
-        }
-
-        // Helper method to get Department for test data
-        private string GetDepartmentFromProduct(string productType)
-        {
-            return productType switch
-            {
-                "Power" => "Power",
-                "Thermal" => "Thermal",
-                "Channel" => "Channel",
-                "Service" => "Service",
-                _ => "Other"
-            };
-        }
 
         // 載入所有摘要工作表
         private void LoadSummarySheets(ExcelPackage package)
         {
             try
             {
-                Debug.WriteLine("===== 开始加载摘要工作表（不再更新进行中金额） =====");
+                Debug.WriteLine("===== 開始加載摘要工作表 =====");
 
                 // 先載入 Sales Leaderboard
                 var leaderboardSheet = FindWorksheet(package, _leaderboardSheetName);
                 if (leaderboardSheet != null)
                 {
                     LoadSalesLeaderboardData(leaderboardSheet);
+                }
+                else
+                {
+                    Debug.WriteLine($"找不到 {_leaderboardSheetName} 工作表");
                 }
 
                 // 載入 By Dept-LOB
@@ -435,6 +333,10 @@ namespace ScoreCard.Services
                 {
                     LoadDeptLobData(deptLobSheet);
                 }
+                else
+                {
+                    Debug.WriteLine($"找不到 {_byDeptLobSheetName} 工作表");
+                }
 
                 // 載入 By Rep
                 var byRepSheet = FindWorksheet(package, _byRepSheetName);
@@ -442,14 +344,19 @@ namespace ScoreCard.Services
                 {
                     LoadByRepData(byRepSheet);
                 }
+                else
+                {
+                    Debug.WriteLine($"找不到 {_byRepSheetName} 工作表");
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"讀取摘要工作表時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
             }
             finally
             {
-                Debug.WriteLine("===== 摘要工作表加载完成 =====");
+                Debug.WriteLine("===== 摘要工作表加載完成 =====");
             }
         }
 
@@ -485,26 +392,113 @@ namespace ScoreCard.Services
             try
             {
                 int totalRows = sheet.Dimension?.Rows ?? 0;
-                if (totalRows == 0)
+                if (totalRows <= 1) // 如果只有標題行或根本沒有行
                 {
-                    Debug.WriteLine("Sales Leaderboard 工作表沒有數據");
+                    Debug.WriteLine("Sales Leaderboard 工作表沒有數據或只有標題行");
                     return;
                 }
 
-                var productData = new List<ProductSalesData>();
+                Debug.WriteLine($"Sales Leaderboard 工作表有 {totalRows} 行數據");
 
-                // 打印前幾行，檢查結構
-                for (int row = 1; row <= Math.Min(totalRows, 10); row++)
+                // 尋找列索引（注意：Excel 中第一行通常是標題）
+                int salesRepColIndex = -1;
+                int agencyMarginColIndex = -1;
+                int buyResellMarginColIndex = -1;
+                int totalMarginColIndex = -1;
+
+                // 掃描標題行找出欄位位置
+                for (int col = 1; col <= sheet.Dimension.Columns; col++)
                 {
-                    Debug.WriteLine($"行 {row}: {sheet.Cells[row, 1].Text}, {sheet.Cells[row, 2].Text}, {sheet.Cells[row, 3].Text}");
+                    string headerText = (sheet.Cells[1, col].Text ?? "").Trim().ToLower();
+
+                    if (headerText.Contains("sales rep") || headerText.Contains("rep"))
+                        salesRepColIndex = col;
+                    else if (headerText.Contains("agency") && headerText.Contains("margin"))
+                        agencyMarginColIndex = col;
+                    else if (headerText.Contains("buy") && headerText.Contains("resell"))
+                        buyResellMarginColIndex = col;
+                    else if (headerText.Contains("total") && headerText.Contains("margin"))
+                        totalMarginColIndex = col;
                 }
 
-                // 直接硬編碼測試數據，確保有內容顯示
-                AddHardcodedTestData(_productSalesCache, _salesLeaderboardCache, _departmentLobCache);
+                // 檢查是否找到所需欄位
+                if (salesRepColIndex < 0 || totalMarginColIndex < 0)
+                {
+                    Debug.WriteLine("Sales Leaderboard 工作表中找不到必要的欄位");
+                    return;
+                }
+
+                // 處理資料行
+                var data = new List<SalesLeaderboardItem>();
+                for (int row = 2; row <= totalRows; row++) // 從第二行開始，跳過標題
+                {
+                    string salesRep = sheet.Cells[row, salesRepColIndex].Text;
+
+                    // 跳過空行或總計行
+                    if (string.IsNullOrWhiteSpace(salesRep) || salesRep.ToLower().Contains("total"))
+                        continue;
+
+                    decimal agencyMargin = 0;
+                    decimal buyResellMargin = 0;
+                    decimal totalMargin = 0;
+
+                    // 讀取 Agency Margin
+                    if (agencyMarginColIndex > 0)
+                    {
+                        decimal.TryParse(
+                            sheet.Cells[row, agencyMarginColIndex].Text.Replace("$", "").Replace(",", ""),
+                            out agencyMargin);
+                    }
+
+                    // 讀取 Buy Resell Margin
+                    if (buyResellMarginColIndex > 0)
+                    {
+                        decimal.TryParse(
+                            sheet.Cells[row, buyResellMarginColIndex].Text.Replace("$", "").Replace(",", ""),
+                            out buyResellMargin);
+                    }
+
+                    // 讀取 Total Margin
+                    if (totalMarginColIndex > 0)
+                    {
+                        decimal.TryParse(
+                            sheet.Cells[row, totalMarginColIndex].Text.Replace("$", "").Replace(",", ""),
+                            out totalMargin);
+                    }
+                    // 如果 Total Margin 為 0 且有 Agency 或 BuyResell，計算總和
+                    else if (totalMargin == 0 && (agencyMargin > 0 || buyResellMargin > 0))
+                    {
+                        totalMargin = agencyMargin + buyResellMargin;
+                    }
+
+                    data.Add(new SalesLeaderboardItem
+                    {
+                        SalesRep = salesRep,
+                        AgencyMargin = agencyMargin,
+                        BuyResellMargin = buyResellMargin,
+                        TotalMargin = totalMargin,
+                        Rank = 0 // 先設為 0，稍後再計算
+                    });
+                }
+
+                // 按照 Total Margin 排序並設定排名
+                data = data.OrderByDescending(x => x.TotalMargin).ToList();
+                for (int i = 0; i < data.Count; i++)
+                {
+                    data[i].Rank = i + 1;
+                }
+
+                // 更新緩存
+                _salesLeaderboardCache = data;
+                Debug.WriteLine($"成功從工作表載入 {data.Count} 條銷售代表數據");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"載入 Sales Leaderboard 數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+                // 不使用硬編碼資料，而是保持緩存為當前值或空列表
+                if (_salesLeaderboardCache == null)
+                    _salesLeaderboardCache = new List<SalesLeaderboardItem>();
             }
         }
 
@@ -615,231 +609,6 @@ namespace ScoreCard.Services
             }
         }
 
-        // 創建測試數據
-
-        private void AddHardcodedTestData(
-            List<ProductSalesData> productSalesCache,
-            List<SalesLeaderboardItem> salesLeaderboardCache,
-            List<DepartmentLobData> departmentLobCache)
-        {
-            // 產品數據
-            if (!productSalesCache.Any())
-            {
-                productSalesCache.Add(new ProductSalesData
-                {
-                    ProductType = "Batts & Caps",
-                    AgencyMargin = 250130.95m,
-                    BuyResellMargin = 128579.27m,
-                    TotalMargin = 378710.22m, // 確保明確設置TotalCommission
-                    POValue = 2613217.44m,
-                    PercentageOfTotal = 10.9m
-                });
-
-                productSalesCache.Add(new ProductSalesData
-                {
-                    ProductType = "Channel",
-                    AgencyMargin = 197891.28m,
-                    BuyResellMargin = 84810.55m,
-                    TotalMargin = 282701.83m, // 確保明確設置TotalCommission
-                    POValue = 2171448.99m,
-                    PercentageOfTotal = 9.1m
-                });
-
-                productSalesCache.Add(new ProductSalesData
-                {
-                    ProductType = "Power",
-                    AgencyMargin = 464443.29m,
-                    BuyResellMargin = 199047.13m,
-                    TotalMargin = 663490.42m, // 確保明確設置TotalCommission
-                    POValue = 6047766.13m,
-                    PercentageOfTotal = 25.3m
-                });
-
-                productSalesCache.Add(new ProductSalesData
-                {
-                    ProductType = "Service",
-                    AgencyMargin = 193152.77m,
-                    BuyResellMargin = 82779.76m,
-                    TotalMargin = 275932.53m, // 確保明確設置TotalCommission
-                    POValue = 2621449.84m,
-                    PercentageOfTotal = 11.0m
-                });
-
-                productSalesCache.Add(new ProductSalesData
-                {
-                    ProductType = "Thermal",
-                    AgencyMargin = 67776.55m,
-                    BuyResellMargin = 29047.09m,
-                    TotalMargin = 96823.64m, // 確保明確設置TotalCommission
-                    POValue = 10067770.58m,
-                    PercentageOfTotal = 42.2m
-                });
-
-                Debug.WriteLine($"已添加 {productSalesCache.Count} 條硬編碼產品數據");
-            }
-
-            // 銷售代表數據
-            if (!salesLeaderboardCache.Any())
-            {
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 1,
-                    SalesRep = "Mark",
-                    AgencyMargin = 2956m,
-                    BuyResellMargin = 1267m,
-                    TotalMargin = 4223m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 2,
-                    SalesRep = "Nathan",
-                    AgencyMargin = 1282181m,
-                    BuyResellMargin = 549506m,
-                    TotalMargin = 1831687m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 3,
-                    SalesRep = "Brandon",
-                    AgencyMargin = 240792m,
-                    BuyResellMargin = 103197m,
-                    TotalMargin = 343989m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 4,
-                    SalesRep = "Tania",
-                    AgencyMargin = 261620m,
-                    BuyResellMargin = 112123m,
-                    TotalMargin = 373743m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 5,
-                    SalesRep = "Pourya",
-                    AgencyMargin = 91512m,
-                    BuyResellMargin = 39219m,
-                    TotalMargin = 130731m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 6,
-                    SalesRep = "Terry SK",
-                    AgencyMargin = 149800m,
-                    BuyResellMargin = 64200m,
-                    TotalMargin = 214000m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 7,
-                    SalesRep = "Terry MB",
-                    AgencyMargin = 66396m,
-                    BuyResellMargin = 28455m,
-                    TotalMargin = 94851m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 8,
-                    SalesRep = "Isaac",
-                    AgencyMargin = 435086m,
-                    BuyResellMargin = 186465m,
-                    TotalMargin = 621551m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 9,
-                    SalesRep = "Chris",
-                    AgencyMargin = 0m,
-                    BuyResellMargin = 0m,
-                    TotalMargin = 0m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 10,
-                    SalesRep = "Tracy",
-                    AgencyMargin = 191126m,
-                    BuyResellMargin = 81911m,
-                    TotalMargin = 273037m // 確保明確設置TotalCommission
-                });
-
-                salesLeaderboardCache.Add(new SalesLeaderboardItem
-                {
-                    Rank = 11,
-                    SalesRep = "Terry",
-                    AgencyMargin = 583m,
-                    BuyResellMargin = 250m,
-                    TotalMargin = 833m // 確保明確設置TotalCommission
-                });
-
-                Debug.WriteLine($"已添加 {salesLeaderboardCache.Count} 條硬編碼銷售代表數據");
-            }
-
-            // 部門/LOB數據保持不變
-            if (!departmentLobCache.Any())
-            {
-                // 保持原始的LOB數據...
-                departmentLobCache.Add(new DepartmentLobData
-                {
-                    Rank = 1,
-                    LOB = "Power",
-                    MarginTarget = 850000m,
-                    MarginYTD = 650000m
-                });
-
-                departmentLobCache.Add(new DepartmentLobData
-                {
-                    Rank = 2,
-                    LOB = "Thermal",
-                    MarginTarget = 720000m,
-                    MarginYTD = 980000m
-                });
-
-                departmentLobCache.Add(new DepartmentLobData
-                {
-                    Rank = 3,
-                    LOB = "Channel",
-                    MarginTarget = 650000m,
-                    MarginYTD = 580000m
-                });
-
-                departmentLobCache.Add(new DepartmentLobData
-                {
-                    Rank = 4,
-                    LOB = "Service",
-                    MarginTarget = 580000m,
-                    MarginYTD = 520000m
-                });
-
-                departmentLobCache.Add(new DepartmentLobData
-                {
-                    Rank = 5,
-                    LOB = "Batts & Caps",
-                    MarginTarget = 450000m,
-                    MarginYTD = 500000m
-                });
-
-                // 添加總計行
-                departmentLobCache.Add(new DepartmentLobData
-                {
-                    Rank = 0,
-                    LOB = "Total",
-                    MarginTarget = 3250000m,
-                    MarginYTD = 3230000m
-                });
-
-                Debug.WriteLine($"已添加 {departmentLobCache.Count} 條硬編碼部門/LOB數據");
-            }
-        }
-
         public void ClearCache()
         {
             _productSalesCache = new List<ProductSalesData>();
@@ -856,42 +625,139 @@ namespace ScoreCard.Services
         // 獲取產品銷售數據（從緩存）
         public List<ProductSalesData> GetProductSalesData()
         {
-            // 檢查緩存是否為空
-            if (!_productSalesCache.Any())
+            try
             {
-                Debug.WriteLine("產品數據緩存為空");
+                Debug.WriteLine("GetProductSalesData: 開始獲取產品銷售數據");
 
-                // 添加測試數據
-                var testData = new List<ProductSalesData>();
-                AddHardcodedTestData(testData, new List<SalesLeaderboardItem>(), new List<DepartmentLobData>());
-                _productSalesCache = testData;
+                // 如果需要，先嘗試加載數據
+                if (_allSalesData == null || !_allSalesData.Any())
+                {
+                    Debug.WriteLine("GetProductSalesData: 沒有已加載的數據，嘗試從文件加載");
+                    try
+                    {
+                        var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                        _allSalesData = data;
+                        Debug.WriteLine($"GetProductSalesData: 從文件加載了 {_allSalesData.Count} 條記錄");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"GetProductSalesData: 從文件加載數據失敗: {ex.Message}");
+                        return new List<ProductSalesData>(); // 返回空列表，而不是使用硬編碼數據
+                    }
+                }
+
+                // 使用所有數據（不過濾）來計算產品銷售數據
+                var products = _allSalesData
+                    .GroupBy(x => NormalizeProductType(x.ProductType))
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new ProductSalesData
+                    {
+                        ProductType = g.Key,
+                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
+                    })
+                    .OrderByDescending(x => x.POValue)
+                    .ToList();
+
+                // 計算百分比
+                decimal totalPOValue = products.Sum(p => p.POValue);
+                foreach (var product in products)
+                {
+                    product.PercentageOfTotal = totalPOValue > 0
+                        ? Math.Round((product.POValue / totalPOValue), 1)
+                        : 0;
+                }
+
+                Debug.WriteLine($"GetProductSalesData: 計算了 {products.Count} 個產品類型的數據");
+
+                return products;
             }
-            else
+            catch (Exception ex)
             {
-                Debug.WriteLine($"從緩存返回 {_productSalesCache.Count} 條產品數據");
+                Debug.WriteLine($"GetProductSalesData: 處理數據時發生錯誤: {ex.Message}");
+                return new List<ProductSalesData>(); // 返回空列表
             }
-
-            return _productSalesCache;
         }
+
+        // 標準化產品類型名稱
+        private string NormalizeProductType(string productType)
+        {
+            if (string.IsNullOrEmpty(productType))
+                return "Other";
+
+            // 轉為小寫以便比較
+            string lowercaseType = productType.ToLowerInvariant();
+
+            if (lowercaseType.Contains("thermal"))
+                return "Thermal";
+            if (lowercaseType.Contains("power") || lowercaseType.Contains("saskpower"))
+                return "Power";
+            if (lowercaseType.Contains("channel"))
+                return "Channel";
+            if (lowercaseType.Contains("service"))
+                return "Service";
+            if (lowercaseType.Contains("batts") || lowercaseType.Contains("caps") || lowercaseType.Contains("batt"))
+                return "Batts & Caps";
+
+            // 如果沒有匹配，返回原始名稱
+            return productType;
+        }
+
         // 獲取銷售代表排行榜數據
         public List<SalesLeaderboardItem> GetSalesLeaderboardData()
         {
-            // 檢查緩存是否為空
-            if (!_salesLeaderboardCache.Any())
+            try
             {
-                Debug.WriteLine("銷售代表數據緩存為空");
+                Debug.WriteLine("GetSalesLeaderboardData: 開始獲取銷售代表排行榜數據");
 
-                // 添加測試數據
-                var testData = new List<SalesLeaderboardItem>();
-                AddHardcodedTestData(new List<ProductSalesData>(), testData, new List<DepartmentLobData>());
-                _salesLeaderboardCache = testData;
+                // 如果需要，先嘗試加載數據
+                if (_allSalesData == null || !_allSalesData.Any())
+                {
+                    Debug.WriteLine("GetSalesLeaderboardData: 沒有已加載的數據，嘗試從文件加載");
+                    try
+                    {
+                        var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                        _allSalesData = data;
+                        Debug.WriteLine($"GetSalesLeaderboardData: 從文件加載了 {_allSalesData.Count} 條記錄");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"GetSalesLeaderboardData: 從文件加載數據失敗: {ex.Message}");
+                        return new List<SalesLeaderboardItem>(); // 返回空列表
+                    }
+                }
+
+                // 使用所有數據（不過濾）來計算銷售代表排行榜數據
+                var reps = _allSalesData
+                    .GroupBy(x => x.SalesRep)
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new SalesLeaderboardItem
+                    {
+                        SalesRep = g.Key,
+                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2)
+                    })
+                    .OrderByDescending(x => x.TotalMargin)
+                    .ToList();
+
+                // 設置排名
+                for (int i = 0; i < reps.Count; i++)
+                {
+                    reps[i].Rank = i + 1;
+                }
+
+                Debug.WriteLine($"GetSalesLeaderboardData: 計算了 {reps.Count} 個銷售代表的數據");
+
+                return reps;
             }
-            else
+            catch (Exception ex)
             {
-                Debug.WriteLine($"從緩存返回 {_salesLeaderboardCache.Count} 條銷售代表數據");
+                Debug.WriteLine($"GetSalesLeaderboardData: 處理數據時發生錯誤: {ex.Message}");
+                return new List<SalesLeaderboardItem>(); // 返回空列表
             }
-
-            return _salesLeaderboardCache;
         }
 
         // 獲取部門/LOB數據
@@ -899,10 +765,24 @@ namespace ScoreCard.Services
         {
             try
             {
-                // 清空現有緩存，確保重新計算
-                _departmentLobCache.Clear();
+                Debug.WriteLine("GetDepartmentLobData: 開始獲取部門/LOB數據");
 
-                Debug.WriteLine("部門數據緩存為空，從原始數據生成");
+                // 如果需要，先嘗試加載數據
+                if (_allSalesData == null || !_allSalesData.Any())
+                {
+                    Debug.WriteLine("GetDepartmentLobData: 沒有已加載的數據，嘗試從文件加載");
+                    try
+                    {
+                        var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                        _allSalesData = data;
+                        Debug.WriteLine($"GetDepartmentLobData: 從文件加載了 {_allSalesData.Count} 條記錄");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"GetDepartmentLobData: 從文件加載數據失敗: {ex.Message}");
+                        return new List<DepartmentLobData>(); // 返回空列表
+                    }
+                }
 
                 // 設置預定義的LOB和目標值
                 var lobData = new Dictionary<string, (decimal target, decimal ytd)>
@@ -910,34 +790,28 @@ namespace ScoreCard.Services
             { "Power", (850000, 0) },
             { "Thermal", (720000, 0) },
             { "Channel", (650000, 0) },
-            { "Service", (580000, 0) }
+            { "Service", (580000, 0) },
+            { "Batts & Caps", (450000, 0) }
         };
 
                 decimal totalTarget = lobData.Sum(kv => kv.Value.target);
                 decimal totalYtd = 0;
 
-                // 從過濾後的數據計算YTD值
-                if (_recentDataCache != null && _recentDataCache.Any())
+                // 從所有數據計算YTD值
+                if (_allSalesData != null && _allSalesData.Any())
                 {
-                    Debug.WriteLine($"處理 {_recentDataCache.Count} 條銷售數據進行LOB分類");
+                    Debug.WriteLine($"GetDepartmentLobData: 處理 {_allSalesData.Count} 條銷售數據進行LOB分類");
 
                     // 記錄找到的所有Department值，幫助調試
-                    var allDepts = _recentDataCache
+                    var allDepts = _allSalesData
                         .Select(x => x.Department)
                         .Where(d => !string.IsNullOrWhiteSpace(d))
                         .Distinct()
                         .ToList();
 
-                    Debug.WriteLine($"找到的所有Department值: {string.Join(", ", allDepts)}");
+                    Debug.WriteLine($"GetDepartmentLobData: 找到的所有Department值: {string.Join(", ", allDepts)}");
 
-                    // 檢查前幾條數據
-                    for (int i = 0; i < Math.Min(5, _recentDataCache.Count); i++)
-                    {
-                        var item = _recentDataCache[i];
-                        Debug.WriteLine($"樣本 {i + 1}: Department={item.Department}, TotalCommission={item.TotalCommission}");
-                    }
-
-                    foreach (var item in _recentDataCache)
+                    foreach (var item in _allSalesData)
                     {
                         // 跳過沒有Department值的記錄
                         if (string.IsNullOrWhiteSpace(item.Department))
@@ -946,13 +820,24 @@ namespace ScoreCard.Services
                         // 標準化Department值
                         string lob = NormalizeDepartment(item.Department);
 
-                        // 如果不是已定義的LOB，跳過
+                        // 如果不是已定義的LOB，跳過或添加到「其他」類別
                         if (!lobData.ContainsKey(lob))
+                        {
+                            if (!lobData.ContainsKey("Other"))
+                            {
+                                lobData["Other"] = (200000, 0);
+                                totalTarget += 200000;
+                            }
+
+                            var current = lobData["Other"];
+                            lobData["Other"] = (current.target, current.ytd + item.TotalCommission);
+                            totalYtd += item.TotalCommission;
                             continue;
+                        }
 
                         // 更新此LOB的YTD值
-                        var current = lobData[lob];
-                        lobData[lob] = (current.target, current.ytd + item.TotalCommission);
+                        var lobCurrent = lobData[lob];
+                        lobData[lob] = (lobCurrent.target, lobCurrent.ytd + item.TotalCommission);
 
                         // 更新總YTD
                         totalYtd += item.TotalCommission;
@@ -960,7 +845,7 @@ namespace ScoreCard.Services
                 }
                 else
                 {
-                    Debug.WriteLine("沒有銷售數據可用於LOB分類");
+                    Debug.WriteLine("GetDepartmentLobData: 沒有銷售數據可用於LOB分類");
                 }
 
                 // 轉換為DepartmentLobData列表
@@ -1002,23 +887,14 @@ namespace ScoreCard.Services
                     }
                 }
 
-                // 輸出生成的數據
-                Debug.WriteLine($"生成了 {result.Count} 條LOB數據:");
-                foreach (var item in result)
-                {
-                    Debug.WriteLine($"Rank={item.Rank}, LOB={item.LOB}, Target={item.MarginTarget}, YTD={item.MarginYTD}, 達成率={item.MarginPercentage:P0}");
-                }
-
-                _departmentLobCache = result;
+                Debug.WriteLine($"GetDepartmentLobData: 生成了 {result.Count} 條LOB數據");
                 return result;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"獲取部門數據時出錯: {ex.Message}");
+                Debug.WriteLine($"GetDepartmentLobData: 獲取部門數據時出錯: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
-
-                // 返回空集合，而不是示例數據
-                return new List<DepartmentLobData>();
+                return new List<DepartmentLobData>(); // 返回空列表
             }
         }
 
