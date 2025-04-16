@@ -22,19 +22,36 @@
         <converts:TotalBuyResellMarginConverter x:Key="TotalBuyResellMarginConverter"/>
         <converts:TotalMarginConverter x:Key="TotalMarginConverter"/>
 
-        <!-- No Data Template -->
+        <!-- 无数据模板 -->
         <DataTemplate x:Key="NoDataTemplate">
             <Grid Padding="20" HeightRequest="100">
                 <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
                     <Label Text="No data in this time range" 
-                           FontSize="16" 
-                           TextColor="#666666" 
-                           FontAttributes="Bold"
-                           HorizontalOptions="Center"/>
+                   FontSize="16" 
+                   TextColor="#666666" 
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"/>
                     <Label Text="Try adjusting the date range or filters" 
-                           FontSize="14" 
-                           TextColor="#888888"
-                           HorizontalOptions="Center"/>
+                   FontSize="14" 
+                   TextColor="#888888"
+                   HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Grid>
+        </DataTemplate>
+
+        <!-- 出错模板 -->
+        <DataTemplate x:Key="ErrorTemplate">
+            <Grid Padding="20" HeightRequest="100">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="Something went wrong" 
+                   FontSize="16" 
+                   TextColor="#EF4444" 
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"/>
+                    <Label Text="Please try again later" 
+                   FontSize="14" 
+                   TextColor="#888888"
+                   HorizontalOptions="Center"/>
                 </VerticalStackLayout>
             </Grid>
         </DataTemplate>
@@ -346,40 +363,57 @@
                                     </Border>
                                 </HorizontalStackLayout>
 
-                                <!-- 狀態過濾器 (Booked, Completed) -->
+                                <!-- Status filter (Booked, In Progress, Completed) -->
                                 <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
-                                    <!-- Booked 按鈕 -->
+                                    <!-- Booked 按钮 -->
                                     <Border Stroke="#E2E8F0"
-                                            StrokeThickness="1"
-                                            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
-                                            StrokeShape="RoundRectangle 4,0,0,4"
-                                            HeightRequest="36">
+        StrokeThickness="1"
+        BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
+        StrokeShape="RoundRectangle 4,0,0,4"
+        HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="Booked"
-                                               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                                               VerticalOptions="Center"
-                                               HorizontalOptions="Center"
-                                               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}}"
-                                               Margin="15,0"/>
+           TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+           VerticalOptions="Center"
+           HorizontalOptions="Center"
+           FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+           Margin="15,0"/>
                                     </Border>
 
-                                    <!-- Completed 按鈕 -->
+                                    <!-- In Progress 按钮 -->
                                     <Border Stroke="#E2E8F0"
-                                            StrokeThickness="1"
-                                            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
-                                            StrokeShape="RoundRectangle 0,4,4,0"
-                                            HeightRequest="36">
+        StrokeThickness="1"
+        BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
+        StrokeShape="Rectangle"
+        HeightRequest="36">
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="InProgress"/>
+                                        </Border.GestureRecognizers>
+                                        <Label Text="In Progress"
+           TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+           VerticalOptions="Center"
+           HorizontalOptions="Center"
+           FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+           Margin="15,0"/>
+                                    </Border>
+
+                                    <!-- Completed 按钮 -->
+                                    <Border Stroke="#E2E8F0"
+        StrokeThickness="1"
+        BackgroundColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
+        StrokeShape="RoundRectangle 0,4,4,0"
+        HeightRequest="36">
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
                                         </Border.GestureRecognizers>
                                         <Label Text="Completed"
-                                               TextColor="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToColorConverter}, ConverterParameter='White,#333333'}"
-                                               VerticalOptions="Center"
-                                               HorizontalOptions="Center"
-                                               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource InverseBoolToStringConverter}}"
-                                               Margin="15,0"/>
+           TextColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+           VerticalOptions="Center"
+           HorizontalOptions="Center"
+           FontAttributes="{Binding IsCompletedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+           Margin="15,0"/>
                                     </Border>
                                 </HorizontalStackLayout>
                             </Grid>

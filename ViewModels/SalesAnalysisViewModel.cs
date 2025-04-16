@@ -37,7 +37,23 @@ namespace ScoreCard.ViewModels
         private string _viewType = "ByProduct"; // ByProduct, ByRep - removed ByDeptLOB
 
         [ObservableProperty]
-        private bool _isBookedStatus = true; // true=Booked, false=Completed
+        private bool _isBookedStatus = true; // Default to Booked status
+
+        // Add new properties instead of computed ones
+        [ObservableProperty]
+        private bool _isInProgressStatus = false;
+
+        [ObservableProperty]
+        private bool _isCompletedStatus = false;
+
+        [ObservableProperty]
+        private string _status = "Booked"; // Default status
+
+        // Computed properties for status checking
+        public bool IsBookedStatusActive => Status == "Booked";
+        public bool IsInProgressStatusActive => Status == "InProgress";
+        public bool IsCompletedStatusActive => Status == "Completed";
+
 
         // 摘要數據
         [ObservableProperty]
@@ -129,14 +145,81 @@ namespace ScoreCard.ViewModels
         [RelayCommand]
         private async Task ChangeStatus(string status)
         {
-            bool wasBooked = IsBookedStatus;
-            IsBookedStatus = status.ToLower() == "booked";
+            Debug.WriteLine($"尝试切换到状态: {status}");
+            bool changed = false;
 
-            if (wasBooked != IsBookedStatus)
+            switch (status.ToLower())
             {
-                await LoadLeaderboardDataAsync();
+                case "booked":
+                    if (!IsBookedStatus)
+                    {
+                        IsBookedStatus = true;
+                        IsInProgressStatus = false;
+                        IsCompletedStatus = false;
+                        changed = true;
+                    }
+                    break;
+
+                case "inprogress":
+                    if (!IsInProgressStatus)
+                    {
+                        IsBookedStatus = false;
+                        IsInProgressStatus = true;
+                        IsCompletedStatus = false;
+                        changed = true;
+                    }
+                    break;
+
+                case "completed":
+                    if (!IsCompletedStatus)
+                    {
+                        IsBookedStatus = false;
+                        IsInProgressStatus = false;
+                        IsCompletedStatus = true;
+                        changed = true;
+                    }
+                    break;
+            }
+
+            if (changed)
+            {
+                Debug.WriteLine($"状态已更改为: {status}，重新加载数据");
+                await FilterData(); // 直接调用方法，而不是通过Command
+            }
+            else
+            {
+                Debug.WriteLine($"状态未更改，仍然是: {status}");
             }
         }
+
+        [RelayCommand]
+        private async Task FilterData()
+        {
+            try
+            {
+                IsLoading = true;
+                Debug.WriteLine("执行数据过滤...");
+
+                // 过滤数据
+                FilterDataByDateRange();
+
+                // 加载排行榜数据
+                await LoadLeaderboardDataAsync();
+
+                Debug.WriteLine("数据过滤完成");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"过滤数据时出错: {ex.Message}");
+            }
+            finally
+            {
+                IsLoading = false;
+            }
+        }
+
+
+
 
         // 導航到詳細分析頁面
         [RelayCommand]
@@ -271,30 +354,66 @@ namespace ScoreCard.ViewModels
                 if (_allSalesData == null || !_allSalesData.Any())
                 {
                     _filteredData = new List<SalesData>();
+                    Debug.WriteLine("没有可用数据进行过滤");
                     return;
                 }
 
                 var startDate = StartDate.Date;
-                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含結束日期整天
+                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含整个结束日期
 
-                Debug.WriteLine($"過濾日期範圍: {startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}");
+                Debug.WriteLine($"过滤日期范围: {startDate:yyyy-MM-dd} 到 {endDate:yyyy-MM-dd}");
 
-                // 修改：使用完成日期(Y列)進行過濾，而不是接收日期(A列)
-                _filteredData = _allSalesData
-                    .Where(x => x.CompletionDate.HasValue &&
-                           x.CompletionDate.Value.Date >= startDate &&
-                           x.CompletionDate.Value.Date <= endDate.Date)
-                    .ToList();
+                // 根据所选标签应用不同的过滤条件
+                if (IsBookedStatus)
+                {
+                    // Booked: A列(ReceivedDate)在日期范围内，Y列(CompletionDate)为空，N列(TotalCommission)有值
+                    _filteredData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= startDate &&
+                               x.ReceivedDate.Date <= endDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission != 0)
+                        .ToList();
 
-                Debug.WriteLine($"日期過濾後數據: {_filteredData.Count} 條記錄，" +
-                              $"全部為已完成記錄");
+                    Debug.WriteLine($"[Booked] 过滤后记录数: {_filteredData.Count}");
+                }
+                else if (IsInProgressStatus)
+                {
+                    // In Progress: A列(ReceivedDate)在日期范围内，Y列(CompletionDate)为空，N列(TotalCommission)为零或空
+                    _filteredData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= startDate &&
+                               x.ReceivedDate.Date <= endDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission == 0)
+                        .ToList();
+
+                    Debug.WriteLine($"[In Progress] 过滤后记录数: {_filteredData.Count}");
+                }
+                else if (IsCompletedStatus)
+                {
+                    // Completed: Y列(CompletionDate)在日期范围内且不为空
+                    _filteredData = _allSalesData
+                        .Where(x => x.CompletionDate.HasValue &&
+                               x.CompletionDate.Value.Date >= startDate &&
+                               x.CompletionDate.Value.Date <= endDate.Date)
+                        .ToList();
+
+                    Debug.WriteLine($"[Completed] 过滤后记录数: {_filteredData.Count}");
+                }
+                else
+                {
+                    // 默认：显示空数据
+                    _filteredData = new List<SalesData>();
+                    Debug.WriteLine("没有选择任何状态，返回空数据");
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"過濾數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"过滤数据时出错: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
                 _filteredData = new List<SalesData>();
             }
         }
+
 
         // 載入摘要數據
         // 修改LoadSummaryDataAsync方法中的數值轉換部分
@@ -490,53 +609,57 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                if (_filteredData == null)
-                {
-                    FilterDataByDateRange();
-                }
+                IsLoading = true;
 
-                // 再次確認數據可用性
+                // 使用之前已经过滤好的数据
                 if (_filteredData == null || !_filteredData.Any())
                 {
-                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    Debug.WriteLine("没有过滤后的数据可用于加载排行榜");
+
+                    // 根据视图类型清空数据
+                    if (IsProductView)
                     {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "NO Data",
-                            "No Data in selected time fram",
-                            "OK");
-                    });
+                        ProductSalesData = new ObservableCollection<ProductSalesData>();
+                    }
+                    else if (IsRepView)
+                    {
+                        SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
+                    }
+
                     return;
                 }
 
-                // 因為現在 _filteredData 已經只包含完成日期在選定範圍內的記錄
-                // 所以不需要再根據完成日期進行過濾
-                var statusFiltered = _filteredData;
+                Debug.WriteLine($"用于计算的记录数: {_filteredData.Count} 条");
 
-                Debug.WriteLine($"用於計算的記錄數: {statusFiltered.Count} 條");
-
-                // 根據視圖類型載入相應數據
+                // 根据视图类型加载相应数据
                 switch (ViewType)
                 {
                     case "ByProduct":
-                        await LoadProductDataAsync(statusFiltered);
+                        await LoadProductDataAsync(_filteredData);
                         break;
                     case "ByRep":
-                        await LoadSalesRepDataAsync(statusFiltered);
+                        await LoadSalesRepDataAsync(_filteredData);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入排行榜數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"加载排行榜数据时出错: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
-                await MainThread.InvokeOnMainThreadAsync(async () =>
+                // 出错时清空数据
+                if (IsProductView)
                 {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "Wrong",
-                        $"Something happen when reading data: {ex.Message}",
-                        "OK");
-                });
+                    ProductSalesData = new ObservableCollection<ProductSalesData>();
+                }
+                else if (IsRepView)
+                {
+                    SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
+                }
+            }
+            finally
+            {
+                IsLoading = false;
             }
         }
 

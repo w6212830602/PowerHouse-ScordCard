@@ -60,80 +60,74 @@ namespace ScoreCard.Services
         // In ExcelService.cs, modify the LoadDataAsync method to include the completion date
         public async Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME)
         {
-            // Reset the static counter every time this method is called
-            _inProgressAmount = 0;
-
             return await Task.Run(() =>
             {
                 try
                 {
                     string fullPath = Path.Combine(Constants.BASE_PATH, filePath);
-                    Debug.WriteLine($"Attempting to load Excel file: {fullPath}");
-
-                    if (!File.Exists(fullPath))
-                    {
-                        Debug.WriteLine($"File not found: {fullPath}");
-                        throw new FileNotFoundException($"Excel file not found: {fullPath}");
-                    }
+                    Debug.WriteLine($"尝试加载 Excel 文件: {fullPath}");
 
                     ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
                     var data = new List<SalesData>();
-                    DateTime lastUpdated = File.GetLastWriteTime(fullPath);
+                    DateTime lastUpdated = File.Exists(fullPath) ? File.GetLastWriteTime(fullPath) : DateTime.Now;
 
                     using (var package = new ExcelPackage(new FileInfo(fullPath)))
                     {
-                        // 1. Read original data
+                        // 1. 读取原始数据
                         var worksheet = package.Workbook.Worksheets[_worksheetName];
                         if (worksheet == null)
                         {
-                            Debug.WriteLine($"Worksheet not found: '{_worksheetName}'");
+                            Debug.WriteLine($"找不到工作表: '{_worksheetName}'");
 
-                            // Try to find the worksheet by index
+                            // 尝试使用索引查找工作表
                             if (package.Workbook.Worksheets.Count > 0)
                             {
                                 worksheet = package.Workbook.Worksheets[0];
-                                Debug.WriteLine($"Using first worksheet instead: {worksheet.Name}");
+                                Debug.WriteLine($"改用第一个工作表: {worksheet.Name}");
                             }
                             else
                             {
-                                throw new Exception("No worksheets found in Excel file");
+                                throw new Exception("Excel 文件中没有工作表");
                             }
                         }
 
-                        Debug.WriteLine($"Worksheet found successfully: {worksheet.Name}");
+                        Debug.WriteLine($"成功找到工作表: {worksheet.Name}");
                         var rowCount = worksheet.Dimension?.Rows ?? 0;
-                        Debug.WriteLine($"Worksheet has {rowCount} rows of data");
+                        Debug.WriteLine($"工作表有 {rowCount} 行数据");
 
                         if (rowCount > 0)
                         {
-                            // Print headers to confirm column names
+                            // 绘制表头，确认列名称
                             var headers = new List<string>();
                             for (int col = 1; col <= worksheet.Dimension.Columns; col++)
                             {
                                 var headerValue = worksheet.Cells[1, col].Text;
                                 headers.Add(headerValue);
                             }
-                            Debug.WriteLine($"Headers: {string.Join(", ", headers)}");
+                            Debug.WriteLine($"表头: {string.Join(", ", headers)}");
 
-                            // Calculate remaining amount - sum of TotalCommission for orders without completion date
+                            // 保存剩余金额的计算，计算具有未完成日期的订单的 TotalCommission 总和
                             decimal remainingAmount = 0;
 
-                            // Add counters and a set of processed rows
+                            // 保存正在进行中的金额，计算Y列和N列均为空的记录的H列总和的12%
+                            decimal inProgressAmount = 0;
+
+                            // 添加计数器和记录已处理行的集合
                             int inProgressCount = 0;
                             decimal totalHValue = 0;
-                            decimal calculatedInProgressAmount = 0; // Local variable, don't use static variable for intermediate calculation
+                            decimal calculatedInProgressAmount = 0; // 本地变量，不使用静态变量进行中间计算
                             HashSet<int> processedRows = new HashSet<int>();
 
-                            Debug.WriteLine("===== Starting in-progress amount calculation =====");
+                            Debug.WriteLine("===== 开始计算进行中金额 =====");
 
                             for (int row = 2; row <= rowCount; row++)
                             {
-                                // Check if this row has been processed
+                                // 检查是否已处理过该行
                                 if (!processedRows.Contains(row))
                                 {
                                     try
                                     {
-                                        // Read received date (column A)
+                                        // 读取接收日期（A列）
                                         var receivedDateCell = worksheet.Cells[row, 1];
                                         DateTime receivedDate;
                                         if (receivedDateCell.Value is DateTime date)
@@ -142,16 +136,16 @@ namespace ScoreCard.Services
                                         }
                                         else
                                         {
-                                            // Try to parse the date
+                                            // 尝试解析日期
                                             if (!DateTime.TryParse(receivedDateCell.Text, out receivedDate))
                                             {
-                                                Debug.WriteLine($"Could not parse received date at row {row}: {receivedDateCell.Text}");
+                                                Debug.WriteLine($"无法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
                                                 continue;
                                             }
                                         }
 
-                                        // Read completion date (column Y)
-                                        var completionDateCell = worksheet.Cells[row, 25]; // Column Y
+                                        // 读取完成日期（Y列）
+                                        var completionDateCell = worksheet.Cells[row, 25]; // Y列
                                         DateTime? completionDate = null;
                                         if (completionDateCell.Value != null)
                                         {
@@ -161,7 +155,7 @@ namespace ScoreCard.Services
                                             }
                                             else
                                             {
-                                                // Try to parse completion date
+                                                // 尝试解析完成日期
                                                 DateTime parsedCompletionDate;
                                                 if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
                                                 {
@@ -170,79 +164,86 @@ namespace ScoreCard.Services
                                             }
                                         }
 
-                                        // Read product type (column AD)
+                                        // 读取产品类型 (AD列) 
                                         string productType = worksheet.Cells[row, 30].GetValue<string>() ?? "Unknown";
 
-                                        // Read sales rep (column Z)
+                                        // 读取销售代表 (Z列)
                                         string salesRep = worksheet.Cells[row, 26].GetValue<string>() ?? "Unknown";
 
-                                        // Read total commission (column N)
+                                        // 读取总佣金 (N列)
                                         decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
 
-                                        // Read PO value (column G)
+                                        // 读取 PO 值 (G列)
                                         decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
 
-                                        // Output detailed info for the first few rows for debugging
+                                        // 读取 Agency Margin (M列)
+                                        decimal agencyMargin = GetDecimalValue(worksheet.Cells[row, 13]);
+
+                                        // 读取 Buy Resell Value (J列)
+                                        decimal buyResellValue = GetDecimalValue(worksheet.Cells[row, 10]);
+
+                                        // 输出前几行的详细信息用于调试
                                         if (row <= 10)
                                         {
-                                            Debug.WriteLine($"Row {row}: " +
-                                                           $"Received Date={receivedDate:yyyy-MM-dd}, " +
-                                                           $"Completion Date={completionDate?.ToString("yyyy-MM-dd") ?? "Not Completed"}, " +
-                                                           $"Product={productType}, " +
-                                                           $"Rep={salesRep}, " +
-                                                           $"Total Commission=${totalCommission:N2}, " +
-                                                           $"PO Value=${poValue:N2}");
+                                            Debug.WriteLine($"行 {row}: " +
+                                                           $"接收日期={receivedDate:yyyy-MM-dd}, " +
+                                                           $"完成日期={completionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                                           $"产品={productType}, " +
+                                                           $"代表={salesRep}, " +
+                                                           $"总佣金=${totalCommission:N2}, " +
+                                                           $"PO值=${poValue:N2}");
                                         }
 
-                                        // Set order status based on completion date
+                                        // 根据完成日期设置订单状态
                                         string status = completionDate.HasValue ? "Completed" : "Booked";
 
-                                        // If column Y (completion date) is empty, add total commission to remaining amount, but don't count toward quarterly performance
+                                        // 如果Y列（完成日期）为空，将总佣金添加到剩余金额中，但不计入季度业绩
                                         if (!completionDate.HasValue)
                                         {
                                             remainingAmount += totalCommission;
 
-                                            // Check if column N (Total Margin) is also empty, if so consider as "in progress"
-                                            decimal nColumnValue = GetDecimalValue(worksheet.Cells[row, 14]); // Column N is the 14th column
-                                            if (nColumnValue == 0)
+                                            // 检查N列（Total Margin）是否也为空，如果是则视为"进行中"
+                                            if (totalCommission == 0)
                                             {
-                                                // Get column H (PO Value) value, and add 12% of it to inProgressAmount
-                                                decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // Column H is the 8th column
+                                                // 获取H列（PO Value）的值，并添加其12%到inProgressAmount
+                                                decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H列是第8列
                                                 decimal commission = hColumnValue * 0.12m;
                                                 totalHValue += hColumnValue;
                                                 calculatedInProgressAmount += commission;
                                                 inProgressCount++;
-                                                Debug.WriteLine($"[Main Table] Row {row}: Adding in-progress amount ${hColumnValue} * 12% = ${commission}");
+                                                Debug.WriteLine($"[主表] 行 {row}: 添加进行中金额 ${hColumnValue} * 12% = ${commission}");
                                             }
                                         }
 
                                         var salesData = new SalesData
                                         {
                                             ReceivedDate = receivedDate,
-                                            POValue = GetDecimalValue(worksheet.Cells[row, 7]),        // Column G - PO Value
-                                            VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // Column H
-                                            BuyResellValue = GetDecimalValue(worksheet.Cells[row, 10]), // Column J - Buy Resell
-                                            AgencyMargin = GetDecimalValue(worksheet.Cells[row, 13]),   // Column M - Agency Margin
-                                            TotalCommission = totalCommission, // Column N - Total Commission
-                                            CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // Column P
-                                            Status = status,      // Determine status based on completion date in column Y
-                                            CompletionDate = completionDate, // Column Y - Completion date
-                                            SalesRep = worksheet.Cells[row, 26].GetValue<string>(),    // Column Z
-                                            ProductType = worksheet.Cells[row, 30].GetValue<string>(), // Column AD - Product Type
-                                            Department = worksheet.Cells[row, 29].GetValue<string>(),   // Column AC - Department/LOB
-                                                                                                        // Add a flag to indicate this is a "remaining" item (column Y is empty)
+                                            POValue = poValue,        // G列 - PO Value
+                                            VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
+                                            BuyResellValue = buyResellValue, // J列 - Buy Resell
+                                            AgencyMargin = agencyMargin,   // M列 - Agency Margin
+                                            TotalCommission = totalCommission, // N列 - Total Commission
+                                            CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
+                                            Status = status,      // 根据Y列的完成日期确定状态
+                                            CompletionDate = completionDate, // Y列 - 完成日期
+                                            SalesRep = salesRep,    // Z列
+                                            ProductType = productType, // AD列 - Product Type
+                                            Department = worksheet.Cells[row, 29].GetValue<string>() ?? string.Empty,   // AC列 - Department/LOB
+                                                                                                                        // 添加一个标志，表示这是一个"剩余"项目（Y列为空）
                                             IsRemaining = !completionDate.HasValue,
-                                            // Important: Only set QuarterDate for completed orders, set to null for others
+                                            // 添加一个标志，表示这是一个"进行中"项目（Y列和N列都为空）
+                                            IsInProgress = !completionDate.HasValue && totalCommission == 0,
+                                            // 重要：只有已完成的订单才设置 QuarterDate，未完成的设置为 null
                                             HasQuarterAssigned = completionDate.HasValue,
-                                            QuarterDate = completionDate ?? DateTime.MinValue // Use completion date as quarter calculation date
+                                            QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作为季度计算日期
                                         };
 
                                         if (row <= 5)
                                         {
-                                            Debug.WriteLine($"Row {row}: Received Date={salesData.ReceivedDate:yyyy-MM-dd}, " +
-                                                           $"Completion Date={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "Not Completed"}, " +
-                                                           $"Count Toward Quarter={salesData.HasQuarterAssigned}, " +
-                                                           (salesData.HasQuarterAssigned ? $"Quarter Calculation Date={salesData.QuarterDate:yyyy-MM-dd}, Quarter={salesData.Quarter}, " : "") +
+                                            Debug.WriteLine($"第 {row} 行: 接收日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
+                                                           $"完成日期={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
+                                                           $"计入季度={salesData.HasQuarterAssigned}, " +
+                                                           (salesData.HasQuarterAssigned ? $"季度计算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
                                                            $"POValue=${salesData.POValue}, " +
                                                            $"TotalCommission=${salesData.TotalCommission}, " +
                                                            $"Status={salesData.Status}");
@@ -250,60 +251,59 @@ namespace ScoreCard.Services
 
                                         if (IsValidSalesData(salesData))
                                         {
-                                            // Skip data with 'cancelled' status
+                                            // 跳过 cancelled 状态的数据
                                             if (!salesData.Status?.ToLower().Contains("cancelled") ?? true)
                                             {
                                                 data.Add(salesData);
                                             }
                                         }
 
-                                        // Mark this row as processed
+                                        // 标记该行已处理
                                         processedRows.Add(row);
                                     }
                                     catch (Exception ex)
                                     {
-                                        Debug.WriteLine($"Error loading data at row {row}: {ex.Message}");
-                                        // Continue processing next row
+                                        Debug.WriteLine($"加载第 {row} 行数据时发生错误: {ex.Message}");
+                                        // 继续处理下一行
                                     }
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"Row {row} already processed, skipping");
+                                    Debug.WriteLine($"行 {row} 已处理过，跳过");
                                 }
                             }
 
-                            // Set static variables after all rows are processed
+                            // 在所有行处理完毕后，一次性设置静态变量
                             _remainingAmount = remainingAmount;
                             _inProgressAmount = calculatedInProgressAmount;
 
-                            Debug.WriteLine($"===== Calculation complete =====");
-                            Debug.WriteLine($"Total in-progress orders: {inProgressCount}");
-                            Debug.WriteLine($"Total column H sum for in-progress orders: ${totalHValue:N2}");
-                            Debug.WriteLine($"Calculated 12% commission sum: ${calculatedInProgressAmount:N2}");
-                            Debug.WriteLine($"Calculated remaining amount: ${_remainingAmount:N2}");
-                            Debug.WriteLine($"Set in-progress amount: ${_inProgressAmount:N2}");
-                            Debug.WriteLine($"===== End of calculation =====");
+                            Debug.WriteLine($"===== 计算完成 =====");
+                            Debug.WriteLine($"进行中订单总数: {inProgressCount}");
+                            Debug.WriteLine($"进行中订单H列总额: ${totalHValue:N2}");
+                            Debug.WriteLine($"计算得到的12%佣金总额: ${calculatedInProgressAmount:N2}");
+                            Debug.WriteLine($"计算得到的剩余金额: ${_remainingAmount:N2}");
+                            Debug.WriteLine($"设置的正在进行中金额: ${_inProgressAmount:N2}");
+                            Debug.WriteLine($"===== 计算结束 =====");
                         }
 
-                        // Try to read summary worksheets
+                        // 尝试读取摘要工作表
                         try
                         {
                             LoadSummarySheets(package);
                         }
                         catch (Exception ex)
                         {
-                            Debug.WriteLine($"Error reading summary worksheets: {ex.Message}");
-                            throw; // Re-throw to be handled by caller
+                            Debug.WriteLine($"读取摘要工作表时发生错误: {ex.Message}");
                         }
                     }
 
-                    Debug.WriteLine($"Successfully loaded {data.Count} valid records");
+                    Debug.WriteLine($"成功加载 {data.Count} 条有效记录");
                     return (data, lastUpdated);
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"Error loading Excel data: {ex.Message}\n{ex.StackTrace}");
-                    throw; // Re-throw the error, don't generate test data
+                    Debug.WriteLine($"加载 Excel 数据时发生错误: {ex.Message}\n{ex.StackTrace}");
+                    return (new List<SalesData>(), DateTime.Now);
                 }
             });
         }
@@ -948,6 +948,36 @@ namespace ScoreCard.Services
 
                 // 清除現有緩存，確保數據重新計算
                 _departmentLobCache.Clear();
+            }
+        }
+
+        public List<SalesData> GetInProgressItems(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                // Ensure data is loaded
+                if (_allSalesData == null || !_allSalesData.Any())
+                {
+                    var (data, _) = LoadDataAsync().GetAwaiter().GetResult();
+                    _allSalesData = data;
+                }
+
+                // Filter by date range and find records with empty Y column (CompletionDate) 
+                // and empty N column (TotalCommission)
+                var inProgressItems = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= startDate.Date &&
+                           x.ReceivedDate.Date <= endDate.Date &&
+                           !x.CompletionDate.HasValue &&
+                           x.TotalCommission == 0)
+                    .ToList();
+
+                Debug.WriteLine($"Found {inProgressItems.Count} in-progress items");
+                return inProgressItems;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error getting in-progress items: {ex.Message}");
+                return new List<SalesData>();
             }
         }
         public async Task<bool> UpdateDataAsync(string filePath = Constants.EXCEL_FILE_NAME, List<SalesData> data = null)
