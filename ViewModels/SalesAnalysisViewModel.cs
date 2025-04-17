@@ -284,6 +284,7 @@ namespace ScoreCard.ViewModels
         }
 
         // 重新載入所有數據
+        // Modified ReloadDataAsync method in SalesAnalysisViewModel.cs
         public async Task ReloadDataAsync()
         {
             try
@@ -308,7 +309,10 @@ namespace ScoreCard.ViewModels
                                 "OK");
                         });
                         IsLoading = false;
-                        return; // Early return, don't continue processing
+
+                        // Clear all data displays instead of showing sample data
+                        ClearAllDisplays();
+                        return;
                     }
                 }
 
@@ -339,11 +343,34 @@ namespace ScoreCard.ViewModels
                         $"Error loading data: {ex.Message}",
                         "OK");
                 });
+
+                // Clear all data displays instead of showing sample data
+                ClearAllDisplays();
             }
             finally
             {
                 IsLoading = false;
             }
+        }
+
+        // New method to clear all data displays
+        private void ClearAllDisplays()
+        {
+            MainThread.BeginInvokeOnMainThread(() =>
+            {
+                // Clear chart data
+                TargetVsAchievementData = new ObservableCollection<ChartData>();
+                AchievementTrendData = new ObservableCollection<ChartData>();
+
+                // Clear product data
+                ProductSalesData = new ObservableCollection<ProductSalesData>();
+
+                // Clear sales rep data
+                SalesLeaderboard = new ObservableCollection<SalesLeaderboardItem>();
+
+                // Set default axes values
+                YAxisMaximum = 5;
+            });
         }
 
         // 過濾數據按日期範圍
@@ -545,29 +572,68 @@ namespace ScoreCard.ViewModels
             {
                 if (_filteredData == null || !_filteredData.Any())
                 {
-                    LoadSampleChartData();
+                    // 確保集合不為 null，而是一個空集合
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        TargetVsAchievementData = new ObservableCollection<ChartData>();
+                        AchievementTrendData = new ObservableCollection<ChartData>();
+                        // 設置一個合理的 Y 軸最大值
+                        YAxisMaximum = 5;
+                    });
+
+                    Debug.WriteLine("沒有數據可用於圖表，顯示空圖表");
                     return;
                 }
 
-                // 按月份分組 - 使用已過濾的數據，現在全部都是有完成日期的記錄
-                var monthlyData = _filteredData
-                    .GroupBy(x => new
-                    {
-                        Year = x.CompletionDate.Value.Year,  // 這裡不再需要做空值檢查，因為已過濾
-                        Month = x.CompletionDate.Value.Month
-                    })
-                    .Select(g => new
-                    {
-                        YearMonth = g.Key,
-                        POValue = g.Sum(x => x.POValue),
-                        MarginValue = g.Sum(x => x.TotalCommission),
-                        CommissionValue = g.Sum(x => x.TotalCommission)
-                    })
-                    .OrderBy(x => x.YearMonth.Year)
-                    .ThenBy(x => x.YearMonth.Month)
-                    .ToList();
+                // 根據狀態選擇合適的日期欄位進行分組
+                var monthlyData = new List<dynamic>();
 
-                // 載入圖表數據
+                if (IsBookedStatus || IsInProgressStatus) // 如果是 Booked 或 In Progress 狀態
+                {
+                    // 用接收日期 (ReceivedDate) 進行分組
+                    monthlyData = _filteredData
+                        .GroupBy(x => new
+                        {
+                            Year = x.ReceivedDate.Year,
+                            Month = x.ReceivedDate.Month
+                        })
+                        .Select(g => new
+                        {
+                            YearMonth = g.Key,
+                            POValue = g.Sum(x => x.POValue),
+                            MarginValue = g.Sum(x => x.TotalCommission),
+                            CommissionValue = g.Sum(x => x.TotalCommission)
+                        })
+                        .OrderBy(x => x.YearMonth.Year)
+                        .ThenBy(x => x.YearMonth.Month)
+                        .ToList<dynamic>();
+                }
+                else // 如果是 Completed 狀態
+                {
+                    // 用完成日期 (CompletionDate) 進行分組
+                    monthlyData = _filteredData
+                        .Where(x => x.CompletionDate.HasValue)
+                        .GroupBy(x => new
+                        {
+                            Year = x.CompletionDate.Value.Year,
+                            Month = x.CompletionDate.Value.Month
+                        })
+                        .Select(g => new
+                        {
+                            YearMonth = g.Key,
+                            POValue = g.Sum(x => x.POValue),
+                            MarginValue = g.Sum(x => x.TotalCommission),
+                            CommissionValue = g.Sum(x => x.TotalCommission)
+                        })
+                        .OrderBy(x => x.YearMonth.Year)
+                        .ThenBy(x => x.YearMonth.Month)
+                        .ToList<dynamic>();
+                }
+
+                // 檢查處理後的資料
+                Debug.WriteLine($"處理後的月度資料筆數: {monthlyData.Count}");
+
+                // 準備圖表資料
                 var newTargetVsAchievementData = new ObservableCollection<ChartData>();
                 var newAchievementTrendData = new ObservableCollection<ChartData>();
 
@@ -600,20 +666,48 @@ namespace ScoreCard.ViewModels
                     });
                 }
 
+
+                // 記錄生成的圖表資料
+                Debug.WriteLine($"生成 Target vs Achievement 資料: {newTargetVsAchievementData.Count} 筆");
+                Debug.WriteLine($"生成 Achievement Trend 資料: {newAchievementTrendData.Count} 筆");
+
                 // 更新 UI
                 await MainThread.InvokeOnMainThreadAsync(() =>
                 {
                     TargetVsAchievementData = newTargetVsAchievementData;
                     AchievementTrendData = newAchievementTrendData;
+
+                    // 設置一個合理的 Y 軸最大值
+                    double maxTarget = 0;
+                    double maxAchievement = 0;
+
+                    if (newTargetVsAchievementData.Any())
+                    {
+                        maxTarget = (double)newTargetVsAchievementData.Max(d => d.Target);
+                        maxAchievement = (double)newTargetVsAchievementData.Max(d => d.Achievement);
+                    }
+
+                    double maxValue = Math.Max(maxTarget, maxAchievement);
+                    maxValue = Math.Max(maxValue * 1.2, 5); // 增加 20% 空間，但確保至少為 5
+                    YAxisMaximum = Math.Ceiling(maxValue);
+
+                    Debug.WriteLine($"設置 Y 軸最大值: {YAxisMaximum}");
                 });
 
-                Debug.WriteLine($"圖表數據已更新，共 {newTargetVsAchievementData.Count} 個數據點");
+                Debug.WriteLine("圖表資料加載完成");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入圖表數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"載入圖表資料時發生錯誤: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
-                LoadSampleChartData();
+
+                // 確保發生錯誤時圖表資料不為 null
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    TargetVsAchievementData = new ObservableCollection<ChartData>();
+                    AchievementTrendData = new ObservableCollection<ChartData>();
+                    YAxisMaximum = 5;
+                });
             }
         }
 
@@ -886,29 +980,11 @@ namespace ScoreCard.ViewModels
         // 載入樣本圖表數據
         private void LoadSampleChartData()
         {
-            // 目標 vs 達成圖表
-            var targetVsAchievementSample = new ObservableCollection<ChartData>
-            {
-                new ChartData { Label = "1月", Target = 2.5m, Achievement = 2.0m },
-                new ChartData { Label = "2月", Target = 2.5m, Achievement = 2.3m },
-                new ChartData { Label = "3月", Target = 2.5m, Achievement = 2.7m },
-                new ChartData { Label = "4月", Target = 2.5m, Achievement = 2.1m },
-                new ChartData { Label = "5月", Target = 2.5m, Achievement = 3.0m },
-                new ChartData { Label = "6月", Target = 2.5m, Achievement = 3.2m }
-            };
-            TargetVsAchievementData = targetVsAchievementSample;
+            // Instead of loading sample data, clear the charts
+            TargetVsAchievementData = new ObservableCollection<ChartData>();
+            AchievementTrendData = new ObservableCollection<ChartData>();
 
-            // 達成趨勢圖表
-            var achievementTrendSample = new ObservableCollection<ChartData>
-            {
-                new ChartData { Label = "1月", Achievement = 2.0m },
-                new ChartData { Label = "2月", Achievement = 2.3m },
-                new ChartData { Label = "3月", Achievement = 2.7m },
-                new ChartData { Label = "4月", Achievement = 2.1m },
-                new ChartData { Label = "5月", Achievement = 3.0m },
-                new ChartData { Label = "6月", Achievement = 3.2m }
-            };
-            AchievementTrendData = achievementTrendSample;
+            Debug.WriteLine("No data available for charts, displaying empty charts instead of sample data");
         }
 
         #endregion // 结束 #region 樣本數据

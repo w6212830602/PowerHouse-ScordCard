@@ -39,6 +39,23 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate x:Key="EmptyChartTemplate">
+            <Grid Padding="20" VerticalOptions="Center" HorizontalOptions="Center">
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="No data available for the selected date range" 
+                   FontSize="16" 
+                   TextColor="#666666" 
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"/>
+                    <Label Text="Try adjusting the date filter" 
+                   FontSize="14" 
+                   TextColor="#888888"
+                   HorizontalOptions="Center"/>
+                </VerticalStackLayout>
+            </Grid>
+        </DataTemplate>
+
+
         <!-- 出错模板 -->
         <DataTemplate x:Key="ErrorTemplate">
             <Grid Padding="20" HeightRequest="100">
@@ -194,62 +211,61 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="20">
                     <!-- Target vs Achievement Chart -->
                     <Border Grid.Column="0"
-                            Stroke="#E5E7EB"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 4"
-                            BackgroundColor="White">
+        Stroke="#E5E7EB"
+        StrokeThickness="1"
+        StrokeShape="RoundRectangle 4"
+        BackgroundColor="White">
                         <Grid RowDefinitions="Auto,*" Padding="15">
                             <Label Text="Target vs Achievement"
-                                   TextColor="#1A1A1A"
-                                   FontSize="16"
-                                   FontAttributes="Bold"/>
+               TextColor="#1A1A1A"
+               FontSize="16"
+               FontAttributes="Bold"/>
 
-                            <!-- Target vs Achievement Chart -->
+                            <!-- 直接顯示圖表，不做條件判斷 -->
                             <chart:SfCartesianChart Grid.Row="1" 
-                                                   Margin="0,10,0,0"
-                                                   HeightRequest="300">
+                               Margin="0,10,0,0"
+                               HeightRequest="300">
                                 <chart:SfCartesianChart.Legend>
                                     <chart:ChartLegend/>
                                 </chart:SfCartesianChart.Legend>
 
                                 <chart:SfCartesianChart.XAxes>
                                     <chart:CategoryAxis ShowMajorGridLines="True"
-                                                      LabelRotation="330">
+                                  LabelRotation="330">
                                         <chart:CategoryAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1" 
-                                                                StrokeDashArray="5,5"/>
+                                            StrokeDashArray="5,5"/>
                                         </chart:CategoryAxis.MajorGridLineStyle>
                                     </chart:CategoryAxis>
                                 </chart:SfCartesianChart.XAxes>
 
                                 <chart:SfCartesianChart.YAxes>
                                     <chart:NumericalAxis Minimum="0"
-                                                       Maximum="{Binding YAxisMaximum}"
-                                                       Interval="1"
-                                                       ShowMajorGridLines="True">
+                                   Maximum="{Binding YAxisMaximum}"
+                                   Interval="1"
+                                   ShowMajorGridLines="True">
                                         <chart:NumericalAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1" 
-                                                                StrokeDashArray="5,5"/>
+                                            StrokeDashArray="5,5"/>
                                         </chart:NumericalAxis.MajorGridLineStyle>
                                     </chart:NumericalAxis>
                                 </chart:SfCartesianChart.YAxes>
 
                                 <chart:SfCartesianChart.Series>
                                     <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                                                        XBindingPath="Label"
-                                                        YBindingPath="Target"
-                                                        Label="Target"
-                                                        ShowDataLabels="True">
+                                  XBindingPath="Label"
+                                  YBindingPath="Target"
+                                  Label="Target"
+                                  ShowDataLabels="True">
                                         <chart:ColumnSeries.Fill>
                                             <Color>#6B46C1</Color>
                                         </chart:ColumnSeries.Fill>
                                     </chart:ColumnSeries>
 
-
                                     <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                                                      XBindingPath="Label"
-                                                      YBindingPath="Achievement"
-                                                      Label="Achievement">
+                                  XBindingPath="Label"
+                                  YBindingPath="Achievement"
+                                  Label="Achievement">
                                         <chart:ColumnSeries.Fill>
                                             <Color>#4CAF50</Color>
                                         </chart:ColumnSeries.Fill>
@@ -262,21 +278,23 @@
 
                     <!-- Achievement Trend Chart -->
                     <Border Grid.Column="1"
-                            Stroke="#E5E7EB"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 4"
-                            BackgroundColor="White">
+        Stroke="#E5E7EB"
+        StrokeThickness="1"
+        StrokeShape="RoundRectangle 4"
+        BackgroundColor="White">
                         <Grid RowDefinitions="Auto,*" Padding="15">
                             <Label Text="Achievement Trend"
-                                   TextColor="#1A1A1A"
-                                   FontSize="16"
-                                   FontAttributes="Bold"/>
+               TextColor="#1A1A1A"
+               FontSize="16"
+               FontAttributes="Bold"/>
+
+                            <!-- 直接顯示圖表，不做條件判斷 -->
                             <chart:SfCartesianChart Grid.Row="1" 
-                                                   Margin="0,10,0,0"
-                                                   HeightRequest="300">
+                               Margin="0,10,0,0"
+                               HeightRequest="300">
                                 <chart:SfCartesianChart.XAxes>
                                     <chart:CategoryAxis ShowMajorGridLines="True"
-                                                      LabelRotation="330">
+                                   LabelRotation="330">
                                         <chart:CategoryAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1"/>
                                         </chart:CategoryAxis.MajorGridLineStyle>
@@ -285,9 +303,9 @@
 
                                 <chart:SfCartesianChart.YAxes>
                                     <chart:NumericalAxis Minimum="0"
-                                                       Maximum="{Binding YAxisMaximum}"
-                                                       Interval="1"
-                                                       ShowMajorGridLines="True">
+                                   Maximum="{Binding YAxisMaximum}"
+                                   Interval="1"
+                                   ShowMajorGridLines="True">
                                         <chart:NumericalAxis.MajorGridLineStyle>
                                             <chart:ChartLineStyle StrokeWidth="1"/>
                                         </chart:NumericalAxis.MajorGridLineStyle>
@@ -296,10 +314,10 @@
 
                                 <chart:SfCartesianChart.Series>
                                     <chart:SplineSeries ItemsSource="{Binding AchievementTrendData}"
-                  XBindingPath="Label"
-                  YBindingPath="Achievement"
-                  ShowDataLabels="True"
-                  StrokeWidth="2">
+                                   XBindingPath="Label"
+                                   YBindingPath="Achievement"
+                                   ShowDataLabels="True"
+                                   StrokeWidth="2">
                                         <chart:SplineSeries.Fill>
                                             <Color>#4CAF50</Color>
                                         </chart:SplineSeries.Fill>
@@ -308,211 +326,211 @@
                             </chart:SfCartesianChart>
                         </Grid>
                     </Border>
-                </Grid>
 
-                <!-- Sales Leaderboard -->
-                <Border Stroke="#E5E7EB"
+                    <!-- Sales Leaderboard -->
+                    <Border Stroke="#E5E7EB"
                         StrokeThickness="1"
                         BackgroundColor="White">
-                    <VerticalStackLayout Padding="15">
-                        <Grid RowDefinitions="Auto,Auto,*">
-                            <Label Text="Sales Leaderboard" 
+                        <VerticalStackLayout Padding="15">
+                            <Grid RowDefinitions="Auto,Auto,*">
+                                <Label Text="Sales Leaderboard" 
                                    TextColor="#1A1A1A"
                                    FontSize="16"
                                    FontAttributes="Bold"
                                    Margin="0,0,0,15"/>
 
-                            <!-- 視圖類型選擇器和狀態過濾器 -->
-                            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,15">
-                                <!-- 視圖類型選擇器 (By Product, By Rep) - Removed By Dept-LOB -->
-                                <HorizontalStackLayout Grid.Column="0" Spacing="0">
-                                    <!-- By Product 按鈕 -->
-                                    <Border Stroke="#E2E8F0" 
+                                <!-- 視圖類型選擇器和狀態過濾器 -->
+                                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,0,0,15">
+                                    <!-- 視圖類型選擇器 (By Product, By Rep) - Removed By Dept-LOB -->
+                                    <HorizontalStackLayout Grid.Column="0" Spacing="0">
+                                        <!-- By Product 按鈕 -->
+                                        <Border Stroke="#E2E8F0" 
         StrokeThickness="1" 
         BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}" 
         HeightRequest="36">
-                                        <Border.StrokeShape>
-                                            <RoundRectangle CornerRadius="4,0,0,4" />
-                                        </Border.StrokeShape>
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
-                                        </Border.GestureRecognizers>
-                                        <Label Text="By Product"
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="4,0,0,4" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByProduct"/>
+                                            </Border.GestureRecognizers>
+                                            <Label Text="By Product"
                                                TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                                                VerticalOptions="Center"
                                                HorizontalOptions="Center"
                                                FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
                                                Margin="15,0"/>
-                                    </Border>
+                                        </Border>
 
-                                    <!-- By Rep 按鈕 -->
-                                    <Border Stroke="#E2E8F0"
+                                        <!-- By Rep 按鈕 -->
+                                        <Border Stroke="#E2E8F0"
                                             StrokeThickness="1"
                                             BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
                                             StrokeShape="RoundRectangle 0,4,4,0"
                                             HeightRequest="36">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByRep"/>
-                                        </Border.GestureRecognizers>
-                                        <Label Text="By Rep"
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding ChangeViewTypeCommand}" CommandParameter="ByRep"/>
+                                            </Border.GestureRecognizers>
+                                            <Label Text="By Rep"
                                                TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
                                                VerticalOptions="Center"
                                                HorizontalOptions="Center"
                                                FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}}"
                                                Margin="15,0"/>
-                                    </Border>
-                                </HorizontalStackLayout>
+                                        </Border>
+                                    </HorizontalStackLayout>
 
-                                <!-- Status filter (Booked, In Progress, Completed) -->
-                                <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
-                                    <!-- Booked 按钮 -->
-                                    <Border Stroke="#E2E8F0"
+                                    <!-- Status filter (Booked, In Progress, Completed) -->
+                                    <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
+                                        <!-- Booked 按钮 -->
+                                        <Border Stroke="#E2E8F0"
         StrokeThickness="1"
         BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
         StrokeShape="RoundRectangle 4,0,0,4"
         HeightRequest="36">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
-                                        </Border.GestureRecognizers>
-                                        <Label Text="Booked"
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
+                                            </Border.GestureRecognizers>
+                                            <Label Text="Booked"
            TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
            VerticalOptions="Center"
            HorizontalOptions="Center"
            FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
            Margin="15,0"/>
-                                    </Border>
+                                        </Border>
 
-                                    <!-- In Progress 按钮 -->
-                                    <Border Stroke="#E2E8F0"
+                                        <!-- In Progress 按钮 -->
+                                        <Border Stroke="#E2E8F0"
         StrokeThickness="1"
         BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
         StrokeShape="Rectangle"
         HeightRequest="36">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="InProgress"/>
-                                        </Border.GestureRecognizers>
-                                        <Label Text="In Progress"
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="InProgress"/>
+                                            </Border.GestureRecognizers>
+                                            <Label Text="In Progress"
            TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
            VerticalOptions="Center"
            HorizontalOptions="Center"
            FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
            Margin="15,0"/>
-                                    </Border>
+                                        </Border>
 
-                                    <!-- Completed 按钮 -->
-                                    <Border Stroke="#E2E8F0"
+                                        <!-- Completed 按钮 -->
+                                        <Border Stroke="#E2E8F0"
         StrokeThickness="1"
         BackgroundColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
         StrokeShape="RoundRectangle 0,4,4,0"
         HeightRequest="36">
-                                        <Border.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
-                                        </Border.GestureRecognizers>
-                                        <Label Text="Completed"
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
+                                            </Border.GestureRecognizers>
+                                            <Label Text="Invoiced"
            TextColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
            VerticalOptions="Center"
            HorizontalOptions="Center"
            FontAttributes="{Binding IsCompletedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
            Margin="15,0"/>
-                                    </Border>
-                                </HorizontalStackLayout>
-                            </Grid>
+                                        </Border>
+                                    </HorizontalStackLayout>
+                                </Grid>
 
-                            <!-- Dynamic Table Content based on View Type -->
-                            <Grid Grid.Row="2">
-                                <!-- By Product View -->
-                                <VerticalStackLayout IsVisible="{Binding IsProductView}">
-                                    <Grid ColumnDefinitions="2*,*,*,*,*,*" 
+                                <!-- Dynamic Table Content based on View Type -->
+                                <Grid Grid.Row="2">
+                                    <!-- By Product View -->
+                                    <VerticalStackLayout IsVisible="{Binding IsProductView}">
+                                        <Grid ColumnDefinitions="2*,*,*,*,*,*" 
                                           Padding="15,10"
                                           BackgroundColor="#F9FAFB">
-                                        <Label Grid.Column="0" 
+                                            <Label Grid.Column="0" 
                                                Text="Product Type" 
                                                TextColor="#666666"/>
-                                        <Label Grid.Column="1" 
+                                            <Label Grid.Column="1" 
        Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
                                                TextColor="#666666"/>
-                                        <Label Grid.Column="2" 
+                                            <Label Grid.Column="2" 
                                                Text="Buy Resell Margin" 
                                                TextColor="#666666"/>
-                                        <Label Grid.Column="3" 
+                                            <Label Grid.Column="3" 
        Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
        TextColor="#666666"/>
-                                        <Label Grid.Column="4" 
+                                            <Label Grid.Column="4" 
                                                Text="PO Value" 
                                                TextColor="#666666"/>
-                                        <Label Grid.Column="5" 
+                                            <Label Grid.Column="5" 
                                                Text="% of Total" 
                                                TextColor="#666666"/>
-                                    </Grid>
+                                        </Grid>
 
-                                    <CollectionView ItemsSource="{Binding ProductSalesData}"
+                                        <CollectionView ItemsSource="{Binding ProductSalesData}"
                                                     EmptyView="{StaticResource NoDataTemplate}">
-                                        <CollectionView.ItemTemplate>
-                                            <DataTemplate x:DataType="models:ProductSalesData">
-                                                <Grid ColumnDefinitions="2*,*,*,*,*,*" Padding="15,12">
-                                                    <Label Grid.Column="0" Text="{Binding ProductType}"/>
-                                                    <Label Grid.Column="1" Text="{Binding AgencyMargin, StringFormat='${0:N2}'}"/>
-                                                    <Label Grid.Column="2" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
-                                                    <Label Grid.Column="3" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
-                                                    <Label Grid.Column="4" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
-                                                    <Label Grid.Column="5" Text="{Binding PercentageOfTotal, StringFormat='{0:P1}'}"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </CollectionView.ItemTemplate>
-                                    </CollectionView>
-                                </VerticalStackLayout>
+                                            <CollectionView.ItemTemplate>
+                                                <DataTemplate x:DataType="models:ProductSalesData">
+                                                    <Grid ColumnDefinitions="2*,*,*,*,*,*" Padding="15,12">
+                                                        <Label Grid.Column="0" Text="{Binding ProductType}"/>
+                                                        <Label Grid.Column="1" Text="{Binding AgencyMargin, StringFormat='${0:N2}'}"/>
+                                                        <Label Grid.Column="2" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
+                                                        <Label Grid.Column="3" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
+                                                        <Label Grid.Column="4" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
+                                                        <Label Grid.Column="5" Text="{Binding PercentageOfTotal, StringFormat='{0:P1}'}"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </CollectionView.ItemTemplate>
+                                        </CollectionView>
+                                    </VerticalStackLayout>
 
-                                <!-- By Rep View -->
-                                <VerticalStackLayout IsVisible="{Binding IsRepView}">
-                                    <Grid ColumnDefinitions="60,2*,*,*,*" 
+                                    <!-- By Rep View -->
+                                    <VerticalStackLayout IsVisible="{Binding IsRepView}">
+                                        <Grid ColumnDefinitions="60,2*,*,*,*" 
                                           Padding="15,10"
                                           BackgroundColor="#F9FAFB">
-                                        <Label Grid.Column="0" 
+                                            <Label Grid.Column="0" 
                                                Text="Rank" 
                                                TextColor="#666666"
                                                HorizontalOptions="Center"/>
-                                        <Label Grid.Column="1" 
+                                            <Label Grid.Column="1" 
                                                Text="Sales Rep" 
                                                TextColor="#666666"
                                                Margin="10,0,0,0"/>
-                                        <Label Grid.Column="2" 
+                                            <Label Grid.Column="2" 
        Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
                                                TextColor="#666666"/>
-                                        <Label Grid.Column="3" 
+                                            <Label Grid.Column="3" 
                                                Text="Buy Resell Margin" 
                                                TextColor="#666666"/>
-                                        <Label Grid.Column="4" 
+                                            <Label Grid.Column="4" 
        Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
        TextColor="#666666"/>
-                                    </Grid>
+                                        </Grid>
 
-                                    <CollectionView ItemsSource="{Binding SalesLeaderboard}"
+                                        <CollectionView ItemsSource="{Binding SalesLeaderboard}"
                                                     EmptyView="{StaticResource NoDataTemplate}">
-                                        <CollectionView.ItemTemplate>
-                                            <DataTemplate x:DataType="models:SalesLeaderboardItem">
-                                                <Grid ColumnDefinitions="60,2*,*,*,*" 
+                                            <CollectionView.ItemTemplate>
+                                                <DataTemplate x:DataType="models:SalesLeaderboardItem">
+                                                    <Grid ColumnDefinitions="60,2*,*,*,*" 
       Padding="15,12">
-                                                    <Label Grid.Column="0" 
+                                                        <Label Grid.Column="0" 
            Text="{Binding Rank}"
            HorizontalOptions="Center"/>
-                                                    <Label Grid.Column="1" 
+                                                        <Label Grid.Column="1" 
            Text="{Binding SalesRep}"
            Margin="10,0,0,0"/>
-                                                    <Label Grid.Column="2" 
+                                                        <Label Grid.Column="2" 
            Text="{Binding AgencyMargin, StringFormat='${0:N0}'}"/>
-                                                    <Label Grid.Column="3" 
+                                                        <Label Grid.Column="3" 
            Text="{Binding BuyResellMargin, StringFormat='${0:N0}'}"/>
-                                                    <Label Grid.Column="4" 
+                                                        <Label Grid.Column="4" 
            Text="{Binding TotalMargin, StringFormat='${0:N0}'}"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </CollectionView.ItemTemplate>
-                                    </CollectionView>
-                                </VerticalStackLayout>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </CollectionView.ItemTemplate>
+                                        </CollectionView>
+                                    </VerticalStackLayout>
+                                </Grid>
                             </Grid>
-                        </Grid>
-                    </VerticalStackLayout>
-                </Border>
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
             </VerticalStackLayout>
         </ScrollView>
 
