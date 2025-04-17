@@ -170,6 +170,9 @@ namespace ScoreCard.Services
                                         // 读取 PO 值 (G列)
                                         decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
 
+                                        // 读取 Vertiv 值 (H列) - 修改为使用H列而不是G列
+                                        decimal vertivValue = GetDecimalValue(worksheet.Cells[row, 8]);
+
                                         // 读取 Agency Margin (M列)
                                         decimal agencyMargin = GetDecimalValue(worksheet.Cells[row, 13]);
 
@@ -185,7 +188,8 @@ namespace ScoreCard.Services
                                                            $"产品={productType}, " +
                                                            $"代表={salesRep}, " +
                                                            $"总佣金=${totalCommission:N2}, " +
-                                                           $"PO值=${poValue:N2}");
+                                                           $"PO值=${poValue:N2}, " +
+                                                           $"Vertiv值=${vertivValue:N2}");
                                         }
 
                                         // 根据完成日期设置订单状态
@@ -199,7 +203,7 @@ namespace ScoreCard.Services
                                             // 检查N列（Total Margin）是否也为空，如果是则视为"进行中"
                                             if (totalCommission == 0)
                                             {
-                                                // 获取H列（PO Value）的值，并添加其12%到inProgressAmount
+                                                // 获取H列（Vertiv Value）的值，并添加其12%到inProgressAmount
                                                 decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H列是第8列
                                                 decimal commission = hColumnValue * 0.12m;
                                                 totalHValue += hColumnValue;
@@ -213,7 +217,7 @@ namespace ScoreCard.Services
                                         {
                                             ReceivedDate = receivedDate,
                                             POValue = poValue,        // G列 - PO Value
-                                            VertivValue = GetDecimalValue(worksheet.Cells[row, 8]),    // H列
+                                            VertivValue = vertivValue, // H列 - Vertiv Value
                                             BuyResellValue = buyResellValue, // J列 - Buy Resell
                                             AgencyMargin = agencyMargin,   // M列 - Agency Margin
                                             TotalCommission = totalCommission, // N列 - Total Commission
@@ -239,6 +243,7 @@ namespace ScoreCard.Services
                                                            $"计入季度={salesData.HasQuarterAssigned}, " +
                                                            (salesData.HasQuarterAssigned ? $"季度计算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
                                                            $"POValue=${salesData.POValue}, " +
+                                                           $"VertivValue=${salesData.VertivValue}, " +
                                                            $"TotalCommission=${salesData.TotalCommission}, " +
                                                            $"Status={salesData.Status}");
                                         }
@@ -399,6 +404,7 @@ namespace ScoreCard.Services
                 int agencyMarginColIndex = -1;
                 int buyResellMarginColIndex = -1;
                 int totalMarginColIndex = -1;
+                int vertivValueColIndex = -1; // 新增的Vertiv Value列索引
 
                 // 掃描標題行找出欄位位置
                 for (int col = 1; col <= sheet.Dimension.Columns; col++)
@@ -409,10 +415,12 @@ namespace ScoreCard.Services
                         salesRepColIndex = col;
                     else if (headerText.Contains("agency") && headerText.Contains("margin"))
                         agencyMarginColIndex = col;
-                    else if (headerText.Contains("buy") && headerText.Contains("resell"))
+                    else if (headerText.Contains("buy"))
                         buyResellMarginColIndex = col;
                     else if (headerText.Contains("total") && headerText.Contains("margin"))
                         totalMarginColIndex = col;
+                    else if (headerText.Contains("vertiv") || headerText.Contains("value"))
+                        vertivValueColIndex = col;
                 }
 
                 // 檢查是否找到所需欄位
@@ -435,6 +443,7 @@ namespace ScoreCard.Services
                     decimal agencyMargin = 0;
                     decimal buyResellMargin = 0;
                     decimal totalMargin = 0;
+                    decimal vertivValue = 0;
 
                     // 讀取 Agency Margin
                     if (agencyMarginColIndex > 0)
@@ -459,8 +468,17 @@ namespace ScoreCard.Services
                             sheet.Cells[row, totalMarginColIndex].Text.Replace("$", "").Replace(",", ""),
                             out totalMargin);
                     }
+
+                    // 讀取 Vertiv Value
+                    if (vertivValueColIndex > 0)
+                    {
+                        decimal.TryParse(
+                            sheet.Cells[row, vertivValueColIndex].Text.Replace("$", "").Replace(",", ""),
+                            out vertivValue);
+                    }
+
                     // 如果 Total Margin 為 0 且有 Agency 或 BuyResell，計算總和
-                    else if (totalMargin == 0 && (agencyMargin > 0 || buyResellMargin > 0))
+                    if (totalMargin == 0 && (agencyMargin > 0 || buyResellMargin > 0))
                     {
                         totalMargin = agencyMargin + buyResellMargin;
                     }
@@ -471,6 +489,7 @@ namespace ScoreCard.Services
                         AgencyMargin = agencyMargin,
                         BuyResellMargin = buyResellMargin,
                         TotalMargin = totalMargin,
+                        VertivValue = vertivValue, // 新增Vertiv Value
                         Rank = 0 // 先設為 0，稍後再計算
                     });
                 }
@@ -650,7 +669,8 @@ namespace ScoreCard.Services
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
                         TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
+                        // 修改为使用 VertivValue 代替 POValue
+                        POValue = Math.Round(g.Sum(x => x.VertivValue), 2)
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
@@ -681,7 +701,7 @@ namespace ScoreCard.Services
             if (string.IsNullOrEmpty(productType))
                 return "Other";
 
-            // 轉為小寫以便比較
+            // 转为小写以便比较
             string lowercaseType = productType.ToLowerInvariant();
 
             if (lowercaseType.Contains("thermal"))
@@ -695,9 +715,10 @@ namespace ScoreCard.Services
             if (lowercaseType.Contains("batts") || lowercaseType.Contains("caps") || lowercaseType.Contains("batt"))
                 return "Batts & Caps";
 
-            // 如果沒有匹配，返回原始名稱
+            // 如果没有匹配，返回原始名称
             return productType;
         }
+
 
         // 獲取銷售代表排行榜數據
         public List<SalesLeaderboardItem> GetSalesLeaderboardData()
@@ -732,7 +753,9 @@ namespace ScoreCard.Services
                         SalesRep = g.Key,
                         AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2)
+                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
+                        // 修改为使用 VertivValue 代替 POValue
+                        VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2)
                     })
                     .OrderByDescending(x => x.TotalMargin)
                     .ToList();

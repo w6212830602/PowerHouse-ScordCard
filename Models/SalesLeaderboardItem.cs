@@ -16,5 +16,7 @@ namespace ScoreCard.Models
         public decimal BuyResellMargin { get; set; }
         public decimal TotalMargin { get; set; }
 
+        // 新增屬性: Vertiv Value 替代原有的 PO Value
+        public decimal VertivValue { get; set; }
     }
 }

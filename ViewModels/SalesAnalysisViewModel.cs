@@ -799,7 +799,8 @@ namespace ScoreCard.ViewModels
                         TotalMargin = Math.Round(isInProgressMode ?
                             g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
                             g.Sum(x => x.TotalCommission), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        // 修改为使用 VertivValue 代替 POValue
+                        POValue = Math.Round(g.Sum(x => x.VertivValue), 2),
                         // 標記是否為 In Progress 模式（用於 UI 顯示）
                         IsInProgress = isInProgressMode
                     })
@@ -822,7 +823,7 @@ namespace ScoreCard.ViewModels
                                        $"Agency: ${product.AgencyMargin}, " +
                                        $"BuyResell: ${product.BuyResellMargin}, " +
                                        $"Total: ${product.TotalMargin}, " +
-                                       $"PO: ${product.POValue}, " +
+                                       $"Vertiv Value: ${product.POValue}, " +
                                        $"Percentage: {product.PercentageOfTotal}");
                     }
 

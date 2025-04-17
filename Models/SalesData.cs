@@ -18,7 +18,7 @@ public class SalesData
     public string Status { get; set; }
     public string ProductType { get; set; }
     public decimal POValue { get; set; }
-    public decimal VertivValue { get; set; }
+    public decimal VertivValue { get; set; } // 已經存在的 VertivValue 屬性
     public decimal BuyResellValue { get; set; }
     public decimal AgencyMargin { get; set; }
     public decimal TotalCommission { get; set; }

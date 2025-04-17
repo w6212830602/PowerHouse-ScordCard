@@ -460,30 +460,30 @@
                                     <!-- By Product View -->
                                     <VerticalStackLayout IsVisible="{Binding IsProductView}">
                                         <Grid ColumnDefinitions="2*,*,*,*,*,*" 
-                                          Padding="15,10"
-                                          BackgroundColor="#F9FAFB">
+          Padding="15,10"
+          BackgroundColor="#F9FAFB">
                                             <Label Grid.Column="0" 
-                                               Text="Product Type" 
-                                               TextColor="#666666"/>
+               Text="Product Type" 
+               TextColor="#666666"/>
                                             <Label Grid.Column="1" 
-       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
-                                               TextColor="#666666"/>
+               Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
+               TextColor="#666666"/>
                                             <Label Grid.Column="2" 
-                                               Text="Buy Resell Margin" 
-                                               TextColor="#666666"/>
+               Text="Buy Resell Margin" 
+               TextColor="#666666"/>
                                             <Label Grid.Column="3" 
-       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
-       TextColor="#666666"/>
+               Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
+               TextColor="#666666"/>
                                             <Label Grid.Column="4" 
-                                               Text="PO Value" 
-                                               TextColor="#666666"/>
+               Text="Vertiv Value" 
+               TextColor="#666666"/>
                                             <Label Grid.Column="5" 
-                                               Text="% of Total" 
-                                               TextColor="#666666"/>
+               Text="% of Total" 
+               TextColor="#666666"/>
                                         </Grid>
 
                                         <CollectionView ItemsSource="{Binding ProductSalesData}"
-                                                    EmptyView="{StaticResource NoDataTemplate}">
+                    EmptyView="{StaticResource NoDataTemplate}">
                                             <CollectionView.ItemTemplate>
                                                 <DataTemplate x:DataType="models:ProductSalesData">
                                                     <Grid ColumnDefinitions="2*,*,*,*,*,*" Padding="15,12">
