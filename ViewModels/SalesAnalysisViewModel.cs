@@ -438,7 +438,11 @@ namespace ScoreCard.ViewModels
                 decimal targetValue = companyTarget?.AnnualTarget ?? 4000000m;
 
                 // 使用完成日期過濾的數據計算實際達成
-                decimal completedAchievement = _filteredData?.Sum(x => x.TotalCommission) ?? 0;
+                decimal completedAchievement = _allSalesData
+                    .Where(x => x.CompletionDate.HasValue &&
+                            x.CompletionDate.Value.Date >= StartDate.Date &&
+                            x.CompletionDate.Value.Date <= EndDate.Date.AddDays(1).AddSeconds(-1))
+                    .Sum(x => x.TotalCommission);
 
                 // 獲取所有基於接收日期的總額（用於計算Remaining to target）
                 var startDate = StartDate.Date;
