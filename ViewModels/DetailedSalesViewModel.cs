@@ -54,12 +54,27 @@ namespace ScoreCard.ViewModels
         [ObservableProperty]
         private ObservableCollection<RepSelectionItem> _repSelectionItems = new();
 
+        [ObservableProperty]
+        private bool _isBookedStatus = true; // 默認為 Booked 狀態
+
+        [ObservableProperty]
+        private bool _isInProgressStatus = false;
+
+        [ObservableProperty]
+        private bool _isInvoicedStatus = false;
+
+
         // 臨時存儲選擇狀態
         private ObservableCollection<RepSelectionItem> _tempRepSelectionItems = new();
 
         // 計算屬性 - 用於繫結到 UI
         public bool IsProductView => ViewType == "ByProduct";
         public bool IsRepView => ViewType == "ByRep";
+
+        public bool IsBookedStatusActive => IsBookedStatus;
+        public bool IsInProgressStatusActive => IsInProgressStatus;
+        public bool IsInvoicedStatusActive => IsInvoicedStatus;
+
 
         // 顯示選中銷售代表的文本
         public string SelectedRepsText => SelectedSalesReps.Count == 0 ||
@@ -128,6 +143,57 @@ namespace ScoreCard.ViewModels
         #endregion
 
         #region Commands
+
+
+        [RelayCommand]
+        private async Task ChangeStatus(string status)
+        {
+            Debug.WriteLine($"嘗試切換到狀態: {status}");
+            bool changed = false;
+
+            switch (status.ToLower())
+            {
+                case "booked":
+                    if (!IsBookedStatus)
+                    {
+                        IsBookedStatus = true;
+                        IsInProgressStatus = false;
+                        IsInvoicedStatus = false;
+                        changed = true;
+                    }
+                    break;
+
+                case "inprogress":
+                    if (!IsInProgressStatus)
+                    {
+                        IsBookedStatus = false;
+                        IsInProgressStatus = true;
+                        IsInvoicedStatus = false;
+                        changed = true;
+                    }
+                    break;
+
+                case "invoiced":
+                    if (!IsInvoicedStatus)
+                    {
+                        IsBookedStatus = false;
+                        IsInProgressStatus = false;
+                        IsInvoicedStatus = true;
+                        changed = true;
+                    }
+                    break;
+            }
+
+            if (changed)
+            {
+                Debug.WriteLine($"狀態已更改為: {status}，重新載入數據");
+                await FilterDataCommand.ExecuteAsync(null);
+            }
+            else
+            {
+                Debug.WriteLine($"狀態未變更，仍然是: {status}");
+            }
+        }
 
         [RelayCommand]
         private async Task FilterData()
@@ -629,15 +695,52 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"過濾日期範圍: {currentStartDate:yyyy-MM-dd} 到 {currentEndDate:yyyy-MM-dd}");
 
-                // 使用接收日期(A列)進行過濾，這樣同時包含已完成和未完成的訂單
-                _filteredSalesData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                           x.ReceivedDate.Date <= currentEndDate.Date)
-                    .ToList();
+                // 根據所選標籤應用不同的過濾條件
+                if (IsBookedStatus)
+                {
+                    // Booked: A列(ReceivedDate)在日期範圍內，Y列(CompletionDate)為空，N列(TotalCommission)有值
+                    _filteredSalesData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                               x.ReceivedDate.Date <= currentEndDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission > 0)
+                        .ToList();
 
-                Debug.WriteLine($"日期過濾後剩餘 {_filteredSalesData.Count} 條數據, " +
-                              $"已完成: {_filteredSalesData.Count(x => x.CompletionDate.HasValue)}, " +
-                              $"未完成: {_filteredSalesData.Count(x => !x.CompletionDate.HasValue)}");
+                    Debug.WriteLine($"[Booked] 過濾後記錄數: {_filteredSalesData.Count}");
+                }
+                else if (IsInProgressStatus)
+                {
+                    // In Progress: A列(ReceivedDate)在日期範圍內，Y列(CompletionDate)為空，N列(TotalCommission)為零或空
+                    _filteredSalesData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                               x.ReceivedDate.Date <= currentEndDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission == 0)
+                        .ToList();
+
+                    Debug.WriteLine($"[In Progress] 過濾後記錄數: {_filteredSalesData.Count}");
+                }
+                else if (IsInvoicedStatus)
+                {
+                    // Invoiced(Completed): Y列(CompletionDate)在日期範圍內且不為空
+                    _filteredSalesData = _allSalesData
+                        .Where(x => x.CompletionDate.HasValue &&
+                               x.CompletionDate.Value.Date >= currentStartDate.Date &&
+                               x.CompletionDate.Value.Date <= currentEndDate.Date)
+                        .ToList();
+
+                    Debug.WriteLine($"[Invoiced] 過濾後記錄數: {_filteredSalesData.Count}");
+                }
+                else
+                {
+                    // 默認：顯示所有數據，以接收日期為基準
+                    _filteredSalesData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                               x.ReceivedDate.Date <= currentEndDate.Date)
+                        .ToList();
+
+                    Debug.WriteLine($"[Default] 過濾後記錄數: {_filteredSalesData.Count}");
+                }
 
                 // 根據銷售代表過濾
                 if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
@@ -669,108 +772,99 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                Debug.WriteLine($"载入已过滤数据，当前视图类型: {ViewType}");
+                Debug.WriteLine($"載入已過濾數據，當前視圖類型: {ViewType}");
 
-                // 根据当前视图类型载入相应数据
+                // 根據當前視圖類型載入相應數據
                 if (ViewType == "ByProduct")
                 {
-                    LoadProductData();
+                    LoadProductData(_filteredSalesData); // 傳入已過濾的數據
                 }
                 else if (ViewType == "ByRep")
                 {
-                    LoadSalesRepData();
+                    LoadSalesRepData(_filteredSalesData); // 傳入已過濾的數據
                 }
 
-                Debug.WriteLine("数据载入完成");
+                Debug.WriteLine("數據載入完成");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"载入已过滤数据时发生错误: {ex.Message}");
+                Debug.WriteLine($"載入已過濾數據時發生錯誤: {ex.Message}");
             }
         }
 
-        private void LoadProductData()
+
+        private async Task LoadProductData(List<SalesData> data)
         {
             try
             {
-                Debug.WriteLine("Loading product view data");
+                Debug.WriteLine($"Loading product data, record count: {data.Count}");
 
-                if (_filteredSalesData == null || !_filteredSalesData.Any())
-                {
-                    Debug.WriteLine("No filtered data available");
-                    ProductSalesData = new ObservableCollection<ProductSalesData>();
-                    return;
-                }
+                // 判斷是否處於 In Progress 狀態
+                bool isInProgressMode = IsInProgressStatus;
 
-                // 根據 Booked/Completed 按鈕過濾
-                var statusFilteredData = _filteredSalesData;
-
-                // 假設您有一個變數表示當前是否顯示 Booked 頁籤
-                // 這裡使用臨時邏輯，您需要根據實際情況調整
-                bool isBookedView = true; // 這裡應該從UI取得實際狀態
-
-                if (isBookedView)
-                {
-                    // Booked 視圖顯示未完成訂單 (Y列為空)
-                    statusFilteredData = _filteredSalesData.Where(x => !x.CompletionDate.HasValue).ToList();
-                    Debug.WriteLine($"Booked過濾: 找到 {statusFilteredData.Count} 條未完成訂單");
-                }
-                else
-                {
-                    // Completed 視圖顯示已完成訂單 (Y列有日期)
-                    statusFilteredData = _filteredSalesData.Where(x => x.CompletionDate.HasValue).ToList();
-                    Debug.WriteLine($"Completed過濾: 找到 {statusFilteredData.Count} 條已完成訂單");
-                }
-
-                // 輸出一些樣本數據用於調試
-                foreach (var item in statusFilteredData.Take(Math.Min(5, statusFilteredData.Count)))
-                {
-                    Debug.WriteLine($"樣本: 接收日期={item.ReceivedDate:yyyy-MM-dd}, " +
-                                   $"完成日期={item.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                   $"產品={item.ProductType}, " +
-                                   $"總佣金=${item.TotalCommission:N2}, " +
-                                   $"PO值=${item.POValue:N2}");
-                }
-
-                // Group by product type and calculate totals
-                var productData = statusFilteredData
+                var products = data
                     .GroupBy(x => x.ProductType)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
-                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
+                        // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
+                        // 進一步拆分為 75% Agency 和 25% Buy Resell
+                        AgencyMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.09m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.03m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.BuyResellValue), 2),
+                        // Total Margin 直接計算，不使用 TotalCommission
+                        TotalMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
+                            g.Sum(x => x.TotalCommission), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        // 標記是否為 In Progress 模式（用於 UI 顯示）
+                        IsInProgress = isInProgressMode
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
 
-                Debug.WriteLine($"分組後產品數: {productData.Count}");
+                Debug.WriteLine($"Number of products after grouping: {products.Count}");
 
-                // 計算百分比
-                decimal totalPOValue = productData.Sum(p => p.POValue);
-                foreach (var product in productData)
+                if (products.Any())
                 {
-                    product.PercentageOfTotal = totalPOValue > 0
-                        ? Math.Round((product.POValue / totalPOValue) * 100, 2)
-                        : 0;
+                    // 計算百分比
+                    decimal totalPOValue = products.Sum(p => p.POValue);
+                    foreach (var product in products)
+                    {
+                        product.PercentageOfTotal = totalPOValue > 0
+                            ? Math.Round((product.POValue / totalPOValue) * 100, 2)
+                            : 0;
+                    }
 
-                    Debug.WriteLine($"產品: {product.ProductType}, PO值: ${product.POValue:N2}, 比例: {product.PercentageOfTotal}%");
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        ProductSalesData = new ObservableCollection<ProductSalesData>(products);
+                    });
+
+                    Debug.WriteLine($"Successfully loaded {products.Count} product data items");
                 }
-
-                MainThread.BeginInvokeOnMainThread(() =>
+                else
                 {
-                    ProductSalesData = new ObservableCollection<ProductSalesData>(productData);
-                    Debug.WriteLine($"UI已更新，顯示 {productData.Count} 項產品數據");
-                });
+                    Debug.WriteLine("No product data to display");
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                    {
+                        ProductSalesData = new ObservableCollection<ProductSalesData>();
+                    });
+                }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error loading product data: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
-                LoadSampleProductData();
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    ProductSalesData = new ObservableCollection<ProductSalesData>();
+                });
             }
         }
 
@@ -808,141 +902,51 @@ namespace ScoreCard.ViewModels
             return salesRep.Trim();
         }
 
-        private void LoadSalesRepData()
+        private async Task LoadSalesRepData(List<SalesData> data)
         {
             try
             {
-                var salesRepData = new List<SalesLeaderboardItem>();
+                // 判斷是否處於 In Progress 狀態
+                bool isInProgressMode = IsInProgressStatus;
 
-                // 處理實際數據
-                if (_filteredSalesData?.Any() == true)
-                {
-                    salesRepData = _filteredSalesData
-                        .GroupBy(x => x.SalesRep)
-                        .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                        .Select(g => new SalesLeaderboardItem
-                        {
-                            SalesRep = g.Key,
-                            // 直接從Excel的M列獲取Agency Margin
-                            AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
-                            // 直接從Excel的J列獲取Buy Resell
-                            BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                            // Total Margin是兩者之和
-                            TotalMargin = Math.Round(g.Sum(x => x.AgencyMargin) + g.Sum(x => x.BuyResellValue), 2)
-                        })
-                        .OrderByDescending(x => x.TotalMargin)
-                        .ToList();
-                }
-
-
-                // 使用過濾後的數據
-                var repData = _filteredSalesData
-                    .GroupBy(x => NormalizeSalesRep(x.SalesRep))
-                    .Where(g => !string.IsNullOrEmpty(g.Key))
-                    .Select(g =>
+                var reps = data
+                    .GroupBy(x => x.SalesRep)
+                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                    .Select(g => new SalesLeaderboardItem
                     {
-                        var rep = new SalesLeaderboardItem
-                        {
-                            SalesRep = g.Key,
-                            // 更新屬性名稱
-                            AgencyMargin = g.Sum(x => x.TotalCommission * 0.7m),
-                            BuyResellMargin = g.Sum(x => x.TotalCommission * 0.3m)
-                        };
-
-                        // 明確設置 TotalMargin
-                        rep.TotalMargin = rep.AgencyMargin + rep.BuyResellMargin;
-                        return rep;
+                        SalesRep = g.Key,
+                        // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
+                        // 進一步拆分為 75% Agency 和 25% Buy Resell
+                        AgencyMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.09m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.03m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.BuyResellValue), 2),
+                        // Total Margin 直接計算，不使用 TotalCommission
+                        TotalMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
+                            g.Sum(x => x.TotalCommission), 2)
                     })
                     .OrderByDescending(x => x.TotalMargin)
                     .ToList();
 
-                if (repData.Any())
+                // 設置排名
+                for (int i = 0; i < reps.Count; i++)
                 {
-                    // 更新排名
-                    for (int i = 0; i < repData.Count; i++)
-                    {
-                        repData[i].Rank = i + 1;
-                    }
-
-                    // 處理選中但在數據中不存在的銷售代表（在已選擇銷售代表模式下）
-                    if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
-                    {
-                        var existingReps = repData.Select(r => r.SalesRep).ToList();
-
-                        // 為不存在於數據中但已選擇的代表創建空記錄
-                        foreach (var selectedRep in SelectedSalesReps)
-                        {
-                            // 檢查該代表是否已存在於結果中（考慮標準化名稱）
-                            bool exists = existingReps.Any(r =>
-                                string.Equals(r, selectedRep, StringComparison.OrdinalIgnoreCase) ||
-                                r.Contains(selectedRep, StringComparison.OrdinalIgnoreCase) ||
-                                selectedRep.Contains(r, StringComparison.OrdinalIgnoreCase));
-
-                            if (!exists)
-                            {
-                                // 添加一條空記錄
-                                repData.Add(new SalesLeaderboardItem
-                                {
-                                    Rank = repData.Count + 1,
-                                    SalesRep = selectedRep,
-                                    AgencyMargin = 0,
-                                    BuyResellMargin = 0,
-                                    TotalMargin = 0
-                                });
-
-                                Debug.WriteLine($"為已選擇但無數據的銷售代表添加空記錄: {selectedRep}");
-                            }
-                        }
-
-                        // 重新排序
-                        repData = repData.OrderByDescending(x => x.TotalMargin).ToList();
-
-                        // 重新設置排名
-                        for (int i = 0; i < repData.Count; i++)
-                        {
-                            repData[i].Rank = i + 1;
-                        }
-                    }
-
-                    MainThread.BeginInvokeOnMainThread(() =>
-                    {
-                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(repData);
-                    });
-
-                    Debug.WriteLine($"已載入 {repData.Count} 條銷售代表數據");
-
-                    // 載入銷售代表產品數據（新增）
-                    LoadSalesRepProductData();
-
-                    return;
+                    reps[i].Rank = i + 1;
                 }
-                else
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    // 如果沒有銷售代表數據
-                    Debug.WriteLine("沒有銷售代表數據可顯示");
+                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(reps);
+                });
 
-                    // 創建空的銷售代表數據
-                    var emptyRepData = CreateEmptySalesRepData();
-
-                    MainThread.BeginInvokeOnMainThread(() =>
-                    {
-                        SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
-                    });
-
-                    Debug.WriteLine("已載入空銷售代表數據（所有值為0）");
-                }
+                Debug.WriteLine($"Sales rep data loaded, {reps.Count} items");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"載入銷售代表數據時發生錯誤: {ex.Message}");
-
-                // 發生錯誤時顯示空數據
-                var emptyRepData = CreateEmptySalesRepData();
-
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    SalesRepData = new ObservableCollection<SalesLeaderboardItem>(emptyRepData);
-                });
+                Debug.WriteLine($"Error loading sales rep data: {ex.Message}");
             }
         }
 

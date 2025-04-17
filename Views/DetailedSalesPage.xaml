@@ -133,6 +133,60 @@
                     </Border.GestureRecognizers>
                 </Border>
 
+                <!-- 狀態過濾器 (Booked, In Progress, Invoiced) -->
+                <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0" Margin="0,0,20,0">
+                    <!-- Booked 按鈕 -->
+                    <Border Stroke="#E2E8F0"
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+            StrokeShape="RoundRectangle 4,0,0,4"
+            HeightRequest="36">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
+                        </Border.GestureRecognizers>
+                        <Label Text="Booked"
+               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
+                    </Border>
+
+                    <!-- In Progress 按鈕 -->
+                    <Border Stroke="#E2E8F0"
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
+            StrokeShape="Rectangle"
+            HeightRequest="36">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="InProgress"/>
+                        </Border.GestureRecognizers>
+                        <Label Text="In Progress"
+               TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
+                    </Border>
+
+                    <!-- Invoiced 按鈕 -->
+                    <Border Stroke="#E2E8F0"
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsInvoicedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
+            StrokeShape="RoundRectangle 0,4,4,0"
+            HeightRequest="36">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Invoiced"/>
+                        </Border.GestureRecognizers>
+                        <Label Text="Invoiced"
+               TextColor="{Binding IsInvoicedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsInvoicedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
+                    </Border>
+                </HorizontalStackLayout>
+
                 <!-- 銷售代表選擇區域 -->
                 <Border Grid.Column="1"
                         Stroke="#E2E8F0"
