@@ -209,7 +209,7 @@
 
                 <!-- Charts Area -->
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="20">
-                    <!-- Target vs Achievement Chart -->
+                    <!-- Target vs Achievement Chart with empty state handling -->
                     <Border Grid.Column="0"
         Stroke="#E5E7EB"
         StrokeThickness="1"
@@ -221,60 +221,80 @@
                FontSize="16"
                FontAttributes="Bold"/>
 
-                            <!-- 直接顯示圖表，不做條件判斷 -->
-                            <chart:SfCartesianChart Grid.Row="1" 
-                               Margin="0,10,0,0"
-                               HeightRequest="300">
-                                <chart:SfCartesianChart.Legend>
-                                    <chart:ChartLegend/>
-                                </chart:SfCartesianChart.Legend>
+                            <!-- Conditional display for chart or empty message -->
+                            <Grid Grid.Row="1">
+                                <!-- Chart: Visible only if data exists -->
+                                <chart:SfCartesianChart IsVisible="{Binding TargetVsAchievementData.Count, Converter={StaticResource GreaterThanZeroConverter}}"
+                                     Margin="0,10,0,0"
+                                     HeightRequest="300">
+                                    <chart:SfCartesianChart.Legend>
+                                        <chart:ChartLegend/>
+                                    </chart:SfCartesianChart.Legend>
 
-                                <chart:SfCartesianChart.XAxes>
-                                    <chart:CategoryAxis ShowMajorGridLines="True"
-                                  LabelRotation="330">
-                                        <chart:CategoryAxis.MajorGridLineStyle>
-                                            <chart:ChartLineStyle StrokeWidth="1" 
-                                            StrokeDashArray="5,5"/>
-                                        </chart:CategoryAxis.MajorGridLineStyle>
-                                    </chart:CategoryAxis>
-                                </chart:SfCartesianChart.XAxes>
+                                    <chart:SfCartesianChart.XAxes>
+                                        <chart:CategoryAxis ShowMajorGridLines="True"
+                                        LabelRotation="330">
+                                            <chart:CategoryAxis.MajorGridLineStyle>
+                                                <chart:ChartLineStyle StrokeWidth="1" StrokeDashArray="5,5"/>
+                                            </chart:CategoryAxis.MajorGridLineStyle>
+                                        </chart:CategoryAxis>
+                                    </chart:SfCartesianChart.XAxes>
 
-                                <chart:SfCartesianChart.YAxes>
-                                    <chart:NumericalAxis Minimum="0"
-                                   Maximum="{Binding YAxisMaximum}"
-                                   Interval="1"
-                                   ShowMajorGridLines="True">
-                                        <chart:NumericalAxis.MajorGridLineStyle>
-                                            <chart:ChartLineStyle StrokeWidth="1" 
-                                            StrokeDashArray="5,5"/>
-                                        </chart:NumericalAxis.MajorGridLineStyle>
-                                    </chart:NumericalAxis>
-                                </chart:SfCartesianChart.YAxes>
+                                    <chart:SfCartesianChart.YAxes>
+                                        <chart:NumericalAxis Minimum="0"
+                                         Maximum="{Binding YAxisMaximum}"
+                                         Interval="1"
+                                         ShowMajorGridLines="True">
+                                            <chart:NumericalAxis.MajorGridLineStyle>
+                                                <chart:ChartLineStyle StrokeWidth="1" StrokeDashArray="5,5"/>
+                                            </chart:NumericalAxis.MajorGridLineStyle>
+                                        </chart:NumericalAxis>
+                                    </chart:SfCartesianChart.YAxes>
 
-                                <chart:SfCartesianChart.Series>
-                                    <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                                  XBindingPath="Label"
-                                  YBindingPath="Target"
-                                  Label="Target"
-                                  ShowDataLabels="True">
-                                        <chart:ColumnSeries.Fill>
-                                            <Color>#6B46C1</Color>
-                                        </chart:ColumnSeries.Fill>
-                                    </chart:ColumnSeries>
+                                    <chart:SfCartesianChart.Series>
+                                        <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
+                                        XBindingPath="Label"
+                                        YBindingPath="Target"
+                                        Label="Target"
+                                        ShowDataLabels="True">
+                                            <chart:ColumnSeries.Fill>
+                                                <Color>#6B46C1</Color>
+                                            </chart:ColumnSeries.Fill>
+                                        </chart:ColumnSeries>
 
-                                    <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
-                                  XBindingPath="Label"
-                                  YBindingPath="Achievement"
-                                  Label="Achievement">
-                                        <chart:ColumnSeries.Fill>
-                                            <Color>#4CAF50</Color>
-                                        </chart:ColumnSeries.Fill>
-                                        <chart:ColumnSeries.ShowDataLabels>True</chart:ColumnSeries.ShowDataLabels>
-                                    </chart:ColumnSeries>
-                                </chart:SfCartesianChart.Series>
-                            </chart:SfCartesianChart>
+                                        <chart:ColumnSeries ItemsSource="{Binding TargetVsAchievementData}"
+                                        XBindingPath="Label"
+                                        YBindingPath="Achievement"
+                                        Label="Achievement"
+                                        ShowDataLabels="True">
+                                            <chart:ColumnSeries.Fill>
+                                                <Color>#4CAF50</Color>
+                                            </chart:ColumnSeries.Fill>
+                                        </chart:ColumnSeries>
+                                    </chart:SfCartesianChart.Series>
+                                </chart:SfCartesianChart>
+
+                                <!-- Empty message when no data -->
+                                <Grid IsVisible="{Binding TargetVsAchievementData.Count, Converter={StaticResource GreaterThanZeroConverter}, ConverterParameter=invert}"
+      VerticalOptions="Center"
+      HorizontalOptions="Center"
+      Padding="20">
+                                    <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                                        <Label Text="No data available for the selected date range" 
+               FontSize="16" 
+               TextColor="#666666" 
+               FontAttributes="Bold"
+               HorizontalOptions="Center"/>
+                                        <Label Text="Try adjusting the date filter" 
+               FontSize="14" 
+               TextColor="#888888"
+               HorizontalOptions="Center"/>
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </Grid>
                         </Grid>
                     </Border>
+
 
                     <!-- Achievement Trend Chart -->
                     <Border Grid.Column="1"
