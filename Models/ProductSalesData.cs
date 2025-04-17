@@ -10,17 +10,21 @@ namespace ScoreCard.Models
     {
         public string ProductType { get; set; } = string.Empty;
 
-        // 如果您已經更新了類別中的屬性名稱
+        // 基本屬性
         public decimal AgencyMargin { get; set; }
         public decimal BuyResellMargin { get; set; }
         public decimal TotalMargin { get; set; }
 
-        // 或者在繼續使用舊屬性的情況下保持兼容性:
-        public decimal AgencyCommission { get; set; } // 與 AgencyMargin 相同
-        public decimal BuyResellCommission { get; set; } // 與 BuyResellMargin 相同
-        public decimal TotalCommission { get; set; }  // 與 TotalMargin 相同
+        // 向後兼容的屬性
+        public decimal AgencyCommission { get => AgencyMargin; set => AgencyMargin = value; }
+        public decimal BuyResellCommission { get => BuyResellMargin; set => BuyResellMargin = value; }
+        public decimal TotalCommission { get => TotalMargin; set => TotalMargin = value; }
 
         public decimal POValue { get; set; }
         public decimal PercentageOfTotal { get; set; }
+
+        // 添加此屬性以修復錯誤
+        public bool IsInProgress { get; set; }
     }
+
 }

@@ -429,14 +429,14 @@
                                                Text="Product Type" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="1" 
-                                               Text="Agency Margin" 
+       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
                                                TextColor="#666666"/>
                                         <Label Grid.Column="2" 
                                                Text="Buy Resell Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="3" 
-                                               Text="Total Margin" 
-                                               TextColor="#666666"/>
+       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
+       TextColor="#666666"/>
                                         <Label Grid.Column="4" 
                                                Text="PO Value" 
                                                TextColor="#666666"/>
@@ -476,14 +476,14 @@
                                                TextColor="#666666"
                                                Margin="10,0,0,0"/>
                                         <Label Grid.Column="2" 
-                                               Text="Agency Margin" 
+       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
                                                TextColor="#666666"/>
                                         <Label Grid.Column="3" 
                                                Text="Buy Resell Margin" 
                                                TextColor="#666666"/>
                                         <Label Grid.Column="4" 
-                                               Text="Total Margin" 
-                                               TextColor="#666666"/>
+       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
+       TextColor="#666666"/>
                                     </Grid>
 
                                     <CollectionView ItemsSource="{Binding SalesLeaderboard}"

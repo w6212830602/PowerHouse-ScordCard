@@ -353,8 +353,8 @@ namespace ScoreCard.ViewModels
             {
                 if (_allSalesData == null || !_allSalesData.Any())
                 {
-                    _filteredData = new List<SalesData>();
                     Debug.WriteLine("没有可用数据进行过滤");
+                    _filteredData = new List<SalesData>();
                     return;
                 }
 
@@ -387,6 +387,15 @@ namespace ScoreCard.ViewModels
                         .ToList();
 
                     Debug.WriteLine($"[In Progress] 过滤后记录数: {_filteredData.Count}");
+
+                    // 打印前几条记录的详细信息用于调试
+                    foreach (var item in _filteredData.Take(Math.Min(5, _filteredData.Count)))
+                    {
+                        Debug.WriteLine($"In Progress 示例: " +
+                            $"接收日期={item.ReceivedDate:yyyy-MM-dd}, " +
+                            $"POValue=${item.POValue:N2}, " +
+                            $"预期佣金(POValue*0.12)=${item.POValue * 0.12m:N2}");
+                    }
                 }
                 else if (IsCompletedStatus)
                 {
@@ -671,15 +680,8 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"Loading product data, record count: {data.Count}");
 
-                // Output detailed info for the first few records for debugging
-                foreach (var item in data.Take(Math.Min(5, data.Count)))
-                {
-                    Debug.WriteLine($"Sample data: Received Date={item.ReceivedDate:yyyy-MM-dd}, " +
-                                   $"Completion Date={item.CompletionDate?.ToString("yyyy-MM-dd") ?? "Not Completed"}, " +
-                                   $"Product Type={item.ProductType}, " +
-                                   $"Total Commission=${item.TotalCommission}, " +
-                                   $"PO Value=${item.POValue}");
-                }
+                // 判斷是否處於 In Progress 狀態
+                bool isInProgressMode = IsInProgressStatus;
 
                 var products = data
                     .GroupBy(x => x.ProductType)
@@ -687,10 +689,21 @@ namespace ScoreCard.ViewModels
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
-                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2)
+                        // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
+                        // 進一步拆分為 75% Agency 和 25% Buy Resell
+                        AgencyMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.12m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.BuyResellValue), 2),
+                        // Total Margin 直接計算，不使用 TotalCommission
+                        TotalMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
+                            g.Sum(x => x.TotalCommission), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        // 標記是否為 In Progress 模式（用於 UI 顯示）
+                        IsInProgress = isInProgressMode
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
@@ -699,12 +712,12 @@ namespace ScoreCard.ViewModels
 
                 if (products.Any())
                 {
-                    // Calculate percentages
+                    // 計算百分比
                     decimal totalPOValue = products.Sum(p => p.POValue);
                     foreach (var product in products)
                     {
                         product.PercentageOfTotal = totalPOValue > 0
-                            ? Math.Round((product.POValue / totalPOValue), 1)
+                            ? Math.Round((product.POValue / totalPOValue), 2) // 將百分比存為小數
                             : 0;
 
                         Debug.WriteLine($"Product: {product.ProductType}, " +
@@ -712,7 +725,7 @@ namespace ScoreCard.ViewModels
                                        $"BuyResell: ${product.BuyResellMargin}, " +
                                        $"Total: ${product.TotalMargin}, " +
                                        $"PO: ${product.POValue}, " +
-                                       $"Percentage: {product.PercentageOfTotal}%");
+                                       $"Percentage: {product.PercentageOfTotal}");
                     }
 
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -725,13 +738,9 @@ namespace ScoreCard.ViewModels
                 else
                 {
                     Debug.WriteLine("No product data to display");
-
-                    await MainThread.InvokeOnMainThreadAsync(async () =>
+                    await MainThread.InvokeOnMainThreadAsync(() =>
                     {
-                        await Application.Current.MainPage.DisplayAlert(
-                            "No Product Data",
-                            "No product data found in the selected date range.",
-                            "OK");
+                        ProductSalesData = new ObservableCollection<ProductSalesData>();
                     });
                 }
             }
@@ -740,12 +749,9 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Error loading product data: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
-                await MainThread.InvokeOnMainThreadAsync(async () =>
+                await MainThread.InvokeOnMainThreadAsync(() =>
                 {
-                    await Application.Current.MainPage.DisplayAlert(
-                        "Error",
-                        $"Error loading product data: {ex.Message}",
-                        "OK");
+                    ProductSalesData = new ObservableCollection<ProductSalesData>();
                 });
             }
         }
@@ -756,21 +762,32 @@ namespace ScoreCard.ViewModels
         {
             try
             {
+                // 判斷是否處於 In Progress 狀態
+                bool isInProgressMode = IsInProgressStatus;
+
                 var reps = data
                     .GroupBy(x => x.SalesRep)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new SalesLeaderboardItem
                     {
                         SalesRep = g.Key,
-                        AgencyMargin = Math.Round(g.Sum(x => x.AgencyMargin), 2),
-                        BuyResellMargin = Math.Round(g.Sum(x => x.BuyResellValue), 2),
-                        // Use TotalCommission directly instead of summing
-                        TotalMargin = Math.Round(g.Sum(x => x.TotalCommission), 2)
+                        // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
+                        // 進一步拆分為 75% Agency 和 25% Buy Resell
+                        AgencyMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.12m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.AgencyMargin), 2),
+                        BuyResellMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.BuyResellValue), 2),
+                        // Total Margin 直接計算，不使用 TotalCommission
+                        TotalMargin = Math.Round(isInProgressMode ?
+                            g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
+                            g.Sum(x => x.TotalCommission), 2)
                     })
                     .OrderByDescending(x => x.TotalMargin)
                     .ToList();
 
-                // Set ranking
+                // 設置排名
                 for (int i = 0; i < reps.Count; i++)
                 {
                     reps[i].Rank = i + 1;

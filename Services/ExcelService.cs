@@ -51,12 +51,6 @@ namespace ScoreCard.Services
             return _inProgressAmount;
         }
 
-
-        public ExcelService()
-        {
-            Debug.WriteLine("ExcelService 初始化");
-        }
-
         // In ExcelService.cs, modify the LoadDataAsync method to include the completion date
         public async Task<(List<SalesData> data, DateTime lastUpdated)> LoadDataAsync(string filePath = Constants.EXCEL_FILE_NAME)
         {
