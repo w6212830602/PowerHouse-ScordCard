@@ -160,7 +160,7 @@
                FontSize="24"
                FontAttributes="Bold"
                Margin="0,5,0,0"/>
-                            <Label Text="Based on Invoiced date"
+                            <Label Text="Based on Received date"
                TextColor="#666666"
                FontSize="12"/>
                         </VerticalStackLayout>
@@ -475,7 +475,7 @@
                Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
                TextColor="#666666"/>
                                             <Label Grid.Column="4" 
-               Text="Vertiv Value" 
+               Text="PO Vertiv Value" 
                TextColor="#666666"/>
                                             <Label Grid.Column="5" 
                Text="% of Total" 

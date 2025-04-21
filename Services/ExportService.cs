@@ -123,7 +123,7 @@ namespace ScoreCard.Services
                 Debug.WriteLine($"匯出Excel時發生錯誤: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
-                await ShowErrorMessage("匯出錯誤", $"匯出Excel檔案時發生錯誤: {ex.Message}");
+                await ShowErrorMessage("Export error", $"Something happens: {ex.Message}");
                 return false;
             }
         }
