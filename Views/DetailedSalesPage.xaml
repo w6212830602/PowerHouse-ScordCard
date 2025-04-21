@@ -182,33 +182,46 @@
                     </Border>
                 </HorizontalStackLayout>
 
-                <!-- 銷售代表選擇區域放在第二行右側 -->
-                <Border Grid.Row="1" Grid.Column="2"
-                        Stroke="#E2E8F0"
-                        StrokeThickness="1"
-                        StrokeShape="RoundRectangle 4"
-                        HeightRequest="36"
-                        HorizontalOptions="End">
-                    <Grid ColumnDefinitions="*,Auto" Padding="2,0">
-                        <!-- 顯示選中項文本 -->
-                        <Label Grid.Column="0"
-                               Text="{Binding SelectedRepsText}"
-                               Margin="10,0"
-                               VerticalOptions="Center"
-                               HorizontalOptions="Start"/>
+                <!-- 銷售代表選擇區域 -->
+                <Grid Grid.Row="1" Grid.Column="2" RowDefinitions="Auto,Auto">
+                    <!-- 主选择按钮 -->
+                    <Border Grid.Row="0"
+            Stroke="#E2E8F0"
+            StrokeThickness="1"
+            StrokeShape="RoundRectangle 4"
+            HeightRequest="36"
+            HorizontalOptions="End">
+                        <Grid ColumnDefinitions="*,Auto" Padding="2,0">
+                            <!-- 显示选中项文本 -->
+                            <Label Grid.Column="0"
+                   Text="{Binding SelectedRepsText}"
+                   Margin="10,0"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Start"/>
 
-                        <!-- 下拉箭頭 -->
-                        <Label Grid.Column="1"
-                               Text="▼"
-                               Margin="0,0,10,0"
-                               FontSize="12"
-                               TextColor="#666666"
-                               VerticalOptions="Center"/>
-                    </Grid>
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ToggleRepSelectionPopupCommand}"/>
-                    </Border.GestureRecognizers>
-                </Border>
+                            <!-- 下拉箭头 -->
+                            <Label Grid.Column="1"
+                   Text="▼"
+                   Margin="0,0,10,0"
+                   FontSize="12"
+                   TextColor="#666666"
+                   VerticalOptions="Center"/>
+                        </Grid>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ToggleRepSelectionPopupCommand}"/>
+                        </Border.GestureRecognizers>
+                    </Border>
+
+                    <!-- 显示选中代表名称详情 -->
+                    <Label Grid.Row="1"
+           Text="{Binding SelectedRepsDetailText}"
+           TextColor="#666666"
+           FontSize="12"
+           Margin="0,4,0,0"
+           MaxLines="1"
+           LineBreakMode="TailTruncation"
+           HorizontalOptions="End"/>
+                </Grid>
 
                 <!-- 多選彈出視窗 -->
                 <Border x:Name="RepSelectionPopup"
@@ -218,7 +231,7 @@
                         StrokeThickness="1"
                         BackgroundColor="White"
                         StrokeShape="RoundRectangle 4"
-                        Margin="0,40,0,0"
+                        Margin="0,60,0,0"
                         Padding="10"
                         WidthRequest="250"
                         HeightRequest="300"

@@ -138,6 +138,7 @@ namespace ScoreCard.ViewModels
         {
             Debug.WriteLine($"選擇的銷售代表變更為: {string.Join(", ", value)}");
             OnPropertyChanged(nameof(SelectedRepsText));
+            OnPropertyChanged(nameof(SelectedRepsDetailText)); // 添加这一行
         }
 
         #endregion
@@ -508,6 +509,7 @@ namespace ScoreCard.ViewModels
             IsRepSelectionPopupVisible = false;
             Debug.WriteLine($"應用選擇，已選: {string.Join(", ", SelectedSalesReps)}");
             OnPropertyChanged(nameof(SelectedRepsText));
+            OnPropertyChanged(nameof(SelectedRepsDetailText));
 
             // 清除緩存並重新過濾數據
             _excelService.ClearCache();
@@ -973,6 +975,31 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Error loading sales rep data: {ex.Message}");
             }
         }
+
+        // 显示选中销售代表的详细名单（最多5个）
+        public string SelectedRepsDetailText
+        {
+            get
+            {
+                if (SelectedSalesReps.Count == 0 || (SelectedSalesReps.Count == 1 && SelectedSalesReps[0] == "All Reps"))
+                    return "All Reps";
+
+                // 取前5个代表名称
+                var topReps = SelectedSalesReps.Where(r => r != "All Reps").Take(5).ToList();
+
+                // 如果没有选择具体代表，返回"All Reps"
+                if (!topReps.Any())
+                    return "All Reps";
+
+                // 如果选择的代表少于等于5个，全部显示
+                if (topReps.Count <= 5)
+                    return string.Join(", ", topReps);
+
+                // 如果超过5个，显示前5个加...
+                return string.Join(", ", topReps) + "...";
+            }
+        }
+
 
         // 新增：載入銷售代表產品數據
         private async Task LoadSalesRepProductData()

@@ -653,6 +653,7 @@ namespace ScoreCard.ViewModels
             }
         }
 
+
         private void UpdateNotifications()
         {
             Debug.WriteLine("開始更新通知");
