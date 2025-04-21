@@ -90,7 +90,7 @@
                     </VerticalStackLayout>
 
                     <!-- Total (New) -->
-                    <VerticalStackLayout Grid.Column="2">
+                    <VerticalStackLayout Grid.Column="3">
                         <Label Text="Total (All)" 
                TextColor="#6B7280" 
                FontSize="14"/>
@@ -101,7 +101,7 @@
                     </VerticalStackLayout>
 
                     <!-- Remaining -->
-                    <VerticalStackLayout Grid.Column="3">
+                    <VerticalStackLayout Grid.Column="2">
                         <Label Text="Remaining" 
                                TextColor="#6B7280" 
                                FontSize="14"/>

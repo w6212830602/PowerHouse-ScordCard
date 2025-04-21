@@ -777,11 +777,14 @@ namespace ScoreCard.ViewModels
                 // 根據當前視圖類型載入相應數據
                 if (ViewType == "ByProduct")
                 {
-                    LoadProductData(_filteredSalesData); // 傳入已過濾的數據
+                    LoadProductData(_filteredSalesData);
                 }
                 else if (ViewType == "ByRep")
                 {
-                    LoadSalesRepData(_filteredSalesData); // 傳入已過濾的數據
+                    LoadSalesRepData(_filteredSalesData);
+
+                    // 重要：同時載入 By Rep 視圖下的產品數據，用於 PO Value 表格
+                    LoadSalesRepProductData();
                 }
 
                 Debug.WriteLine("數據載入完成");
@@ -791,6 +794,26 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"載入已過濾數據時發生錯誤: {ex.Message}");
             }
         }
+
+        // 創建空白的銷售代表產品數據的輔助方法
+        private List<ProductSalesData> CreateEmptySalesRepProductDataForView()
+        {
+            var emptyData = new List<ProductSalesData>();
+
+            // 為常見產品類型創建空白記錄
+            foreach (var productType in new[] { "Power", "Thermal", "Channel", "Service", "Batts & Caps" })
+            {
+                emptyData.Add(new ProductSalesData
+                {
+                    ProductType = productType,
+                    POValue = 0,
+                    PercentageOfTotal = 0
+                });
+            }
+
+            return emptyData;
+        }
+
 
 
         private async Task LoadProductData(List<SalesData> data)
@@ -893,6 +916,7 @@ namespace ScoreCard.ViewModels
             return productType;
         }
 
+
         // 標準化銷售代表名稱
         private string NormalizeSalesRep(string salesRep)
         {
@@ -951,7 +975,7 @@ namespace ScoreCard.ViewModels
         }
 
         // 新增：載入銷售代表產品數據
-        private void LoadSalesRepProductData()
+        private async Task LoadSalesRepProductData()
         {
             try
             {
@@ -971,32 +995,6 @@ namespace ScoreCard.ViewModels
 
                 // 確定要處理的數據
                 var dataToProcess = _filteredSalesData;
-
-                // 如果選擇了特定銷售代表（不是All Reps），則按所選代表過濾
-                if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
-                {
-                    dataToProcess = _filteredSalesData
-                        .Where(x => !string.IsNullOrEmpty(x.SalesRep) &&
-                                SelectedSalesReps.Any(r =>
-                                    string.Equals(x.SalesRep, r, StringComparison.OrdinalIgnoreCase) ||
-                                    x.SalesRep.Contains(r, StringComparison.OrdinalIgnoreCase) ||
-                                    r.Contains(x.SalesRep, StringComparison.OrdinalIgnoreCase)))
-                        .ToList();
-
-                    Debug.WriteLine($"按選定的銷售代表過濾後剩餘 {dataToProcess.Count} 條記錄");
-
-                    // 如果過濾後沒有數據，顯示空白數據
-                    if (!dataToProcess.Any())
-                    {
-                        Debug.WriteLine("選定的銷售代表在當前日期範圍內沒有數據");
-                        var emptyProductData = CreateEmptySalesRepProductData();
-                        MainThread.BeginInvokeOnMainThread(() =>
-                        {
-                            SalesRepProductData = new ObservableCollection<ProductSalesData>(emptyProductData);
-                        });
-                        return;
-                    }
-                }
 
                 // 按產品類型分組計算
                 var productData = dataToProcess

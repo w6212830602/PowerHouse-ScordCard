@@ -42,11 +42,10 @@
         <Grid Grid.Row="0" 
               Padding="20,10"
               BackgroundColor="White"
-              ColumnDefinitions="Auto,*,Auto"
-              RowDefinitions="Auto,Auto">
+              ColumnDefinitions="Auto,*,Auto">
 
             <!-- 詳細頁面的視圖類型切換 (Summary/Detailed) -->
-            <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Margin="0,0,0,10">
+            <HorizontalStackLayout Grid.Column="0" Margin="0,0,0,10">
                 <Border Stroke="#FF3B30"
                         StrokeThickness="1"
                         BackgroundColor="#F0F0F0"
@@ -72,52 +71,48 @@
                 </Border>
             </HorizontalStackLayout>
 
-            <!-- 日期範圍選擇器 -->
-            <controls:CustomDatePicker Grid.Column="2"
-                                       x:Name="DateRangePicker"
-                                       StartDate="{Binding StartDate, Mode=TwoWay}" 
-                                       EndDate="{Binding EndDate, Mode=TwoWay}"/>
+            <!-- 中間區域 -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,Auto" ColumnDefinitions="Auto,*,Auto">
+                <!-- 產品/銷售代表切換放在左上角 -->
+                <HorizontalStackLayout Grid.Row="0" Grid.Column="0" Spacing="0" Margin="20,0,0,10">
+                    <Border Stroke="#E2E8F0"
+                            StrokeThickness="1"
+                            BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                            StrokeShape="RoundRectangle 4,0,0,4"
+                            HeightRequest="36">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByProduct"/>
+                        </Border.GestureRecognizers>
+                        <Label Text="By Product"
+                               TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                               VerticalOptions="Center"
+                               FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                               Margin="15,0"/>
+                    </Border>
+                    <Border Stroke="#E2E8F0"
+                            StrokeThickness="1"
+                            BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                            StrokeShape="RoundRectangle 0,4,4,0"
+                            HeightRequest="36">
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByRep"/>
+                        </Border.GestureRecognizers>
+                        <Label Text="By Rep"
+                               TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                               VerticalOptions="Center"
+                               FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                               Margin="15,0"/>
+                    </Border>
+                </HorizontalStackLayout>
 
-            <!-- 產品/銷售代表切換 -->
-            <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0">
-                <Border Stroke="#E2E8F0"
-                        StrokeThickness="1"
-                        BackgroundColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                        StrokeShape="RoundRectangle 4,0,0,4"
-                        HeightRequest="36">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByProduct"/>
-                    </Border.GestureRecognizers>
-                    <Label Text="By Product"
-                           TextColor="{Binding IsProductView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                           VerticalOptions="Center"
-                           FontAttributes="{Binding IsProductView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-                           Margin="15,0"/>
-                </Border>
-                <Border Stroke="#E2E8F0"
-                        StrokeThickness="1"
-                        BackgroundColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-                        StrokeShape="RoundRectangle 0,4,4,0"
-                        HeightRequest="36">
-                    <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ChangeViewCommand}" CommandParameter="ByRep"/>
-                    </Border.GestureRecognizers>
-                    <Label Text="By Rep"
-                           TextColor="{Binding IsRepView, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-                           VerticalOptions="Center"
-                           FontAttributes="{Binding IsRepView, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-                           Margin="15,0"/>
-                </Border>
-            </HorizontalStackLayout>
-
-            <!-- 匯出按鈕和銷售代表篩選器 -->
-            <Grid Grid.Row="1" Grid.Column="2" ColumnDefinitions="Auto,*">
-                <!-- 匯出按鈕 -->
-                <Border Grid.Column="0"
+                <!-- 匯出按鈕放在右上角 -->
+                <Border Grid.Row="0" Grid.Column="2"
                         Stroke="#E2E8F0"
                         StrokeThickness="1"
                         StrokeShape="RoundRectangle 4"
-                        HeightRequest="36">
+                        HeightRequest="36"
+                        HorizontalOptions="End"
+                        Margin="0,0,0,10">
                     <Grid ColumnDefinitions="Auto,Auto" Margin="12,0">
                         <Label Grid.Column="0"
                                Text="↓"
@@ -133,67 +128,67 @@
                     </Border.GestureRecognizers>
                 </Border>
 
-                <!-- 狀態過濾器 (Booked, In Progress, Invoiced) -->
-                <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0" Margin="0,0,20,0">
+                <!-- 狀態過濾器放在第二行左側 -->
+                <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="0" Margin="20,0,0,0">
                     <!-- Booked 按鈕 -->
                     <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
-            StrokeShape="RoundRectangle 4,0,0,4"
-            HeightRequest="36">
+                            StrokeThickness="1"
+                            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FF3B30,#F0F0F0'}"
+                            StrokeShape="RoundRectangle 4,0,0,4"
+                            HeightRequest="36">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
                         </Border.GestureRecognizers>
                         <Label Text="Booked"
-               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               HorizontalOptions="Center"
-               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-               Margin="15,0"/>
+                               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                               Margin="15,0"/>
                     </Border>
 
                     <!-- In Progress 按鈕 -->
                     <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
-            StrokeShape="Rectangle"
-            HeightRequest="36">
+                            StrokeThickness="1"
+                            BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
+                            StrokeShape="Rectangle"
+                            HeightRequest="36">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="InProgress"/>
                         </Border.GestureRecognizers>
                         <Label Text="In Progress"
-               TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               HorizontalOptions="Center"
-               FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-               Margin="15,0"/>
+                               TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                               Margin="15,0"/>
                     </Border>
 
                     <!-- Invoiced 按鈕 -->
                     <Border Stroke="#E2E8F0"
-            StrokeThickness="1"
-            BackgroundColor="{Binding IsInvoicedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
-            StrokeShape="RoundRectangle 0,4,4,0"
-            HeightRequest="36">
+                            StrokeThickness="1"
+                            BackgroundColor="{Binding IsInvoicedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
+                            StrokeShape="RoundRectangle 0,4,4,0"
+                            HeightRequest="36">
                         <Border.GestureRecognizers>
                             <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Invoiced"/>
                         </Border.GestureRecognizers>
                         <Label Text="Invoiced"
-               TextColor="{Binding IsInvoicedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-               VerticalOptions="Center"
-               HorizontalOptions="Center"
-               FontAttributes="{Binding IsInvoicedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-               Margin="15,0"/>
+                               TextColor="{Binding IsInvoicedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               FontAttributes="{Binding IsInvoicedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+                               Margin="15,0"/>
                     </Border>
                 </HorizontalStackLayout>
 
-                <!-- 銷售代表選擇區域 -->
-                <Border Grid.Column="1"
+                <!-- 銷售代表選擇區域放在第二行右側 -->
+                <Border Grid.Row="1" Grid.Column="2"
                         Stroke="#E2E8F0"
                         StrokeThickness="1"
                         StrokeShape="RoundRectangle 4"
                         HeightRequest="36"
-                        Margin="10,0,0,0">
+                        HorizontalOptions="End">
                     <Grid ColumnDefinitions="*,Auto" Padding="2,0">
                         <!-- 顯示選中項文本 -->
                         <Label Grid.Column="0"
@@ -217,6 +212,7 @@
 
                 <!-- 多選彈出視窗 -->
                 <Border x:Name="RepSelectionPopup"
+                        Grid.Row="1" Grid.Column="2"
                         IsVisible="{Binding IsRepSelectionPopupVisible}"
                         Stroke="#E2E8F0"
                         StrokeThickness="1"
@@ -247,17 +243,17 @@
                                 <BindableLayout.ItemTemplate>
                                     <DataTemplate x:DataType="viewmodels:RepSelectionItem">
                                         <Border Padding="10,8"
-            Margin="0,2"
-            BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#F0F9FF,#F5F5F5'}"
-            StrokeShape="RoundRectangle 3">
+                                                Margin="0,2"
+                                                BackgroundColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#F0F9FF,#F5F5F5'}"
+                                                StrokeShape="RoundRectangle 3">
                                             <Grid ColumnDefinitions="Auto,*">
                                                 <CheckBox Grid.Column="0"
-                     IsChecked="{Binding IsSelected}"
-                     Color="#FF3B30"/>
+                                                          IsChecked="{Binding IsSelected}"
+                                                          Color="#FF3B30"/>
                                                 <Label Grid.Column="1"
-                   Text="{Binding Name}"
-                   TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#333333,#333333'}"
-                   VerticalOptions="Center"/>
+                                                       Text="{Binding Name}"
+                                                       TextColor="{Binding IsSelected, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#333333,#333333'}"
+                                                       VerticalOptions="Center"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -284,14 +280,14 @@
                 </Border>
 
                 <!-- 匯出選項彈出視窗 -->
-                <Border Grid.Column="0" Grid.ColumnSpan="2"
+                <Border Grid.Row="0" Grid.Column="2"
                         IsVisible="{Binding IsExportOptionsVisible}"
                         Stroke="#E2E8F0"
                         StrokeThickness="1"
                         BackgroundColor="White"
                         StrokeShape="RoundRectangle 4"
                         VerticalOptions="Start"
-                        HorizontalOptions="Start"
+                        HorizontalOptions="End"
                         Margin="0,40,0,0"
                         ZIndex="100">
                     <VerticalStackLayout WidthRequest="200">
@@ -384,7 +380,14 @@
                     </VerticalStackLayout>
                 </Border>
             </Grid>
+
+            <!-- 日期範圍選擇器 -->
+            <controls:CustomDatePicker Grid.Column="2"
+                                       x:Name="DateRangePicker"
+                                       StartDate="{Binding StartDate, Mode=TwoWay}" 
+                                       EndDate="{Binding EndDate, Mode=TwoWay}"/>
         </Grid>
+
 
         <!-- 主要內容區域 -->
         <ScrollView Grid.Row="1">
