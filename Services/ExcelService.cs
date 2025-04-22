@@ -31,14 +31,6 @@ namespace ScoreCard.Services
         // 保存In Progress金額（記錄Y欄和N欄均為空的H欄總和的12%）
         private static decimal _inProgressAmount = 0;
 
-        // 保存剩餘金額的計算，計算具有未完成日期的訂單的 TotalCommission 總和
-        decimal remainingAmount = 0;
-
-        // 保存正在進行中的金額，計算Y欄和N欄均為空的記錄的H欄總和的12%
-        decimal inProgressAmount = 0;
-
-
-
         // 添加一個方法來獲取剩餘金額
         public decimal GetRemainingAmount()
         {
@@ -307,7 +299,6 @@ namespace ScoreCard.Services
             });
         }
 
-
         // 載入所有摘要工作表
         private void LoadSummarySheets(ExcelPackage package)
         {
@@ -358,7 +349,6 @@ namespace ScoreCard.Services
                 Debug.WriteLine("===== 摘要工作表加載完成 =====");
             }
         }
-
 
         // 找到工作表，支援名稱或索引查找
         private ExcelWorksheet FindWorksheet(ExcelPackage package, string sheetName)
@@ -602,6 +592,7 @@ namespace ScoreCard.Services
 
             // If we failed to load data, we'll add sample data in the calling method
         }
+
         // 載入 By Rep 工作表數據
         private void LoadByRepData(ExcelWorksheet sheet)
         {
@@ -680,7 +671,7 @@ namespace ScoreCard.Services
                 foreach (var product in products)
                 {
                     product.PercentageOfTotal = totalPOValue > 0
-                        ? Math.Round((product.POValue / totalPOValue), 1)
+                        ? Math.Round((product.POValue / totalPOValue) * 100, 1)
                         : 0;
                 }
 
@@ -915,6 +906,8 @@ namespace ScoreCard.Services
             }
         }
 
+
+
         // 標準化Department名稱
         private string NormalizeDepartment(string department)
         {
@@ -997,6 +990,7 @@ namespace ScoreCard.Services
                 return new List<SalesData>();
             }
         }
+
         public async Task<bool> UpdateDataAsync(string filePath = Constants.EXCEL_FILE_NAME, List<SalesData> data = null)
         {
             try
@@ -1187,7 +1181,5 @@ namespace ScoreCard.Services
                 return new List<string> { "Power", "Thermal", "Channel", "Service", "Batts & Caps" };
             }
         }
-
-
     }
 }

@@ -1,6 +1,4 @@
-﻿// 在 Models/ProductSalesData.cs 中添加一个新字段用于更好的语义表达
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;

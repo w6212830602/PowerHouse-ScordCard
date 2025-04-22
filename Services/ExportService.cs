@@ -391,7 +391,8 @@ namespace ScoreCard.Services
                     return startRow + 1;
                 }
 
-                // 按Vertiv值排序的产品数据
+                // Use exactly the same data and sorting as in the UI - don't recalculate
+                // This ensures consistency between UI and export
                 var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList();
                 decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
 
@@ -405,9 +406,8 @@ namespace ScoreCard.Services
                     worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
                     worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                    // 计算并设置百分比
-                    decimal percentage = totalVertivValue > 0 ? product.PercentageOfTotal / 100 : 0;
-                    worksheet.Cells[startRow, 3].Value = percentage;
+                    // Use the exact percentage from the product data - don't recalculate
+                    worksheet.Cells[startRow, 3].Value = product.PercentageOfTotal / 100; // Convert from percentage to decimal
                     worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.0%";
                     worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
@@ -679,17 +679,18 @@ namespace ScoreCard.Services
                         // Add headers for the second table
                         await writer.WriteLineAsync("\"Product Type\",\"Vertiv Value\",\"% of Grand Total\"");
 
-                        // Sort by Vertiv Value descending
+                        // Sort by Vertiv Value descending - use the exact same data without recalculation
                         var sortedData = data.Cast<ProductSalesData>().OrderByDescending(p => p.VertivValue).ToList();
+                        decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
 
-                        // Write data rows
+                        // Write data rows using the exact same values from the data
                         foreach (var product in sortedData)
                         {
-                            await writer.WriteLineAsync($"\"{product.ProductType}\",{product.VertivValue},{product.PercentageOfTotal / 100:0.0%}");
+                            // Use the exact percentage value from the product data
+                            await writer.WriteLineAsync($"\"{product.ProductType}\",{product.VertivValue},{product.PercentageOfTotal:0.0}%");
                         }
 
                         // Add totals
-                        decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
                         await writer.WriteLineAsync($"\"Grand Total\",{totalVertivValue},100.0%");
                     }
                     // If this is SalesLeaderboardItem, get product data for Vertiv Values
