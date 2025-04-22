@@ -24,102 +24,143 @@ namespace ScoreCard.Services
             _excelService = excelService;
         }
 
-        // 獲取產品數據的方法
-        private List<ProductSalesData> GetProductDataForSexyReport()
-        {
-            return _excelService.GetProductSalesData();
-        }
-
         /// <summary>
         /// 將數據匯出為Excel檔案
         /// </summary>
         public async Task<bool> ExportToExcelAsync<T>(IEnumerable<T> data, string fileName, string title)
         {
-            if (data == null || !data.Any())
-            {
-                Debug.WriteLine("無數據可匯出");
-                await ShowErrorMessage("匯出錯誤", "沒有資料可以匯出。請確保視圖中有顯示數據。");
-                return false;
-            }
-
             try
             {
+                if (data == null || !data.Any())
+                {
+                    Debug.WriteLine("無數據可匯出");
+                    await ShowErrorMessage("匯出錯誤", "沒有資料可以匯出。請確保視圖中有顯示數據。");
+                    return false;
+                }
+
                 Debug.WriteLine($"開始匯出 Excel，數據項數: {data.Count()}");
                 // 記錄資料類型，以利調試
                 Debug.WriteLine($"數據類型: {typeof(T).Name}");
 
-                string exportPath = GetExportDirectory();
-                string fullPath = Path.Combine(exportPath, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
-
-                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-
-                using (var package = new ExcelPackage())
+                // Use Task.Run to perform the file operations in a background thread
+                return await Task.Run(async () =>
                 {
-                    var worksheet = package.Workbook.Worksheets.Add("Report");
-
-                    // 標題
-                    worksheet.Cells[1, 1].Value = title;
-                    worksheet.Cells[1, 1, 1, 10].Merge = true;
-                    worksheet.Cells[1, 1].Style.Font.Bold = true;
-                    worksheet.Cells[1, 1].Style.Font.Size = 16;
-                    worksheet.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                    // 生成日期
-                    worksheet.Cells[2, 1].Value = $"Generate date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
-                    worksheet.Cells[2, 1, 2, 10].Merge = true;
-                    worksheet.Cells[2, 1].Style.Font.Size = 12;
-                    worksheet.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                    int currentRow = 4;
-
-                    // 第一個表格 - 主要數據
-                    string tableTitle = (typeof(T) == typeof(SalesLeaderboardItem)) ?
-                        "Sales Rep Commission" :
-                        "Sales Rep Commission by Product Type (Margin Achieved)";
-
-                    currentRow = AddTableToWorksheet(worksheet, data, currentRow, tableTitle);
-
-                    // 添加間隔
-                    currentRow += 2;
-
-                    // 第二個表格 - Sexy Report
-                    // 不管當前是什麼視圖，都添加 Sexy Report
-                    if (typeof(T) == typeof(ProductSalesData))
+                    try
                     {
-                        // 直接使用當前產品數據
-                        var productDataList = data.Cast<ProductSalesData>().ToList();
-                        currentRow = AddSexyReportToWorksheet(worksheet, productDataList, currentRow);
-                    }
-                    else if (typeof(T) == typeof(SalesLeaderboardItem))
-                    {
-                        // 如果是銷售代表視圖，需要獲取產品數據
-                        var productDataList = GetProductDataForSexyReport();
-                        if (productDataList != null && productDataList.Any())
+                        string exportPath = GetExportDirectory();
+                        string fullPath = Path.Combine(exportPath, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+
+                        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+                        using (var package = new ExcelPackage())
                         {
-                            currentRow = AddSexyReportToWorksheet(worksheet, productDataList, currentRow);
-                        }
-                    }
+                            var worksheet = package.Workbook.Worksheets.Add("Report");
 
-                    // 設置列寬自適應
-                    for (int i = 1; i <= 10; i++) // 假設最多10列
-                    {
-                        worksheet.Column(i).AutoFit();
-                    }
+                            // 標題
+                            worksheet.Cells[1, 1].Value = title;
+                            worksheet.Cells[1, 1, 1, 10].Merge = true;
+                            worksheet.Cells[1, 1].Style.Font.Bold = true;
+                            worksheet.Cells[1, 1].Style.Font.Size = 16;
+                            worksheet.Cells[1, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                    // 保存文件
-                    await package.SaveAsAsync(new FileInfo(fullPath));
-                    Debug.WriteLine($"Excel 檔案已保存至: {fullPath}");
-                }
+                            // 生成日期
+                            worksheet.Cells[2, 1].Value = $"Generate date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+                            worksheet.Cells[2, 1, 2, 10].Merge = true;
+                            worksheet.Cells[2, 1].Style.Font.Size = 12;
+                            worksheet.Cells[2, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                // 顯示成功消息
-                await ShowSuccessMessage("Excel Report Generated", $"File saved to: {fullPath}");
+                            int currentRow = 4;
 
-                // 嘗試打開文件夾
+                            // 第一個表格 - 主要數據
+                            string tableTitle = (typeof(T) == typeof(SalesLeaderboardItem)) ?
+                                "Sales Rep Commission" :
+                                "Sales Rep Commission by Product Type (Margin Achieved)";
+
+                            currentRow = AddTableToWorksheet(worksheet, data, currentRow, tableTitle);
+
+                            // 添加間隔
+                            currentRow += 2;
+
+                            // 第二個表格 - Vertiv Value Report
+                            // Always include Vertiv Value Report regardless of view type
+                            List<ProductSalesData> productDataList;
+
+                            if (typeof(T) == typeof(ProductSalesData))
+                            {
+                                // 直接使用當前產品數據
+                                productDataList = data.Cast<ProductSalesData>().ToList();
+                            }
+                            else
+                            {
+                                // 如果是銷售代表視圖，獲取產品數據
+                                try
+                                {
+                                    productDataList = GetProductDataForVertivReport();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"Error getting product data for Vertiv report: {ex.Message}");
+                                    productDataList = new List<ProductSalesData>();
+                                }
+                            }
+
+                            if (productDataList != null && productDataList.Any())
+                            {
+                                currentRow = AddVertivValueReportToWorksheet(worksheet, productDataList, currentRow);
+                            }
+
+                            // 設置列寬自適應
+                            for (int i = 1; i <= 10; i++) // 假設最多10列
+                            {
+                                worksheet.Column(i).AutoFit();
+                            }
+
+                            // 保存文件
+                            try
+                            {
+                                await package.SaveAsAsync(new FileInfo(fullPath));
+                                Debug.WriteLine($"Excel 檔案已保存至: {fullPath}");
+
+                                // 顯示成功消息
+                                await MainThread.InvokeOnMainThreadAsync(async () => {
+                                    await ShowSuccessMessage("Excel Report Generated", $"File saved to: {fullPath}");
+                                });
+
+                                // 嘗試打開文件夾
 #if WINDOWS
-                OpenFolder(exportPath);
+                                try 
+                                {
+                                    OpenFolder(exportPath);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"Error opening folder: {ex.Message}");
+                                }
 #endif
 
-                return true;
+                                return true;
+                            }
+                            catch (Exception ex)
+                            {
+                                Debug.WriteLine($"Error saving Excel file: {ex.Message}");
+                                await MainThread.InvokeOnMainThreadAsync(async () => {
+                                    await ShowErrorMessage("Excel Export Error", $"Error saving file: {ex.Message}");
+                                });
+                                return false;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Exception in Excel export: {ex.Message}");
+                        Debug.WriteLine(ex.StackTrace);
+
+                        await MainThread.InvokeOnMainThreadAsync(async () => {
+                            await ShowErrorMessage("Export Error", $"An error occurred during Excel export: {ex.Message}");
+                        });
+                        return false;
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -128,6 +169,20 @@ namespace ScoreCard.Services
 
                 await ShowErrorMessage("Export error", $"Something happens: {ex.Message}");
                 return false;
+            }
+        }
+
+        // 獲取產品數據的方法 - 用於 Vertiv Value Report
+        private List<ProductSalesData> GetProductDataForVertivReport()
+        {
+            try
+            {
+                return _excelService.GetProductSalesData() ?? new List<ProductSalesData>();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error getting product data: {ex.Message}");
+                return new List<ProductSalesData>();
             }
         }
 
@@ -293,13 +348,13 @@ namespace ScoreCard.Services
             return startRow;
         }
 
-        // 添加Sexy Report到工作表
-        private int AddSexyReportToWorksheet(ExcelWorksheet worksheet, List<ProductSalesData> productDataList, int startRow)
+        // 添加 Vertiv Value Report 到工作表
+        private int AddVertivValueReportToWorksheet(ExcelWorksheet worksheet, List<ProductSalesData> productDataList, int startRow)
         {
             try
             {
                 // 表格标题
-                worksheet.Cells[startRow, 1].Value = "Vertiv Value Report - Who's Vertiv values are bigger"; // 修改标题
+                worksheet.Cells[startRow, 1].Value = "PO Vertiv Value";
                 worksheet.Cells[startRow, 1, startRow, 6].Merge = true;
                 worksheet.Cells[startRow, 1].Style.Font.Bold = true;
                 worksheet.Cells[startRow, 1].Style.Font.Size = 12;
@@ -310,27 +365,35 @@ namespace ScoreCard.Services
                 worksheet.Cells[startRow, 1].Style.Font.Bold = true;
                 worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                worksheet.Cells[startRow, 2].Value = "Vertiv Value"; // 修改标题
+                worksheet.Cells[startRow, 2].Value = "Vertiv Value";
                 worksheet.Cells[startRow, 2].Style.Font.Bold = true;
                 worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
                 worksheet.Cells[startRow, 3].Value = "% of Grand Total";
                 worksheet.Cells[startRow, 3].Style.Font.Bold = true;
                 worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                // 设置边框
-                for (int i = 1; i <= 3; i++)
-                {
-                    worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                }
                 startRow++;
 
+                // Safety check for empty data
+                if (productDataList == null || !productDataList.Any())
+                {
+                    worksheet.Cells[startRow, 1].Value = "No data available";
+                    worksheet.Cells[startRow, 1, startRow, 3].Merge = true;
+                    worksheet.Cells[startRow, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                    worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    return startRow + 1;
+                }
+
                 // 按Vertiv值排序的产品数据
-                var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList(); // 使用VertivValue排序
-                decimal totalVertivValue = sortedData.Sum(p => p.VertivValue); // 使用VertivValue计算总和
+                var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList();
+                decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
 
                 // 写入数据
                 foreach (var product in sortedData)
@@ -338,16 +401,14 @@ namespace ScoreCard.Services
                     worksheet.Cells[startRow, 1].Value = product.ProductType;
                     worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                    worksheet.Cells[startRow, 2].Value = product.VertivValue; // 使用VertivValue
+                    worksheet.Cells[startRow, 2].Value = product.VertivValue;
                     worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
-                    worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                     worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
                     // 计算并设置百分比
                     decimal percentage = totalVertivValue > 0 ? product.PercentageOfTotal / 100 : 0;
                     worksheet.Cells[startRow, 3].Value = percentage;
                     worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.0%";
-                    worksheet.Cells[startRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                     worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
                     startRow++;
@@ -360,16 +421,14 @@ namespace ScoreCard.Services
                 worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                worksheet.Cells[startRow, 2].Value = totalVertivValue; // 使用VertivValue
+                worksheet.Cells[startRow, 2].Value = totalVertivValue;
                 worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
-                worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                 worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
                 worksheet.Cells[startRow, 3].Value = 1.0; // 100%
                 worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.00%";
-                worksheet.Cells[startRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                 worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
@@ -378,7 +437,7 @@ namespace ScoreCard.Services
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"在添加 Sexy Report 时发生错误: {ex.Message}");
+                Debug.WriteLine($"在添加 Vertiv Value Report 时发生错误: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
             }
 
@@ -399,91 +458,139 @@ namespace ScoreCard.Services
 
             try
             {
-                Debug.WriteLine($"開始匯出 PDF，數據項數: {data.Count()}");
-
-                string exportPath = GetExportDirectory();
-                string fullPath = Path.Combine(exportPath, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
-
-                // 創建文件夾（如果不存在）
-                Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
-
-                // 這裡先不使用 iTextSharp，改用簡單的文本文件
-                using (var writer = new StreamWriter(fullPath))
-                {
-                    await writer.WriteLineAsync($"*** {title} ***");
-                    await writer.WriteLineAsync($"Generate date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                    await writer.WriteLineAsync("");
-
-                    var firstItem = data.FirstOrDefault();
-
-                    if (firstItem is ProductSalesData)
+                return await Task.Run(async () => {
+                    try
                     {
-                        await writer.WriteLineAsync("F25 - Sales Rep Commission by Product Type (Margin Achieved)");
-                        await writer.WriteLineAsync("----------------------------------------------------");
-                        await writer.WriteLineAsync("Product Type\tAgency Commission\tBuy Resell Commission\tTotal Commission\tPO Value\t% of Total");
+                        Debug.WriteLine($"開始匯出 PDF，數據項數: {data.Count()}");
 
-                        decimal totalAgencyComm = 0;
-                        decimal totalBuyResellComm = 0;
-                        decimal totalComm = 0;
-                        decimal totalPOValue = 0;
+                        string exportPath = GetExportDirectory();
+                        string fullPath = Path.Combine(exportPath, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
 
-                        foreach (var item in data)
+                        // 創建文件夾（如果不存在）
+                        Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+
+                        // 這裡先不使用 iTextSharp，改用簡單的文本文件
+                        using (var writer = new StreamWriter(fullPath))
                         {
-                            if (item is ProductSalesData product)
-                            {
-                                await writer.WriteLineAsync($"{product.ProductType}\t${product.AgencyMargin:N2}\t${product.BuyResellMargin:N2}\t${product.TotalMargin:N2}\t${product.POValue:N2}\t{product.PercentageOfTotal:N1}%");
+                            await writer.WriteLineAsync($"*** {title} ***");
+                            await writer.WriteLineAsync($"Generate date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                            await writer.WriteLineAsync("");
 
-                                totalAgencyComm += product.AgencyMargin;
-                                totalBuyResellComm += product.BuyResellMargin;
-                                totalComm += product.TotalMargin;
-                                totalPOValue += product.POValue;
+                            var firstItem = data.FirstOrDefault();
+
+                            if (firstItem is ProductSalesData)
+                            {
+                                await writer.WriteLineAsync("F25 - Sales Rep Commission by Product Type (Margin Achieved)");
+                                await writer.WriteLineAsync("----------------------------------------------------");
+                                await writer.WriteLineAsync("Product Type\tAgency Margin\tBuy Resell Margin\tTotal Margin\tVertiv Value\t% of Total");
+
+                                decimal totalAgencyMargin = 0;
+                                decimal totalBuyResellMargin = 0;
+                                decimal totalMargin = 0;
+                                decimal totalVertivValue = 0;
+
+                                foreach (var item in data)
+                                {
+                                    if (item is ProductSalesData product)
+                                    {
+                                        await writer.WriteLineAsync($"{product.ProductType}\t${product.AgencyMargin:N2}\t${product.BuyResellMargin:N2}\t${product.TotalMargin:N2}\t${product.VertivValue:N2}\t{product.PercentageOfTotal:N1}%");
+
+                                        totalAgencyMargin += product.AgencyMargin;
+                                        totalBuyResellMargin += product.BuyResellMargin;
+                                        totalMargin += product.TotalMargin;
+                                        totalVertivValue += product.VertivValue;
+                                    }
+                                }
+
+                                await writer.WriteLineAsync($"Grand Total\t${totalAgencyMargin:N2}\t${totalBuyResellMargin:N2}\t${totalMargin:N2}\t${totalVertivValue:N2}\t100.0%");
+
+                                // Add PO Vertiv Value section
+                                await writer.WriteLineAsync("");
+                                await writer.WriteLineAsync("PO Vertiv Value");
+                                await writer.WriteLineAsync("------------------");
+                                await writer.WriteLineAsync("Product Type\tVertiv Value\t% of Grand Total");
+
+                                var productDataList = data.Cast<ProductSalesData>().ToList();
+                                var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList();
+
+                                foreach (var product in sortedData)
+                                {
+                                    await writer.WriteLineAsync($"{product.ProductType}\t${product.VertivValue:N2}\t{product.PercentageOfTotal:N1}%");
+                                }
+
+                                await writer.WriteLineAsync($"Grand Total\t${totalVertivValue:N2}\t100.0%");
+                            }
+                            else if (firstItem is SalesLeaderboardItem)
+                            {
+                                await writer.WriteLineAsync("Sales Representatives Performance");
+                                await writer.WriteLineAsync("-----------------------------");
+                                await writer.WriteLineAsync("Rank\tSales Rep\tAgency Margin\tBuy Resell Margin\tTotal Margin");
+
+                                decimal totalAgencyMargin = 0;
+                                decimal totalBuyResellMargin = 0;
+                                decimal totalMargin = 0;
+
+                                foreach (var item in data)
+                                {
+                                    if (item is SalesLeaderboardItem rep)
+                                    {
+                                        await writer.WriteLineAsync($"{rep.Rank}\t{rep.SalesRep}\t${rep.AgencyMargin:N2}\t${rep.BuyResellMargin:N2}\t${rep.TotalMargin:N2}");
+
+                                        totalAgencyMargin += rep.AgencyMargin;
+                                        totalBuyResellMargin += rep.BuyResellMargin;
+                                        totalMargin += rep.TotalMargin;
+                                    }
+                                }
+
+                                await writer.WriteLineAsync($"Grand Total\t\t${totalAgencyMargin:N2}\t${totalBuyResellMargin:N2}\t${totalMargin:N2}");
+
+                                // Add PO Vertiv Value section even for Sales Rep view
+                                await writer.WriteLineAsync("");
+                                await writer.WriteLineAsync("PO Vertiv Value");
+                                await writer.WriteLineAsync("------------------");
+                                await writer.WriteLineAsync("Product Type\tVertiv Value\t% of Grand Total");
+
+                                var productData = GetProductDataForVertivReport();
+                                if (productData != null && productData.Any())
+                                {
+                                    var sortedData = productData.OrderByDescending(p => p.VertivValue).ToList();
+                                    decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
+
+                                    foreach (var product in sortedData)
+                                    {
+                                        await writer.WriteLineAsync($"{product.ProductType}\t${product.VertivValue:N2}\t{product.PercentageOfTotal:N1}%");
+                                    }
+
+                                    await writer.WriteLineAsync($"Grand Total\t${totalVertivValue:N2}\t100.0%");
+                                }
                             }
                         }
 
-                        await writer.WriteLineAsync($"Grand Total\t${totalAgencyComm:N2}\t${totalBuyResellComm:N2}\t${totalComm:N2}\t${totalPOValue:N2}\t100.0%");
+                        // 顯示成功消息，但說明這只是臨時 PDF 格式
+                        await MainThread.InvokeOnMainThreadAsync(async () => {
+                            await ShowSuccessMessage("PDF報表已生成",
+                                $"檔案已保存到: {fullPath}\n\n" +
+                                "注意：目前PDF輸出採用簡化格式。未來版本將提供完整格式化的PDF。");
+                        });
 
-                        await writer.WriteLineAsync("");
-                        await writer.WriteLineAsync("Sexy Report - Who's POs are bigger");
-                        await writer.WriteLineAsync("-----------------------------");
-                        await writer.WriteLineAsync("Product Type\tPO Value\t% of Grand Total");
-
-                        var productDataList = data.Cast<ProductSalesData>().ToList();
-                        var sortedData = productDataList.OrderByDescending(p => p.POValue).ToList();
-
-                        foreach (var product in sortedData)
-                        {
-                            await writer.WriteLineAsync($"{product.ProductType}\t${product.POValue:N2}\t{product.PercentageOfTotal:N1}%");
-                        }
-
-                        await writer.WriteLineAsync($"Grand Total\t${totalPOValue:N2}\t100.0%");
-                    }
-                    else if (firstItem is SalesLeaderboardItem)
-                    {
-                        await writer.WriteLineAsync("Sales Representatives Performance");
-                        await writer.WriteLineAsync("-----------------------------");
-                        await writer.WriteLineAsync("Rank\tSales Rep\tAgency Commission\tBuy Resell Commission\tTotal Commission");
-
-                        foreach (var item in data)
-                        {
-                            if (item is SalesLeaderboardItem rep)
-                            {
-                                await writer.WriteLineAsync($"{rep.Rank}\t{rep.SalesRep}\t${rep.AgencyMargin:N2}\t${rep.BuyResellMargin:N2}\t${rep.TotalMargin:N2}");
-                            }
-                        }
-                    }
-                }
-
-                // 顯示成功消息，但說明這只是臨時 PDF 格式
-                await ShowSuccessMessage("PDF報表已生成",
-                    $"檔案已保存到: {fullPath}\n\n" +
-                    "注意：目前PDF輸出採用簡化格式。未來版本將提供完整格式化的PDF。");
-
-                // 嘗試打開文件夾
+                        // 嘗試打開文件夾
 #if WINDOWS
-        OpenFolder(exportPath);
+                        OpenFolder(exportPath);
 #endif
 
-                return true;
+                        return true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Error during PDF export: {ex.Message}");
+                        Debug.WriteLine(ex.StackTrace);
+
+                        await MainThread.InvokeOnMainThreadAsync(async () => {
+                            await ShowErrorMessage("匯出錯誤", $"匯出PDF檔案時發生錯誤: {ex.Message}");
+                        });
+                        return false;
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -562,6 +669,55 @@ namespace ScoreCard.Services
                         }
                         await writer.WriteLineAsync(string.Join(",", values));
                     }
+
+                    // If this is ProductSalesData, add a second section for Vertiv Values
+                    if (firstItem is ProductSalesData)
+                    {
+                        await writer.WriteLineAsync("");
+                        await writer.WriteLineAsync("PO Vertiv Value");
+
+                        // Add headers for the second table
+                        await writer.WriteLineAsync("\"Product Type\",\"Vertiv Value\",\"% of Grand Total\"");
+
+                        // Sort by Vertiv Value descending
+                        var sortedData = data.Cast<ProductSalesData>().OrderByDescending(p => p.VertivValue).ToList();
+
+                        // Write data rows
+                        foreach (var product in sortedData)
+                        {
+                            await writer.WriteLineAsync($"\"{product.ProductType}\",{product.VertivValue},{product.PercentageOfTotal / 100:0.0%}");
+                        }
+
+                        // Add totals
+                        decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
+                        await writer.WriteLineAsync($"\"Grand Total\",{totalVertivValue},100.0%");
+                    }
+                    // If this is SalesLeaderboardItem, get product data for Vertiv Values
+                    else if (firstItem is SalesLeaderboardItem)
+                    {
+                        var productData = GetProductDataForVertivReport();
+                        if (productData != null && productData.Any())
+                        {
+                            await writer.WriteLineAsync("");
+                            await writer.WriteLineAsync("PO Vertiv Value");
+
+                            // Add headers for the second table
+                            await writer.WriteLineAsync("\"Product Type\",\"Vertiv Value\",\"% of Grand Total\"");
+
+                            // Sort by Vertiv Value descending
+                            var sortedData = productData.OrderByDescending(p => p.VertivValue).ToList();
+
+                            // Write data rows
+                            foreach (var product in sortedData)
+                            {
+                                await writer.WriteLineAsync($"\"{product.ProductType}\",{product.VertivValue},{product.PercentageOfTotal / 100:0.0%}");
+                            }
+
+                            // Add totals
+                            decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
+                            await writer.WriteLineAsync($"\"Grand Total\",{totalVertivValue},100.0%");
+                        }
+                    }
                 }
 
                 // 顯示成功消息
@@ -590,15 +746,28 @@ namespace ScoreCard.Services
             if (data == null || !data.Any())
             {
                 Debug.WriteLine("無數據可打印");
+                await ShowErrorMessage("打印錯誤", "沒有資料可以打印。請確保視圖中有顯示數據。");
                 return false;
             }
 
             try
             {
-                // 未實現打印功能
-                await ShowSuccessMessage("打印功能未實現", "在該版本中，打印功能尚未完全實現。請考慮使用Excel匯出代替。");
+                // 先匯出為 PDF，然後嘗試打開它
+                string fileName = $"Print_{title.Replace(" ", "_")}";
+                bool exported = await ExportToPdfAsync(data, fileName, title);
 
-                return false;
+                if (exported)
+                {
+                    // 在未來版本中，可以添加直接打印的功能
+                    await ShowSuccessMessage("打印預覽已準備",
+                        "已匯出為 PDF 文件作為打印預覽。在該版本中，請手動打開 PDF 文件並使用系統的打印功能進行打印。");
+                    return true;
+                }
+                else
+                {
+                    await ShowErrorMessage("打印預覽失敗", "無法創建打印預覽。請嘗試使用 Excel 或 PDF 匯出功能。");
+                    return false;
+                }
             }
             catch (Exception ex)
             {
@@ -658,10 +827,10 @@ namespace ScoreCard.Services
             {
                 { "ProductType", "Product Type" },
                 { "SalesRep", "Sales Rep" },
-                { "AgencyCommission", "Agency Commission" },
-                { "BuyResellCommission", "Buy Resell Commission" },
-                { "TotalCommission", "Total Commission" },
-                { "POValue", "PO Value" },
+                { "AgencyMargin", "Agency Margin" },
+                { "BuyResellMargin", "Buy Resell Margin" },
+                { "TotalMargin", "Total Margin" },
+                { "VertivValue", "Vertiv Value" },
                 { "PercentageOfTotal", "% of Total" },
                 { "Rank", "Rank" }
             };
