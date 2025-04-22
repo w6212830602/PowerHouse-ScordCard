@@ -18,6 +18,8 @@
         <converts:TotalBuyResellMarginConverter x:Key="TotalBuyResellMarginConverter"/>
         <converts:TotalMarginConverter x:Key="TotalMarginConverter"/>
         <converts:TotalPOValueConverter x:Key="TotalPOValueConverter"/>
+        <converts:TotalVertivValueConverter x:Key="TotalVertivValueConverter"/>
+
 
         <!-- 無數據提示模板 -->
         <DataTemplate x:Key="NoDataTemplate">
@@ -426,8 +428,8 @@
                             <VerticalStackLayout IsVisible="{Binding IsProductView}">
                                 <!-- 表格標題 -->
                                 <Grid ColumnDefinitions="3*,2*,2*,2*,2*" 
-                                      BackgroundColor="#F9FAFB"
-                                      Padding="15,10">
+      BackgroundColor="#F9FAFB"
+      Padding="15,10">
                                     <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
                                     <Label Grid.Column="1" Text="Agency Margin" FontAttributes="Bold"/>
                                     <Label Grid.Column="2" Text="Buy Resell Margin" FontAttributes="Bold"/>
@@ -516,7 +518,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <Label Text="PO Value"
+                            <Label Text="Vertiv Value"
                                    Padding="15"
                                    FontSize="16"
                                    FontAttributes="Bold"/>
@@ -525,10 +527,10 @@
                             <VerticalStackLayout IsVisible="{Binding IsProductView}">
                                 <!-- 表格標題 -->
                                 <Grid ColumnDefinitions="3*,2*,2*" 
-                                      BackgroundColor="#F9FAFB"
-                                      Padding="15,10">
+      BackgroundColor="#F9FAFB"
+      Padding="15,10">
                                     <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="PO Value" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="Vertiv Value" FontAttributes="Bold"/>
                                     <Label Grid.Column="2" Text="% of Grand Total" FontAttributes="Bold"/>
                                 </Grid>
 
@@ -539,7 +541,7 @@
                                         <DataTemplate x:DataType="models:ProductSalesData">
                                             <Grid ColumnDefinitions="3*,2*,2*" Padding="15,12">
                                                 <Label Grid.Column="0" Text="{Binding ProductType}"/>
-                                                <Label Grid.Column="1" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
+                                                <Label Grid.Column="1" Text="{Binding VertivValue, StringFormat='${0:N2}'}"/>
                                                 <Label Grid.Column="2" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
                                             </Grid>
                                         </DataTemplate>
@@ -548,10 +550,11 @@
 
                                 <!-- 總計行 -->
                                 <Grid ColumnDefinitions="3*,2*,2*" 
-                                      BackgroundColor="#F0F9FF"
-                                      Padding="15,12">
+      BackgroundColor="#F0F9FF"
+      Padding="15,12">
                                     <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalPOValueConverter}}" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalVertivValueConverter}}" FontAttributes="Bold"/>
+                                    <!-- 使用新转换器 -->
                                     <Label Grid.Column="2" Text="100.00%" FontAttributes="Bold"/>
                                 </Grid>
                             </VerticalStackLayout>
@@ -560,13 +563,12 @@
                             <VerticalStackLayout IsVisible="{Binding IsRepView}">
                                 <!-- 表格標題 -->
                                 <Grid ColumnDefinitions="3*,2*,2*" 
-                                      BackgroundColor="#F9FAFB"
-                                      Padding="15,10">
+      BackgroundColor="#F9FAFB"
+      Padding="15,10">
                                     <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="Sum of PO Value" FontAttributes="Bold"/>
-                                    <Label Grid.Column="2" Text="% of PO Value" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="Sum of Vertiv Value" FontAttributes="Bold"/>
+                                    <Label Grid.Column="2" Text="% of Vertiv Value" FontAttributes="Bold"/>
                                 </Grid>
-
                                 <!-- 銷售代表 PO 數據 -->
                                 <CollectionView ItemsSource="{Binding SalesRepProductData}"
                                                 EmptyView="{StaticResource NoDataTemplate}">

@@ -76,23 +76,4 @@ namespace ScoreCard.Converts
             throw new NotImplementedException();
         }
     }
-
-    // 其他轉換器保持不變
-    public class TotalPOValueConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is ObservableCollection<ProductSalesData> productData)
-            {
-                decimal total = productData.Sum(x => x.POValue);
-                return $"${total:N2}";
-            }
-            return "$0.00";
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
 }

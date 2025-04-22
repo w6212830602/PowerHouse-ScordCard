@@ -146,19 +146,19 @@ namespace ScoreCard.Services
             if (firstItem is ProductSalesData)
             {
                 columns.Add(("Product Type", "ProductType"));
-                columns.Add(("Agency Commission", "AgencyCommission"));
-                columns.Add(("Buy Resell Commission", "BuyResellCommission"));
-                columns.Add(("Total Commission", "TotalCommission"));
-                columns.Add(("PO Value", "POValue"));
+                columns.Add(("Agency Margin", "AgencyCommission"));
+                columns.Add(("Buy Resell Margin", "BuyResellCommission"));
+                columns.Add(("Total Margin", "TotalCommission"));
+                columns.Add(("Vertiv Value", "VertivValue")); // 修改为 VertivValue
                 columns.Add(("% of Total", "PercentageOfTotal"));
             }
             else if (firstItem is SalesLeaderboardItem)
             {
                 columns.Add(("Rank", "Rank"));
                 columns.Add(("Sales Rep", "SalesRep"));
-                columns.Add(("Agency Commission", "AgencyCommission"));
-                columns.Add(("Buy Resell Commission", "BuyResellCommission"));
-                columns.Add(("Total Commission", "TotalCommission"));
+                columns.Add(("Agency Margin", "AgencyCommission"));
+                columns.Add(("Buy Resell Margin", "BuyResellCommission"));
+                columns.Add(("Total Margin", "TotalCommission"));
             }
 
             // 寫入表頭
@@ -275,20 +275,20 @@ namespace ScoreCard.Services
         // 添加Sexy Report到工作表
         private int AddSexyReportToWorksheet(ExcelWorksheet worksheet, List<ProductSalesData> productDataList, int startRow)
         {
-            // 表格標題
-            worksheet.Cells[startRow, 1].Value = "Sexy Report - Who's POs are bigger";
+            // 表格标题
+            worksheet.Cells[startRow, 1].Value = "Vertiv Value Report - Who's Vertiv values are bigger"; // 修改标题
             worksheet.Cells[startRow, 1, startRow, 6].Merge = true;
             worksheet.Cells[startRow, 1].Style.Font.Bold = true;
             worksheet.Cells[startRow, 1].Style.Font.Size = 12;
             startRow++;
 
-            // 表格頭
+            // 表格头
             worksheet.Cells[startRow, 1].Value = "Product Type";
             worksheet.Cells[startRow, 1].Style.Font.Bold = true;
             worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
             worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
 
-            worksheet.Cells[startRow, 2].Value = "PO Value";
+            worksheet.Cells[startRow, 2].Value = "Vertiv Value"; // 修改标题
             worksheet.Cells[startRow, 2].Style.Font.Bold = true;
             worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
             worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
@@ -298,24 +298,24 @@ namespace ScoreCard.Services
             worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
             worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
 
-            // 設置邊框
+            // 设置边框
             for (int i = 1; i <= 3; i++)
             {
                 worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
             }
             startRow++;
 
-            // 按PO值排序的產品數據
-            var sortedData = productDataList.OrderByDescending(p => p.POValue).ToList();
-            decimal totalPOValue = sortedData.Sum(p => p.POValue);
+            // 按Vertiv值排序的产品数据
+            var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList(); // 使用VertivValue排序
+            decimal totalVertivValue = sortedData.Sum(p => p.VertivValue); // 使用VertivValue计算总和
 
-            // 寫入數據
+            // 写入数据
             foreach (var product in sortedData)
             {
                 worksheet.Cells[startRow, 1].Value = product.ProductType;
                 worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                worksheet.Cells[startRow, 2].Value = product.POValue;
+                worksheet.Cells[startRow, 2].Value = product.VertivValue; // 使用VertivValue
                 worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
                 worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                 worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
@@ -328,14 +328,14 @@ namespace ScoreCard.Services
                 startRow++;
             }
 
-            // 添加總計行
+            // 添加总计行
             worksheet.Cells[startRow, 1].Value = "Grand Total";
             worksheet.Cells[startRow, 1].Style.Font.Bold = true;
             worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
             worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
             worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-            worksheet.Cells[startRow, 2].Value = totalPOValue;
+            worksheet.Cells[startRow, 2].Value = totalVertivValue; // 使用VertivValue
             worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
             worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
             worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;

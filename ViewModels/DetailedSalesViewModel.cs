@@ -833,20 +833,21 @@ namespace ScoreCard.ViewModels
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
-                        // 進一步拆分為 75% Agency 和 25% Buy Resell
+                        // 如果是 In Progress 模式，则使用 POValue * 0.12 作为 Total Margin
+                        // 进一步拆分为 75% Agency 和 25% Buy Resell
                         AgencyMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.09m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.POValue * 0.12m) : // 75% of expected commission (0.12)
                             g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.03m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.POValue * 0.00m) : // 25% of expected commission (0.12)
                             g.Sum(x => x.BuyResellValue), 2),
-                        // Total Margin 直接計算，不使用 TotalCommission
+                        // Total Margin 直接计算，不使用 TotalCommission
                         TotalMargin = Math.Round(isInProgressMode ?
                             g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
                             g.Sum(x => x.TotalCommission), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                        // 標記是否為 In Progress 模式（用於 UI 顯示）
+                        // 修改为使用 VertivValue 代替 POValue
+                        POValue = Math.Round(g.Sum(x => x.VertivValue), 2),
+                        // 标记是否为 In Progress 模式（用于 UI 显示）
                         IsInProgress = isInProgressMode
                     })
                     .OrderByDescending(x => x.POValue)
@@ -944,10 +945,10 @@ namespace ScoreCard.ViewModels
                         // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
                         // 進一步拆分為 75% Agency 和 25% Buy Resell
                         AgencyMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.09m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.POValue * 0.12m) : // 75% of expected commission (0.12)
                             g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.03m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.POValue * 0.00m) : // 25% of expected commission (0.12)
                             g.Sum(x => x.BuyResellValue), 2),
                         // Total Margin 直接計算，不使用 TotalCommission
                         TotalMargin = Math.Round(isInProgressMode ?
@@ -1030,12 +1031,12 @@ namespace ScoreCard.ViewModels
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                        PercentageOfTotal = 0  // 先設為0，下面再計算
+                        // 使用 VertivValue 代替 POValue
+                        POValue = Math.Round(g.Sum(x => x.VertivValue), 2),
+                        PercentageOfTotal = 0  // 先设为0，下面再计算
                     })
                     .OrderByDescending(x => x.POValue)
                     .ToList();
-
                 // 計算百分比
                 decimal totalPOValue = productData.Sum(p => p.POValue);
                 foreach (var product in productData)

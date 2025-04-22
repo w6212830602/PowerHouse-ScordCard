@@ -1,4 +1,6 @@
-﻿using System;
+﻿// 在 Models/ProductSalesData.cs 中添加一个新字段用于更好的语义表达
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,11 +22,17 @@ namespace ScoreCard.Models
         public decimal BuyResellCommission { get => BuyResellMargin; set => BuyResellMargin = value; }
         public decimal TotalCommission { get => TotalMargin; set => TotalMargin = value; }
 
-        public decimal POValue { get; set; }
+        // 将 POValue 重命名为 VertivValue 但保留 POValue 作为兼容属性
+        public decimal VertivValue { get; set; }
+        public decimal POValue
+        {
+            get => VertivValue;
+            set => VertivValue = value;
+        }
+
         public decimal PercentageOfTotal { get; set; }
 
         // 添加此屬性以修復錯誤
         public bool IsInProgress { get; set; }
     }
-
 }
