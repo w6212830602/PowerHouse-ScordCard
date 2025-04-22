@@ -314,36 +314,31 @@ namespace ScoreCard.ViewModels
         /// </summary>
         private IEnumerable<object> GetDataToExport()
         {
-            Debug.WriteLine($"準備匯出數據，當前視圖類型: {ViewType}");
+            Debug.WriteLine($"Preparing data for export, current view type: {ViewType}");
 
-            // 根據當前視圖類型返回相應的數據
+            // Based on current view type, return appropriate data
             if (IsProductView && ProductSalesData.Any())
             {
                 var data = ProductSalesData.ToList();
-                Debug.WriteLine($"匯出產品視圖數據，共 {data.Count} 項");
-
-                // 打印出前幾條數據的內容進行檢查
-                for (int i = 0; i < Math.Min(data.Count, 3); i++)
-                {
-                    var item = data[i];
-                    Debug.WriteLine($"樣本數據 {i + 1}: " +
-                        $"ProductType={item.ProductType}, " +
-                        $"AgencyMargin={item.AgencyMargin}, " +
-                        $"BuyResellMargin={item.BuyResellMargin}, " +
-                        $"TotalMargin={item.TotalMargin}, " +
-                        $"POValue={item.POValue}, " +
-                        $"PercentageOfTotal={item.PercentageOfTotal}");
-                }
+                Debug.WriteLine($"Exporting product view data, {data.Count} items");
                 return data;
             }
             else if (IsRepView && SalesRepData.Any())
             {
                 var data = SalesRepData.ToList();
-                Debug.WriteLine($"匯出銷售代表視圖數據，共 {data.Count} 項");
+                Debug.WriteLine($"Exporting sales rep view data, {data.Count} items");
+                return data;
+            }
+            else if (IsRepView)
+            {
+                // If no SalesRepData but we're in Rep view, try to use SalesRepProductData
+                // This is potentially what's causing your issue
+                var data = SalesRepProductData.ToList();
+                Debug.WriteLine($"Exporting sales rep product data as fallback, {data.Count} items");
                 return data;
             }
 
-            Debug.WriteLine("沒有找到可匯出的數據");
+            Debug.WriteLine("No data found to export");
             return new List<object>();
         }
 

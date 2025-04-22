@@ -18,7 +18,6 @@ namespace ScoreCard.Services
 {
     public class ExportService : IExportService
     {
-
         private readonly IExcelService _excelService;
         public ExportService(IExcelService excelService)
         {
@@ -46,6 +45,8 @@ namespace ScoreCard.Services
             try
             {
                 Debug.WriteLine($"開始匯出 Excel，數據項數: {data.Count()}");
+                // 記錄資料類型，以利調試
+                Debug.WriteLine($"數據類型: {typeof(T).Name}");
 
                 string exportPath = GetExportDirectory();
                 string fullPath = Path.Combine(exportPath, $"{fileName}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
@@ -71,25 +72,27 @@ namespace ScoreCard.Services
 
                     int currentRow = 4;
 
-                    // 第一個表格 - F25 Sales Rep Commission
-                    currentRow = AddTableToWorksheet(worksheet, data, currentRow, "Sales Rep Commission by Product Type (Margin Achieved)");
+                    // 第一個表格 - 主要數據
+                    string tableTitle = (typeof(T) == typeof(SalesLeaderboardItem)) ?
+                        "Sales Rep Commission" :
+                        "Sales Rep Commission by Product Type (Margin Achieved)";
+
+                    currentRow = AddTableToWorksheet(worksheet, data, currentRow, tableTitle);
 
                     // 添加間隔
                     currentRow += 2;
 
                     // 第二個表格 - Sexy Report
                     // 不管當前是什麼視圖，都添加 Sexy Report
-                    // 需要從 DetailedSalesViewModel 獲取產品數據
-                    if (data.FirstOrDefault() is ProductSalesData productData)
+                    if (typeof(T) == typeof(ProductSalesData))
                     {
-                        // 直接使用產品數據
+                        // 直接使用當前產品數據
                         var productDataList = data.Cast<ProductSalesData>().ToList();
                         currentRow = AddSexyReportToWorksheet(worksheet, productDataList, currentRow);
                     }
-                    else
+                    else if (typeof(T) == typeof(SalesLeaderboardItem))
                     {
-                        // 如果是 SalesLeaderboardItem 視圖，需要獲取產品數據
-                        // 這裡需要通過服務或屬性獲取產品數據
+                        // 如果是銷售代表視圖，需要獲取產品數據
                         var productDataList = GetProductDataForSexyReport();
                         if (productDataList != null && productDataList.Any())
                         {
@@ -113,7 +116,7 @@ namespace ScoreCard.Services
 
                 // 嘗試打開文件夾
 #if WINDOWS
-        OpenFolder(exportPath);
+                OpenFolder(exportPath);
 #endif
 
                 return true;
@@ -128,145 +131,163 @@ namespace ScoreCard.Services
             }
         }
 
-        // 添加表格到工作表
+        // 添加表格到工作表 - 完全修改版本
         private int AddTableToWorksheet<T>(ExcelWorksheet worksheet, IEnumerable<T> data, int startRow, string tableTitle)
         {
-            // 表格標題
-            worksheet.Cells[startRow, 1].Value = tableTitle;
-            worksheet.Cells[startRow, 1, startRow, 6].Merge = true;
-            worksheet.Cells[startRow, 1].Style.Font.Bold = true;
-            worksheet.Cells[startRow, 1].Style.Font.Size = 12;
-            startRow++;
-
-            // 手動定義欄位名稱和對應屬性
-            List<(string Header, string Property)> columns = new List<(string, string)>();
-
-            // 根據類型添加適當欄位
-            var firstItem = data.FirstOrDefault();
-            if (firstItem is ProductSalesData)
+            try
             {
-                columns.Add(("Product Type", "ProductType"));
-                columns.Add(("Agency Margin", "AgencyCommission"));
-                columns.Add(("Buy Resell Margin", "BuyResellCommission"));
-                columns.Add(("Total Margin", "TotalCommission"));
-                columns.Add(("Vertiv Value", "VertivValue")); // 修改为 VertivValue
-                columns.Add(("% of Total", "PercentageOfTotal"));
-            }
-            else if (firstItem is SalesLeaderboardItem)
-            {
-                columns.Add(("Rank", "Rank"));
-                columns.Add(("Sales Rep", "SalesRep"));
-                columns.Add(("Agency Margin", "AgencyCommission"));
-                columns.Add(("Buy Resell Margin", "BuyResellCommission"));
-                columns.Add(("Total Margin", "TotalCommission"));
-            }
+                // 表格標題
+                worksheet.Cells[startRow, 1].Value = tableTitle;
+                worksheet.Cells[startRow, 1, startRow, 6].Merge = true;
+                worksheet.Cells[startRow, 1].Style.Font.Bold = true;
+                worksheet.Cells[startRow, 1].Style.Font.Size = 12;
+                startRow++;
 
-            // 寫入表頭
-            int colIndex = 1;
-            foreach (var col in columns)
-            {
-                worksheet.Cells[startRow, colIndex].Value = col.Header;
-                worksheet.Cells[startRow, colIndex].Style.Font.Bold = true;
-                worksheet.Cells[startRow, colIndex].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                worksheet.Cells[startRow, colIndex].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                worksheet.Cells[startRow, colIndex].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-                worksheet.Cells[startRow, colIndex].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                colIndex++;
-            }
-            startRow++;
+                // 手動定義欄位名稱和對應屬性
+                List<(string Header, string Property)> columns = new List<(string, string)>();
 
-            // 寫入數據
-            Type itemType = firstItem.GetType();
-            decimal totalAgencyComm = 0;
-            decimal totalBuyResellComm = 0;
-            decimal totalComm = 0;
-            decimal totalPOValue = 0;
+                // 根據類型添加適當欄位
+                var firstItem = data.FirstOrDefault();
+                if (firstItem is ProductSalesData)
+                {
+                    columns.Add(("Product Type", "ProductType"));
+                    columns.Add(("Agency Margin", "AgencyMargin"));
+                    columns.Add(("Buy Resell Margin", "BuyResellMargin"));
+                    columns.Add(("Total Margin", "TotalMargin"));
+                    columns.Add(("Vertiv Value", "VertivValue")); // 修改为使用 VertivValue 属性
+                    columns.Add(("% of Total", "PercentageOfTotal"));
+                }
+                else if (firstItem is SalesLeaderboardItem)
+                {
+                    columns.Add(("Rank", "Rank"));
+                    columns.Add(("Sales Rep", "SalesRep"));
+                    columns.Add(("Agency Margin", "AgencyMargin"));
+                    columns.Add(("Buy Resell Margin", "BuyResellMargin"));
+                    columns.Add(("Total Margin", "TotalMargin"));
+                }
 
-            foreach (var item in data)
-            {
-                colIndex = 1;
+                // 寫入表頭
+                int colIndex = 1;
                 foreach (var col in columns)
                 {
-                    var prop = itemType.GetProperty(col.Property);
-                    if (prop != null)
-                    {
-                        try
-                        {
-                            var value = prop.GetValue(item);
-
-                            if (value != null)
-                            {
-                                // 直接寫入值
-                                worksheet.Cells[startRow, colIndex].Value = value;
-
-                                // 累計總計
-                                if (col.Property == "AgencyCommission" && value is decimal agencyComm)
-                                    totalAgencyComm += agencyComm;
-                                else if (col.Property == "BuyResellCommission" && value is decimal buyResellComm)
-                                    totalBuyResellComm += buyResellComm;
-                                else if (col.Property == "TotalCommission" && value is decimal comm)
-                                    totalComm += comm;
-                                else if (col.Property == "POValue" && value is decimal poValue)
-                                    totalPOValue += poValue;
-
-                                // 設定格式
-                                if (value is decimal decimalValue)
-                                {
-                                    if (col.Property == "PercentageOfTotal")
-                                    {
-                                        worksheet.Cells[startRow, colIndex].Style.Numberformat.Format = "0.0%";
-                                        worksheet.Cells[startRow, colIndex].Value = decimalValue / 100;
-                                    }
-                                    else
-                                    {
-                                        worksheet.Cells[startRow, colIndex].Style.Numberformat.Format = "#,##0.00";
-                                    }
-                                    worksheet.Cells[startRow, colIndex].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                                }
-                                else if (value is int || value is double || value is float)
-                                {
-                                    worksheet.Cells[startRow, colIndex].Style.Numberformat.Format = "#,##0";
-                                    worksheet.Cells[startRow, colIndex].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"寫入單元格時出錯: 行={startRow}, 列={colIndex}, 屬性={col.Property}, 錯誤={ex.Message}");
-                        }
-                    }
-
-                    // 添加邊框
+                    worksheet.Cells[startRow, colIndex].Value = col.Header;
+                    worksheet.Cells[startRow, colIndex].Style.Font.Bold = true;
+                    worksheet.Cells[startRow, colIndex].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    worksheet.Cells[startRow, colIndex].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
                     worksheet.Cells[startRow, colIndex].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    worksheet.Cells[startRow, colIndex].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                     colIndex++;
                 }
                 startRow++;
-            }
 
-            // 添加總計行
-            if (firstItem is ProductSalesData)
-            {
-                worksheet.Cells[startRow, 1].Value = "Grand Total";
-                worksheet.Cells[startRow, 1].Style.Font.Bold = true;
-                worksheet.Cells[startRow, 2].Value = totalAgencyComm;
-                worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
-                worksheet.Cells[startRow, 3].Value = totalBuyResellComm;
-                worksheet.Cells[startRow, 3].Style.Numberformat.Format = "#,##0.00";
-                worksheet.Cells[startRow, 4].Value = totalComm;
-                worksheet.Cells[startRow, 4].Style.Numberformat.Format = "#,##0.00";
-                worksheet.Cells[startRow, 5].Value = totalPOValue;
-                worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
-                worksheet.Cells[startRow, 6].Value = 1.0; // 100%
-                worksheet.Cells[startRow, 6].Style.Numberformat.Format = "0.00%";
+                // 計算總計值
+                decimal totalAgencyMargin = 0;
+                decimal totalBuyResellMargin = 0;
+                decimal totalMargin = 0;
+                decimal totalVertivValue = 0;
 
-                // 設置背景顏色
-                for (int i = 1; i <= 6; i++)
+                // 寫入數據行
+                foreach (var item in data)
                 {
-                    worksheet.Cells[startRow, i].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    worksheet.Cells[startRow, i].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
-                    worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    colIndex = 1;
+
+                    // 產品類型數據行
+                    if (item is ProductSalesData productItem)
+                    {
+                        worksheet.Cells[startRow, 1].Value = productItem.ProductType;
+                        worksheet.Cells[startRow, 2].Value = productItem.AgencyMargin;
+                        worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
+                        worksheet.Cells[startRow, 3].Value = productItem.BuyResellMargin;
+                        worksheet.Cells[startRow, 3].Style.Numberformat.Format = "#,##0.00";
+                        worksheet.Cells[startRow, 4].Value = productItem.TotalMargin;
+                        worksheet.Cells[startRow, 4].Style.Numberformat.Format = "#,##0.00";
+                        worksheet.Cells[startRow, 5].Value = productItem.VertivValue;
+                        worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
+                        worksheet.Cells[startRow, 6].Value = productItem.PercentageOfTotal / 100; // 轉換為小數
+                        worksheet.Cells[startRow, 6].Style.Numberformat.Format = "0.0%";
+
+                        // 累計總計值
+                        totalAgencyMargin += productItem.AgencyMargin;
+                        totalBuyResellMargin += productItem.BuyResellMargin;
+                        totalMargin += productItem.TotalMargin;
+                        totalVertivValue += productItem.VertivValue;
+                    }
+                    // 銷售代表數據行
+                    else if (item is SalesLeaderboardItem repItem)
+                    {
+                        worksheet.Cells[startRow, 1].Value = repItem.Rank;
+                        worksheet.Cells[startRow, 2].Value = repItem.SalesRep;
+                        worksheet.Cells[startRow, 3].Value = repItem.AgencyMargin;
+                        worksheet.Cells[startRow, 3].Style.Numberformat.Format = "#,##0.00";
+                        worksheet.Cells[startRow, 4].Value = repItem.BuyResellMargin;
+                        worksheet.Cells[startRow, 4].Style.Numberformat.Format = "#,##0.00";
+                        worksheet.Cells[startRow, 5].Value = repItem.TotalMargin;
+                        worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
+
+                        // 累計總計值
+                        totalAgencyMargin += repItem.AgencyMargin;
+                        totalBuyResellMargin += repItem.BuyResellMargin;
+                        totalMargin += repItem.TotalMargin;
+                    }
+
+                    // 添加邊框到每個單元格
+                    for (int i = 1; i <= columns.Count; i++)
+                    {
+                        worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    }
+
+                    startRow++;
+                }
+
+                // 添加總計行
+                if (firstItem is ProductSalesData)
+                {
+                    worksheet.Cells[startRow, 1].Value = "Grand Total";
+                    worksheet.Cells[startRow, 1].Style.Font.Bold = true;
+                    worksheet.Cells[startRow, 2].Value = totalAgencyMargin;
+                    worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 3].Value = totalBuyResellMargin;
+                    worksheet.Cells[startRow, 3].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 4].Value = totalMargin;
+                    worksheet.Cells[startRow, 4].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 5].Value = totalVertivValue;
+                    worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 6].Value = 1.0; // 100%
+                    worksheet.Cells[startRow, 6].Style.Numberformat.Format = "0.00%";
+
+                    // 設置背景顏色
+                    for (int i = 1; i <= 6; i++)
+                    {
+                        worksheet.Cells[startRow, i].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        worksheet.Cells[startRow, i].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
+                        worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    }
+                }
+                else if (firstItem is SalesLeaderboardItem)
+                {
+                    worksheet.Cells[startRow, 2].Value = "Grand Total";
+                    worksheet.Cells[startRow, 2].Style.Font.Bold = true;
+                    worksheet.Cells[startRow, 3].Value = totalAgencyMargin;
+                    worksheet.Cells[startRow, 3].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 4].Value = totalBuyResellMargin;
+                    worksheet.Cells[startRow, 4].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 5].Value = totalMargin;
+                    worksheet.Cells[startRow, 5].Style.Numberformat.Format = "#,##0.00";
+
+                    // 設置背景顏色
+                    for (int i = 2; i <= 5; i++)
+                    {
+                        worksheet.Cells[startRow, i].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        worksheet.Cells[startRow, i].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
+                        worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                    }
                 }
                 startRow++;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"在添加表格時發生錯誤: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
             }
 
             return startRow;
@@ -275,90 +296,95 @@ namespace ScoreCard.Services
         // 添加Sexy Report到工作表
         private int AddSexyReportToWorksheet(ExcelWorksheet worksheet, List<ProductSalesData> productDataList, int startRow)
         {
-            // 表格标题
-            worksheet.Cells[startRow, 1].Value = "Vertiv Value Report - Who's Vertiv values are bigger"; // 修改标题
-            worksheet.Cells[startRow, 1, startRow, 6].Merge = true;
-            worksheet.Cells[startRow, 1].Style.Font.Bold = true;
-            worksheet.Cells[startRow, 1].Style.Font.Size = 12;
-            startRow++;
-
-            // 表格头
-            worksheet.Cells[startRow, 1].Value = "Product Type";
-            worksheet.Cells[startRow, 1].Style.Font.Bold = true;
-            worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-            worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-
-            worksheet.Cells[startRow, 2].Value = "Vertiv Value"; // 修改标题
-            worksheet.Cells[startRow, 2].Style.Font.Bold = true;
-            worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
-            worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-
-            worksheet.Cells[startRow, 3].Value = "% of Grand Total";
-            worksheet.Cells[startRow, 3].Style.Font.Bold = true;
-            worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
-            worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-
-            // 设置边框
-            for (int i = 1; i <= 3; i++)
+            try
             {
-                worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-            }
-            startRow++;
+                // 表格标题
+                worksheet.Cells[startRow, 1].Value = "Vertiv Value Report - Who's Vertiv values are bigger"; // 修改标题
+                worksheet.Cells[startRow, 1, startRow, 6].Merge = true;
+                worksheet.Cells[startRow, 1].Style.Font.Bold = true;
+                worksheet.Cells[startRow, 1].Style.Font.Size = 12;
+                startRow++;
 
-            // 按Vertiv值排序的产品数据
-            var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList(); // 使用VertivValue排序
-            decimal totalVertivValue = sortedData.Sum(p => p.VertivValue); // 使用VertivValue计算总和
+                // 表格头
+                worksheet.Cells[startRow, 1].Value = "Product Type";
+                worksheet.Cells[startRow, 1].Style.Font.Bold = true;
+                worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
 
-            // 写入数据
-            foreach (var product in sortedData)
-            {
-                worksheet.Cells[startRow, 1].Value = product.ProductType;
+                worksheet.Cells[startRow, 2].Value = "Vertiv Value"; // 修改标题
+                worksheet.Cells[startRow, 2].Style.Font.Bold = true;
+                worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+
+                worksheet.Cells[startRow, 3].Value = "% of Grand Total";
+                worksheet.Cells[startRow, 3].Style.Font.Bold = true;
+                worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+
+                // 设置边框
+                for (int i = 1; i <= 3; i++)
+                {
+                    worksheet.Cells[startRow, i].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+                }
+                startRow++;
+
+                // 按Vertiv值排序的产品数据
+                var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList(); // 使用VertivValue排序
+                decimal totalVertivValue = sortedData.Sum(p => p.VertivValue); // 使用VertivValue计算总和
+
+                // 写入数据
+                foreach (var product in sortedData)
+                {
+                    worksheet.Cells[startRow, 1].Value = product.ProductType;
+                    worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                    worksheet.Cells[startRow, 2].Value = product.VertivValue; // 使用VertivValue
+                    worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
+                    worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                    worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                    // 计算并设置百分比
+                    decimal percentage = totalVertivValue > 0 ? product.PercentageOfTotal / 100 : 0;
+                    worksheet.Cells[startRow, 3].Value = percentage;
+                    worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.0%";
+                    worksheet.Cells[startRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                    worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
+
+                    startRow++;
+                }
+
+                // 添加总计行
+                worksheet.Cells[startRow, 1].Value = "Grand Total";
+                worksheet.Cells[startRow, 1].Style.Font.Bold = true;
+                worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                worksheet.Cells[startRow, 2].Value = product.VertivValue; // 使用VertivValue
+                worksheet.Cells[startRow, 2].Value = totalVertivValue; // 使用VertivValue
                 worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
                 worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                worksheet.Cells[startRow, 3].Value = product.PercentageOfTotal / 100;
-                worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.0%";
+                worksheet.Cells[startRow, 3].Value = 1.0; // 100%
+                worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.00%";
                 worksheet.Cells[startRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
                 worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
                 startRow++;
             }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"在添加 Sexy Report 时发生错误: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+            }
 
-            // 添加总计行
-            worksheet.Cells[startRow, 1].Value = "Grand Total";
-            worksheet.Cells[startRow, 1].Style.Font.Bold = true;
-            worksheet.Cells[startRow, 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
-            worksheet.Cells[startRow, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
-            worksheet.Cells[startRow, 1].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-
-            worksheet.Cells[startRow, 2].Value = totalVertivValue; // 使用VertivValue
-            worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
-            worksheet.Cells[startRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-            worksheet.Cells[startRow, 2].Style.Fill.PatternType = ExcelFillStyle.Solid;
-            worksheet.Cells[startRow, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
-            worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-
-            worksheet.Cells[startRow, 3].Value = 1.0; // 100%
-            worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.00%";
-            worksheet.Cells[startRow, 3].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-            worksheet.Cells[startRow, 3].Style.Fill.PatternType = ExcelFillStyle.Solid;
-            worksheet.Cells[startRow, 3].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
-            worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
-
-            startRow++;
             return startRow;
         }
 
-        /// <summary>
-        /// 將數據匯出為PDF檔案
-        /// </summary>
-        /// <summary>
-        /// 將數據匯出為PDF檔案
-        /// </summary>
         /// <summary>
         /// 將數據匯出為PDF檔案
         /// </summary>
@@ -494,19 +520,19 @@ namespace ScoreCard.Services
                 if (firstItem is ProductSalesData)
                 {
                     columns.Add(("Product Type", "ProductType"));
-                    columns.Add(("Agency Commission", "AgencyCommission"));
-                    columns.Add(("Buy Resell Commission", "BuyResellCommission"));
-                    columns.Add(("Total Commission", "TotalCommission"));
-                    columns.Add(("PO Value", "POValue"));
+                    columns.Add(("Agency Margin", "AgencyMargin"));
+                    columns.Add(("Buy Resell Margin", "BuyResellMargin"));
+                    columns.Add(("Total Margin", "TotalMargin"));
+                    columns.Add(("Vertiv Value", "VertivValue"));
                     columns.Add(("% of Total", "PercentageOfTotal"));
                 }
                 else if (firstItem is SalesLeaderboardItem)
                 {
                     columns.Add(("Rank", "Rank"));
                     columns.Add(("Sales Rep", "SalesRep"));
-                    columns.Add(("Agency Commission", "AgencyCommission"));
-                    columns.Add(("Buy Resell Commission", "BuyResellCommission"));
-                    columns.Add(("Total Commission", "TotalCommission"));
+                    columns.Add(("Agency Margin", "AgencyMargin"));
+                    columns.Add(("Buy Resell Margin", "BuyResellMargin"));
+                    columns.Add(("Total Margin", "TotalMargin"));
                 }
 
                 using (var writer = new StreamWriter(fullPath, false, Encoding.UTF8))
