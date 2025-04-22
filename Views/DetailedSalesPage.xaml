@@ -518,7 +518,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout>
-                            <Label Text="Vertiv Value"
+                            <Label Text="PO Vertiv Value"
                                    Padding="15"
                                    FontSize="16"
                                    FontAttributes="Bold"/>

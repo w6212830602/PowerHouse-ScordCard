@@ -21,8 +21,9 @@
         <converts:TotalAgencyMarginConverter x:Key="TotalAgencyMarginConverter"/>
         <converts:TotalBuyResellMarginConverter x:Key="TotalBuyResellMarginConverter"/>
         <converts:TotalMarginConverter x:Key="TotalMarginConverter"/>
+        <converts:TotalVertivValueConverter x:Key="TotalVertivValueConverter"/>
 
-        <!-- 无数据模板 -->
+        <!-- 無數據提示模板 -->
         <DataTemplate x:Key="NoDataTemplate">
             <Grid Padding="20" HeightRequest="100">
                 <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
@@ -132,7 +133,7 @@
                             StrokeThickness="1"
                             BackgroundColor="White">
                         <VerticalStackLayout Padding="15">
-                            <Label Text="Total Achieved"
+                            <Label Text="Total Achieved / Invoiced"
                                    TextColor="#666666"
                                    FontSize="14"/>
                             <Label Text="{Binding Summary.TotalAchievement, StringFormat='${0:N3}M'}"
@@ -492,59 +493,65 @@
                                                         <Label Grid.Column="2" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
                                                         <Label Grid.Column="3" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
                                                         <Label Grid.Column="4" Text="{Binding POValue, StringFormat='${0:N2}'}"/>
-                                                        <Label Grid.Column="5" Text="{Binding PercentageOfTotal, StringFormat='{0:P1}'}"/>
+                                                        <Label Grid.Column="5" Text="{Binding PercentageOfTotal, StringFormat='{0:N1}%'}"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </CollectionView.ItemTemplate>
                                         </CollectionView>
+
+                                        <!-- NEW FIXED GRAND TOTAL ROW FOR BY PRODUCT VIEW -->
+                                        <Grid ColumnDefinitions="2*,*,*,*,*,*" 
+                                              BackgroundColor="#F0F9FF"
+                                              Padding="15,12">
+                                            <Label Grid.Column="0" Text="Grand Total" FontAttributes="Bold"/>
+                                            <Label Grid.Column="1" Text="{Binding ProductSalesData, Converter={StaticResource TotalAgencyMarginConverter}}" FontAttributes="Bold"/>
+                                            <Label Grid.Column="2" Text="{Binding ProductSalesData, Converter={StaticResource TotalBuyResellMarginConverter}}" FontAttributes="Bold"/>
+                                            <Label Grid.Column="3" Text="{Binding ProductSalesData, Converter={StaticResource TotalMarginConverter}}" FontAttributes="Bold"/>
+                                            <Label Grid.Column="4" Text="{Binding ProductSalesData, Converter={StaticResource TotalVertivValueConverter}}" FontAttributes="Bold"/>
+                                            <Label Grid.Column="5" Text="100.0%" FontAttributes="Bold"/>
+                                        </Grid>
                                     </VerticalStackLayout>
 
                                     <!-- By Rep View -->
                                     <VerticalStackLayout IsVisible="{Binding IsRepView}">
-                                        <Grid ColumnDefinitions="60,2*,*,*,*" 
-                                          Padding="15,10"
-                                          BackgroundColor="#F9FAFB">
-                                            <Label Grid.Column="0" 
-                                               Text="Rank" 
-                                               TextColor="#666666"
-                                               HorizontalOptions="Center"/>
-                                            <Label Grid.Column="1" 
-                                               Text="Sales Rep" 
-                                               TextColor="#666666"
-                                               Margin="10,0,0,0"/>
-                                            <Label Grid.Column="2" 
-       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Agency Margin (Expected)|Agency Margin'}"
-                                               TextColor="#666666"/>
-                                            <Label Grid.Column="3" 
-                                               Text="Buy Resell Margin" 
-                                               TextColor="#666666"/>
-                                            <Label Grid.Column="4" 
-       Text="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Total Margin (Expected)|Total Margin'}"
-       TextColor="#666666"/>
+                                        <!-- 表格標題 -->
+                                        <Grid ColumnDefinitions="60,3*,2*,2*,2*" 
+                                              BackgroundColor="#F9FAFB"
+                                              Padding="15,10">
+                                            <Label Grid.Column="0" Text="Rank" FontAttributes="Bold" HorizontalOptions="Center"/>
+                                            <Label Grid.Column="1" Text="Sales Rep" FontAttributes="Bold"/>
+                                            <Label Grid.Column="2" Text="Agency Margin" FontAttributes="Bold"/>
+                                            <Label Grid.Column="3" Text="Buy Resell Margin" FontAttributes="Bold"/>
+                                            <Label Grid.Column="4" Text="Total Margin" FontAttributes="Bold"/>
                                         </Grid>
 
+
+
+                                        <!-- 銷售代表數據 -->
                                         <CollectionView ItemsSource="{Binding SalesLeaderboard}"
-                                                    EmptyView="{StaticResource NoDataTemplate}">
+                                                EmptyView="{StaticResource NoDataTemplate}">
                                             <CollectionView.ItemTemplate>
                                                 <DataTemplate x:DataType="models:SalesLeaderboardItem">
-                                                    <Grid ColumnDefinitions="60,2*,*,*,*" 
-      Padding="15,12">
-                                                        <Label Grid.Column="0" 
-           Text="{Binding Rank}"
-           HorizontalOptions="Center"/>
-                                                        <Label Grid.Column="1" 
-           Text="{Binding SalesRep}"
-           Margin="10,0,0,0"/>
-                                                        <Label Grid.Column="2" 
-           Text="{Binding AgencyMargin, StringFormat='${0:N0}'}"/>
-                                                        <Label Grid.Column="3" 
-           Text="{Binding BuyResellMargin, StringFormat='${0:N0}'}"/>
-                                                        <Label Grid.Column="4" 
-           Text="{Binding TotalMargin, StringFormat='${0:N0}'}"/>
+                                                    <Grid ColumnDefinitions="60,3*,2*,2*,2*" Padding="15,12">
+                                                        <Label Grid.Column="0" Text="{Binding Rank}" HorizontalOptions="Center"/>
+                                                        <Label Grid.Column="1" Text="{Binding SalesRep}"/>
+                                                        <Label Grid.Column="2" Text="{Binding AgencyMargin, StringFormat='${0:N2}'}"/>
+                                                        <Label Grid.Column="3" Text="{Binding BuyResellMargin, StringFormat='${0:N2}'}"/>
+                                                        <Label Grid.Column="4" Text="{Binding TotalMargin, StringFormat='${0:N2}'}"/>
                                                     </Grid>
                                                 </DataTemplate>
                                             </CollectionView.ItemTemplate>
                                         </CollectionView>
+
+                                        <!-- Grand Total Row for By Rep View -->
+                                        <Grid ColumnDefinitions="60,3*,2*,2*,2*" 
+                                              BackgroundColor="#F0F9FF"
+                                              Padding="15,12">
+                                            <Label Grid.Column="1" Text="Grand Total" FontAttributes="Bold"/>
+                                            <Label Grid.Column="2" Text="{Binding SalesLeaderboard, Converter={StaticResource TotalAgencyMarginConverter}}" FontAttributes="Bold"/>
+                                            <Label Grid.Column="3" Text="{Binding SalesLeaderboard, Converter={StaticResource TotalBuyResellMarginConverter}}" FontAttributes="Bold"/>
+                                            <Label Grid.Column="4" Text="{Binding SalesLeaderboard, Converter={StaticResource TotalMarginConverter}}" FontAttributes="Bold"/>
+                                        </Grid>
                                     </VerticalStackLayout>
                                 </Grid>
                             </Grid>

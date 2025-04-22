@@ -1,5 +1,4 @@
-﻿// 创建一个新文件 Converts/TotalVertivValueConverter.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
@@ -12,10 +11,32 @@ namespace ScoreCard.Converts
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (value is ObservableCollection<ProductSalesData> productData)
+            try
             {
-                decimal total = productData.Sum(x => x.VertivValue);
-                return $"${total:N2}";
+                if (value is ObservableCollection<ProductSalesData> productData)
+                {
+                    // For product data, use VertivValue/POValue property
+                    decimal total = 0;
+                    foreach (var item in productData)
+                    {
+                        total += item.VertivValue; // Use VertivValue directly
+                    }
+                    return $"${total:N2}";
+                }
+                else if (value is ObservableCollection<SalesLeaderboardItem> salesData)
+                {
+                    // For sales rep data, use VertivValue property
+                    decimal total = 0;
+                    foreach (var item in salesData)
+                    {
+                        total += item.VertivValue;
+                    }
+                    return $"${total:N2}";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error in TotalVertivValueConverter: {ex.Message}");
             }
             return "$0.00";
         }
