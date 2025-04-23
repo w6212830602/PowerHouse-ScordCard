@@ -242,7 +242,22 @@ namespace ScoreCard.ViewModels
         public List<ProductSalesData> GetProductDataForExport()
         {
             // 不管當前視圖是什麼，總是返回產品數據
-            return ProductSalesData.ToList();
+            var productData = GetCurrentViewProductData();
+
+            // 確保數據已經排序且百分比計算正確
+            if (productData.Any())
+            {
+                // 已按VertivValue/POValue排序
+                decimal totalValue = productData.Sum(p => p.VertivValue);
+
+                // 更新百分比
+                foreach (var product in productData)
+                {
+                    product.PercentageOfTotal = Math.Round((product.VertivValue / totalValue) * 100, 1);
+                }
+            }
+
+            return productData;
         }
 
 
@@ -320,8 +335,23 @@ namespace ScoreCard.ViewModels
             // 根據當前視圖類型，返回適當的數據
             if (IsProductView && ProductSalesData.Any())
             {
-                // 重要：返回當前UI顯示的確切數據副本，不要進行任何過濾或修改
+                // 返回產品視圖數據 - 確保每個產品的VertivValue和百分比都已正確設置
                 var data = ProductSalesData.ToList();
+
+                // 確保所有產品都有正確的VertivValue和PercentageOfTotal屬性
+                decimal totalVertivValue = data.Sum(p => p.VertivValue);
+                if (totalVertivValue > 0)
+                {
+                    foreach (var product in data)
+                    {
+                        // 如果百分比未設置，則計算它
+                        if (product.PercentageOfTotal <= 0)
+                        {
+                            product.PercentageOfTotal = Math.Round((product.VertivValue / totalVertivValue) * 100, 1);
+                        }
+                    }
+                }
+
                 Debug.WriteLine($"正在匯出產品視圖數據，{data.Count}項，" +
                                $"第一項：{(data.Any() ? data[0].ProductType : "無")}，" +
                                $"總計：${data.Sum(p => p.VertivValue):N2}");
@@ -333,9 +363,21 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"正在匯出銷售代表視圖數據，{data.Count}項");
                 return data;
             }
-            else if (IsRepView)
+            else if (IsRepView && SalesRepProductData.Any())
             {
+                // 匯出銷售代表產品數據 - 包含PO Vertiv Value表所需的信息
                 var data = SalesRepProductData.ToList();
+
+                // 確保百分比計算正確
+                decimal totalPOValue = data.Sum(p => p.POValue);
+                if (totalPOValue > 0)
+                {
+                    foreach (var product in data)
+                    {
+                        product.PercentageOfTotal = Math.Round((product.POValue / totalPOValue) * 100, 1);
+                    }
+                }
+
                 Debug.WriteLine($"作為後備方案匯出銷售代表產品數據，{data.Count}項");
                 return data;
             }
@@ -346,8 +388,20 @@ namespace ScoreCard.ViewModels
 
         public List<ProductSalesData> GetCurrentViewProductData()
         {
-            // 返回當前視圖中顯示的確切產品數據，包括排序
-            return ProductSalesData.ToList();
+            // 根據當前視圖返回適當的產品數據
+            if (IsProductView)
+            {
+                // 返回當前產品視圖中顯示的數據
+                return ProductSalesData.ToList();
+            }
+            else if (IsRepView)
+            {
+                // 返回銷售代表產品視圖數據
+                return SalesRepProductData.ToList();
+            }
+
+            // 默認情況下返回空列表
+            return new List<ProductSalesData>();
         }
 
 
