@@ -70,12 +70,24 @@ namespace ScoreCard.Services
 
                             int currentRow = 4;
 
+                            // 特別判斷是否為 By Rep 視圖
+                            bool isByRepView = typeof(T) == typeof(SalesLeaderboardItem) ||
+                                              (typeof(T).Name == "Object" && data.FirstOrDefault() is SalesLeaderboardItem) ||
+                                              (data.FirstOrDefault()?.GetType().Name.Contains("SalesLeaderboardItem") == true);
+
+                            if (isByRepView)
+                            {
+                                Debug.WriteLine("檢測到銷售代表視圖 (By Rep)");
+                            }
+                            else
+                            {
+                                Debug.WriteLine("檢測到產品視圖 (By Product)");
+                            }
+
                             // 第一個表格 - 主要數據
-                            string tableTitle = (typeof(T) == typeof(SalesLeaderboardItem) ||
-                                                (typeof(T).Name == "Object" && data.FirstOrDefault() is SalesLeaderboardItem) ||
-                                                (data.FirstOrDefault()?.GetType().Name.Contains("SalesLeaderboardItem") == true)) ?
-                                "Sales Rep Commission" :
-                                "Sales Rep Commission by Product Type (Margin Achieved)";
+                            string tableTitle = isByRepView ?
+                                "Sales Rep Margin" :
+                                "Sales Rep Margin by Product Type (Margin Achieved)";
 
                             currentRow = AddTableToWorksheet(worksheet, data, currentRow, tableTitle);
 
@@ -84,8 +96,9 @@ namespace ScoreCard.Services
 
                             // 重要：檢索正確的產品數據用於第二個表格 - PO Vertiv Value
                             List<ProductSalesData> productDataForVertivTable = null;
+                            bool usedSalesRepProductData = false;
 
-                            // 使用動態類型避免明確依賴DetailedSalesViewModel類型
+                            // 使用動態類型避免明確依賴ViewModel類型
                             try
                             {
                                 Debug.WriteLine("嘗試獲取當前頁面的ViewModel");
@@ -101,36 +114,65 @@ namespace ScoreCard.Services
                                         var vmType = viewModel.GetType();
                                         Debug.WriteLine($"找到ViewModel，類型為: {vmType.Name}");
 
-                                        // 嘗試獲取IsProductView屬性
-                                        var isProductViewProp = vmType.GetProperty("IsProductView");
-                                        var isRepViewProp = vmType.GetProperty("IsRepView");
-                                        var productSalesDataProp = vmType.GetProperty("ProductSalesData");
-                                        var salesRepProductDataProp = vmType.GetProperty("SalesRepProductData");
-
-                                        if (isProductViewProp != null && productSalesDataProp != null)
+                                        // 如果是 By Rep 視圖，優先尋找 SalesRepProductData
+                                        if (isByRepView)
                                         {
-                                            bool isProductView = (bool)isProductViewProp.GetValue(viewModel);
-                                            if (isProductView)
+                                            var salesRepProductDataProp = vmType.GetProperty("SalesRepProductData");
+                                            if (salesRepProductDataProp != null)
                                             {
-                                                var productData = productSalesDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
-                                                if (productData != null)
+                                                var repProductData = salesRepProductDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
+                                                if (repProductData != null && repProductData.Any())
                                                 {
-                                                    productDataForVertivTable = productData.ToList();
-                                                    Debug.WriteLine($"從ProductSalesData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                    productDataForVertivTable = repProductData.ToList();
+                                                    Debug.WriteLine($"成功從 SalesRepProductData 獲取 {productDataForVertivTable.Count} 項數據");
+                                                    usedSalesRepProductData = true;
                                                 }
+                                                else
+                                                {
+                                                    Debug.WriteLine("SalesRepProductData 為空或無法獲取數據");
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Debug.WriteLine("找不到 SalesRepProductData 屬性");
                                             }
                                         }
 
-                                        if (isRepViewProp != null && salesRepProductDataProp != null)
+                                        // 如果不是 By Rep 視圖，或者之前未能獲取 SalesRepProductData
+                                        if (!usedSalesRepProductData)
                                         {
-                                            bool isRepView = (bool)isRepViewProp.GetValue(viewModel);
-                                            if (isRepView)
+                                            // 嘗試獲取IsProductView屬性
+                                            var isProductViewProp = vmType.GetProperty("IsProductView");
+                                            var isRepViewProp = vmType.GetProperty("IsRepView");
+                                            var productSalesDataProp = vmType.GetProperty("ProductSalesData");
+                                            var salesRepProductDataProp = vmType.GetProperty("SalesRepProductData");
+
+                                            if (isProductViewProp != null && productSalesDataProp != null)
                                             {
-                                                var productData = salesRepProductDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
-                                                if (productData != null)
+                                                bool isProductView = (bool)isProductViewProp.GetValue(viewModel);
+                                                if (isProductView && !isByRepView) // 確認視圖類型一致
                                                 {
-                                                    productDataForVertivTable = productData.ToList();
-                                                    Debug.WriteLine($"從SalesRepProductData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                    var productData = productSalesDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
+                                                    if (productData != null)
+                                                    {
+                                                        productDataForVertivTable = productData.ToList();
+                                                        Debug.WriteLine($"從ProductSalesData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                    }
+                                                }
+                                            }
+
+                                            if (!usedSalesRepProductData && isRepViewProp != null && salesRepProductDataProp != null)
+                                            {
+                                                bool isRepView = (bool)isRepViewProp.GetValue(viewModel);
+                                                if (isRepView && isByRepView) // 確認視圖類型一致
+                                                {
+                                                    var repProductData = salesRepProductDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
+                                                    if (repProductData != null)
+                                                    {
+                                                        productDataForVertivTable = repProductData.ToList();
+                                                        Debug.WriteLine($"從SalesRepProductData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                        usedSalesRepProductData = true;
+                                                    }
                                                 }
                                             }
                                         }
@@ -152,28 +194,57 @@ namespace ScoreCard.Services
                                                 var vmType = viewModel.GetType();
                                                 Debug.WriteLine($"從Shell.CurrentPage找到ViewModel，類型為: {vmType.Name}");
 
-                                                // 嘗試獲取產品數據屬性
-                                                var productSalesDataProp = vmType.GetProperty("ProductSalesData");
-                                                if (productSalesDataProp != null)
+                                                // 如果是 By Rep 視圖，優先尋找 SalesRepProductData
+                                                if (isByRepView && !usedSalesRepProductData)
                                                 {
-                                                    var productData = productSalesDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
-                                                    if (productData != null)
+                                                    var salesRepProductDataProp = vmType.GetProperty("SalesRepProductData");
+                                                    if (salesRepProductDataProp != null)
                                                     {
-                                                        productDataForVertivTable = productData.ToList();
-                                                        Debug.WriteLine($"從CurrentPage.ProductSalesData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                        var repProductData = salesRepProductDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
+                                                        if (repProductData != null && repProductData.Any())
+                                                        {
+                                                            productDataForVertivTable = repProductData.ToList();
+                                                            Debug.WriteLine($"從CurrentPage.SalesRepProductData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                            usedSalesRepProductData = true;
+                                                        }
+                                                        else
+                                                        {
+                                                            Debug.WriteLine("CurrentPage.SalesRepProductData 為空或無法獲取數據");
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        Debug.WriteLine("CurrentPage 找不到 SalesRepProductData 屬性");
                                                     }
                                                 }
 
-                                                // 如果上面沒成功，嘗試SalesRepProductData
-                                                if ((productDataForVertivTable == null || !productDataForVertivTable.Any()) &&
-                                                    vmType.GetProperty("SalesRepProductData") != null)
+                                                // 如果仍未獲取數據，嘗試其他屬性
+                                                if (!usedSalesRepProductData && (productDataForVertivTable == null || !productDataForVertivTable.Any()))
                                                 {
-                                                    var salesRepProductDataProp = vmType.GetProperty("SalesRepProductData");
-                                                    var productData = salesRepProductDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
-                                                    if (productData != null)
+                                                    // 嘗試獲取產品數據屬性
+                                                    var productSalesDataProp = vmType.GetProperty("ProductSalesData");
+                                                    if (productSalesDataProp != null && !isByRepView) // 只在非 By Rep 視圖下嘗試
                                                     {
-                                                        productDataForVertivTable = productData.ToList();
-                                                        Debug.WriteLine($"從CurrentPage.SalesRepProductData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                        var productData = productSalesDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
+                                                        if (productData != null)
+                                                        {
+                                                            productDataForVertivTable = productData.ToList();
+                                                            Debug.WriteLine($"從CurrentPage.ProductSalesData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                        }
+                                                    }
+
+                                                    // 如果上面沒成功，嘗試SalesRepProductData
+                                                    if ((productDataForVertivTable == null || !productDataForVertivTable.Any()) &&
+                                                        vmType.GetProperty("SalesRepProductData") != null && isByRepView)
+                                                    {
+                                                        var salesRepProductDataProp = vmType.GetProperty("SalesRepProductData");
+                                                        var productData = salesRepProductDataProp.GetValue(viewModel) as IEnumerable<ProductSalesData>;
+                                                        if (productData != null)
+                                                        {
+                                                            productDataForVertivTable = productData.ToList();
+                                                            Debug.WriteLine($"從CurrentPage.SalesRepProductData獲取了{productDataForVertivTable.Count}條產品數據");
+                                                            usedSalesRepProductData = true;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -187,37 +258,43 @@ namespace ScoreCard.Services
                                 Debug.WriteLine(ex.StackTrace);
                             }
 
-                            // 直接嘗試將數據轉換為產品數據
-                            if ((productDataForVertivTable == null || !productDataForVertivTable.Any()) && typeof(T) == typeof(ProductSalesData))
+                            // 直接嘗試將數據轉換為產品數據 (只在非 By Rep 視圖中嘗試)
+                            if ((productDataForVertivTable == null || !productDataForVertivTable.Any()) &&
+                                typeof(T) == typeof(ProductSalesData) && !isByRepView)
                             {
-                                productDataForVertivTable = data.Cast<ProductSalesData>().ToList();
-                                Debug.WriteLine($"直接轉換獲取了{productDataForVertivTable.Count}條產品數據");
+                                try
+                                {
+                                    productDataForVertivTable = data.Cast<ProductSalesData>().ToList();
+                                    Debug.WriteLine($"直接轉換獲取了{productDataForVertivTable.Count}條產品數據");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.WriteLine($"直接數據轉換失敗: {ex.Message}");
+                                }
                             }
 
-                            // 若仍然沒有產品數據，則使用數據類型信息來生成模擬數據
+                            // 若仍然沒有產品數據，則創建模擬數據
                             if (productDataForVertivTable == null || !productDataForVertivTable.Any())
                             {
                                 Debug.WriteLine("無法獲取實際產品數據，嘗試創建模擬數據");
                                 try
                                 {
-                                    // 根據第一個表格的數據類型決定使用哪種模擬數據
-                                    if (typeof(T) == typeof(SalesLeaderboardItem) ||
-                                        (data.FirstOrDefault()?.GetType().Name.Contains("SalesLeaderboardItem") == true))
+                                    if (isByRepView)
                                     {
-                                        // 如果是销售代表视图，创建相应的模拟数据
+                                        // 特別為 By Rep 視圖創建模擬數據
                                         productDataForVertivTable = CreateSampleProductDataForReps();
-                                        Debug.WriteLine($"已创建销售代表视图的模拟产品数据: {productDataForVertivTable.Count}项");
+                                        Debug.WriteLine($"為 By Rep 視圖創建模擬數據: {productDataForVertivTable.Count} 項");
                                     }
                                     else
                                     {
-                                        // 默认产品视图模拟数据
+                                        // 默認產品視圖模擬數據
                                         productDataForVertivTable = CreateSampleProductData();
-                                        Debug.WriteLine($"已创建默认的模拟产品数据: {productDataForVertivTable.Count}项");
+                                        Debug.WriteLine($"為 By Product 視圖創建模擬數據: {productDataForVertivTable.Count} 項");
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.WriteLine($"创建模拟数据时发生错误: {ex.Message}");
+                                    Debug.WriteLine($"創建模擬數據時出錯: {ex.Message}");
                                     productDataForVertivTable = new List<ProductSalesData>();
                                 }
                             }
@@ -304,13 +381,13 @@ namespace ScoreCard.Services
         // 輔助方法：創建針對銷售代表視圖的產品數據
         private List<ProductSalesData> CreateSampleProductDataForReps()
         {
-            // 此處可根據實際需要調整數據
+            // 為銷售代表視圖創建不同的測試數據
             return new List<ProductSalesData>
     {
-        new ProductSalesData { ProductType = "Power", VertivValue = 525055.22m, PercentageOfTotal = 58.4m },
-        new ProductSalesData { ProductType = "Service", VertivValue = 266681.89m, PercentageOfTotal = 29.7m },
-        new ProductSalesData { ProductType = "Thermal", VertivValue = 67843.00m, PercentageOfTotal = 7.5m },
-        new ProductSalesData { ProductType = "Batts & Caps", VertivValue = 39744.08m, PercentageOfTotal = 4.4m }
+        new ProductSalesData { ProductType = "Power", VertivValue = 425055.22m, PercentageOfTotal = 52.4m },
+        new ProductSalesData { ProductType = "Service", VertivValue = 286681.89m, PercentageOfTotal = 35.3m },
+        new ProductSalesData { ProductType = "Thermal", VertivValue = 57843.00m, PercentageOfTotal = 7.1m },
+        new ProductSalesData { ProductType = "Batts & Caps", VertivValue = 42144.08m, PercentageOfTotal = 5.2m }
     };
         }
 

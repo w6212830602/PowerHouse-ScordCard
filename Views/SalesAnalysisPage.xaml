@@ -148,7 +148,7 @@
                     </Border>
 
                     <!-- YTD Achievement -->
-                    <Border Grid.Column="1"
+                    <Border Grid.Column="3"
         Stroke="#E5E7EB"
         StrokeThickness="1"
         BackgroundColor="White">
@@ -161,7 +161,7 @@
                FontSize="24"
                FontAttributes="Bold"
                Margin="0,5,0,0"/>
-                            <Label Text="Based on Received date"
+                            <Label Text="Included booked margin"
                TextColor="#666666"
                FontSize="12"/>
                         </VerticalStackLayout>
@@ -188,7 +188,7 @@
                     </Border>
 
                     <!-- Remaining Target -->
-                    <Border Grid.Column="3"
+                    <Border Grid.Column="1"
         Stroke="#E5E7EB"
         StrokeThickness="1"
         BackgroundColor="White">

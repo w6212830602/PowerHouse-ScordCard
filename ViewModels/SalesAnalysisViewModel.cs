@@ -483,16 +483,19 @@ namespace ScoreCard.ViewModels
 
                 decimal totalByReceivedDate = receivedDateData.Sum(x => x.TotalCommission);
 
-                // 計算"Remaining to target"
-                decimal remainingToTarget = targetValue - totalByReceivedDate;
 
                 // 計算沒有完成日期的訂單的N欄總和（以A欄日期為基礎）
                 decimal bookedMarginNotInvoiced = receivedDateData
                     .Where(x => !x.CompletionDate.HasValue) // 沒有完成日期的記錄
                     .Sum(x => x.TotalCommission); // N欄 - Total Commission
 
+
                 // 更新摘要
                 decimal actualRemaining = targetValue - completedAchievement;
+
+                // 計算"Remaining to target"
+                decimal remainingToTarget = actualRemaining - bookedMarginNotInvoiced;
+
 
                 // 百分比計算
                 decimal achievementPercentage = 0;
@@ -854,7 +857,6 @@ namespace ScoreCard.ViewModels
                 });
             }
         }
-
 
         // 載入銷售代表數據
         private async Task LoadSalesRepDataAsync(List<SalesData> data)
