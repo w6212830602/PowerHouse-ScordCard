@@ -530,7 +530,7 @@
       BackgroundColor="#F9FAFB"
       Padding="15,10">
                                     <Label Grid.Column="0" Text="Product Type" FontAttributes="Bold"/>
-                                    <Label Grid.Column="1" Text="Vertiv Value" FontAttributes="Bold"/>
+                                    <Label Grid.Column="1" Text="PO Vertiv Value" FontAttributes="Bold"/>
                                     <Label Grid.Column="2" Text="% of Grand Total" FontAttributes="Bold"/>
                                 </Grid>
 

@@ -177,7 +177,8 @@ namespace ScoreCard.Services
         {
             try
             {
-                return _excelService.GetProductSalesData() ?? new List<ProductSalesData>();
+                // 不要從ExcelService獲取數據，而是使用傳入的參數
+                return null; // 這個方法不再主動獲取數據
             }
             catch (Exception ex)
             {
@@ -391,12 +392,12 @@ namespace ScoreCard.Services
                     return startRow + 1;
                 }
 
-                // Use exactly the same data and sorting as in the UI - don't recalculate
-                // This ensures consistency between UI and export
-                var sortedData = productDataList.OrderByDescending(p => p.VertivValue).ToList();
+                // 重要改變：使用完全相同的數據和排序方式如UI中所示
+                // 不要重新計算，確保一致性
+                var sortedData = new List<ProductSalesData>(productDataList); // 創建副本避免修改原始數據
                 decimal totalVertivValue = sortedData.Sum(p => p.VertivValue);
 
-                // 写入数据
+                // 寫入數據時使用原始數據中的值和百分比
                 foreach (var product in sortedData)
                 {
                     worksheet.Cells[startRow, 1].Value = product.ProductType;
@@ -406,8 +407,8 @@ namespace ScoreCard.Services
                     worksheet.Cells[startRow, 2].Style.Numberformat.Format = "#,##0.00";
                     worksheet.Cells[startRow, 2].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
-                    // Use the exact percentage from the product data - don't recalculate
-                    worksheet.Cells[startRow, 3].Value = product.PercentageOfTotal / 100; // Convert from percentage to decimal
+                    // 使用產品數據中的確切百分比值
+                    worksheet.Cells[startRow, 3].Value = product.PercentageOfTotal / 100; // 從百分比轉換為小數
                     worksheet.Cells[startRow, 3].Style.Numberformat.Format = "0.0%";
                     worksheet.Cells[startRow, 3].Style.Border.BorderAround(ExcelBorderStyle.Thin);
 
@@ -480,7 +481,7 @@ namespace ScoreCard.Services
 
                             if (firstItem is ProductSalesData)
                             {
-                                await writer.WriteLineAsync("F25 - Sales Rep Commission by Product Type (Margin Achieved)");
+                                await writer.WriteLineAsync("F25 - Sales Rep Margin by Product Type (Margin Achieved)");
                                 await writer.WriteLineAsync("----------------------------------------------------");
                                 await writer.WriteLineAsync("Product Type\tAgency Margin\tBuy Resell Margin\tTotal Margin\tVertiv Value\t% of Total");
 

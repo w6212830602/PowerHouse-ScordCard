@@ -255,10 +255,11 @@ namespace ScoreCard.ViewModels
             try
             {
                 IsLoading = true;
-                await Task.Delay(300); // 添加短暫延遲以顯示載入效果
+                await Task.Delay(300);
 
-                // 準備要匯出的數據
+                // 使用 GetDataToExport 方法獲取數據！
                 var exportData = GetDataToExport();
+
                 if (exportData == null || !exportData.Any())
                 {
                     await Application.Current.MainPage.DisplayAlert("無數據", "沒有可匯出的數據", "確定");
@@ -316,31 +317,39 @@ namespace ScoreCard.ViewModels
         {
             Debug.WriteLine($"Preparing data for export, current view type: {ViewType}");
 
-            // Based on current view type, return appropriate data
+            // 根據當前視圖類型，返回適當的數據
             if (IsProductView && ProductSalesData.Any())
             {
+                // 重要：返回當前UI顯示的確切數據副本，不要進行任何過濾或修改
                 var data = ProductSalesData.ToList();
-                Debug.WriteLine($"Exporting product view data, {data.Count} items");
+                Debug.WriteLine($"正在匯出產品視圖數據，{data.Count}項，" +
+                               $"第一項：{(data.Any() ? data[0].ProductType : "無")}，" +
+                               $"總計：${data.Sum(p => p.VertivValue):N2}");
                 return data;
             }
             else if (IsRepView && SalesRepData.Any())
             {
                 var data = SalesRepData.ToList();
-                Debug.WriteLine($"Exporting sales rep view data, {data.Count} items");
+                Debug.WriteLine($"正在匯出銷售代表視圖數據，{data.Count}項");
                 return data;
             }
             else if (IsRepView)
             {
-                // If no SalesRepData but we're in Rep view, try to use SalesRepProductData
-                // This is potentially what's causing your issue
                 var data = SalesRepProductData.ToList();
-                Debug.WriteLine($"Exporting sales rep product data as fallback, {data.Count} items");
+                Debug.WriteLine($"作為後備方案匯出銷售代表產品數據，{data.Count}項");
                 return data;
             }
 
-            Debug.WriteLine("No data found to export");
+            Debug.WriteLine("沒有找到可匯出的數據");
             return new List<object>();
         }
+
+        public List<ProductSalesData> GetCurrentViewProductData()
+        {
+            // 返回當前視圖中顯示的確切產品數據，包括排序
+            return ProductSalesData.ToList();
+        }
+
 
         /// <summary>
         /// 生成匯出的文件名
