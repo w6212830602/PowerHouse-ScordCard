@@ -108,12 +108,12 @@ namespace ScoreCard.Services
 
                             for (int row = 2; row <= rowCount; row++)
                             {
-                                // 检查是否已处理过该行
+                                // 檢查是否已處理過該行
                                 if (!processedRows.Contains(row))
                                 {
                                     try
                                     {
-                                        // 读取接收日期（A列）
+                                        // 讀取接收日期（A列）
                                         var receivedDateCell = worksheet.Cells[row, 1];
                                         DateTime receivedDate;
                                         if (receivedDateCell.Value is DateTime date)
@@ -122,15 +122,15 @@ namespace ScoreCard.Services
                                         }
                                         else
                                         {
-                                            // 尝试解析日期
+                                            // 嘗試解析日期
                                             if (!DateTime.TryParse(receivedDateCell.Text, out receivedDate))
                                             {
-                                                Debug.WriteLine($"无法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
+                                                Debug.WriteLine($"無法解析第 {row} 行的接收日期: {receivedDateCell.Text}");
                                                 continue;
                                             }
                                         }
 
-                                        // 读取完成日期（Y列）
+                                        // 讀取完成日期（Y列）
                                         var completionDateCell = worksheet.Cells[row, 25]; // Y列
                                         DateTime? completionDate = null;
                                         if (completionDateCell.Value != null)
@@ -141,7 +141,7 @@ namespace ScoreCard.Services
                                             }
                                             else
                                             {
-                                                // 尝试解析完成日期
+                                                // 嘗試解析完成日期
                                                 DateTime parsedCompletionDate;
                                                 if (DateTime.TryParse(completionDateCell.Text, out parsedCompletionDate))
                                                 {
@@ -150,36 +150,36 @@ namespace ScoreCard.Services
                                             }
                                         }
 
-                                        // 读取产品类型 (AD列) 
+                                        // 讀取產品類型 (AD列) 
                                         string productType = worksheet.Cells[row, 30].GetValue<string>() ?? "Unknown";
 
-                                        // 读取销售代表 (Z列)
+                                        // 讀取銷售代表 (Z列)
                                         string salesRep = worksheet.Cells[row, 26].GetValue<string>() ?? "Unknown";
 
-                                        // 读取总佣金 (N列)
+                                        // 讀取總佣金 (N列)
                                         decimal totalCommission = GetDecimalValue(worksheet.Cells[row, 14]);
 
-                                        // 读取 PO 值 (G列)
+                                        // 讀取 PO 值 (G列)
                                         decimal poValue = GetDecimalValue(worksheet.Cells[row, 7]);
 
-                                        // 读取 Vertiv 值 (H列) - 修改为使用H列而不是G列
+                                        // 讀取 Vertiv 值 (H列)
                                         decimal vertivValue = GetDecimalValue(worksheet.Cells[row, 8]);
 
-                                        // 读取 Agency Margin (M列)
+                                        // 讀取 Agency Margin (M列)
                                         decimal agencyMargin = GetDecimalValue(worksheet.Cells[row, 13]);
 
-                                        // 读取 Buy Resell Value (J列)
+                                        // 讀取 Buy Resell Value (J列)
                                         decimal buyResellValue = GetDecimalValue(worksheet.Cells[row, 10]);
 
-                                        // 输出前几行的详细信息用于调试
+                                        // 輸出前幾行的詳細信息用於調試
                                         if (row <= 10)
                                         {
                                             Debug.WriteLine($"行 {row}: " +
                                                            $"接收日期={receivedDate:yyyy-MM-dd}, " +
                                                            $"完成日期={completionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                                           $"产品={productType}, " +
+                                                           $"產品={productType}, " +
                                                            $"代表={salesRep}, " +
-                                                           $"总佣金=${totalCommission:N2}, " +
+                                                           $"總佣金=${totalCommission:N2}, " +
                                                            $"PO值=${poValue:N2}, " +
                                                            $"Vertiv值=${vertivValue:N2}");
                                         }
@@ -187,21 +187,30 @@ namespace ScoreCard.Services
                                         // 根据完成日期设置订单状态
                                         string status = completionDate.HasValue ? "Completed" : "Booked";
 
-                                        // 如果Y列（完成日期）为空，将总佣金添加到剩余金额中，但不计入季度业绩
+                                        // 檢查是否是 In Progress 數據
+                                        bool isInProgress = !completionDate.HasValue && totalCommission == 0;
+                                        if (isInProgress)
+                                        {
+                                            status = "InProgress";
+                                            Debug.WriteLine($"檢測到 In Progress 記錄：行 {row}, VertivValue=${vertivValue:N2}");
+                                        }
+
+                                        // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中，但不計入季度業績
                                         if (!completionDate.HasValue)
                                         {
+                                            // 這是已預訂但未完成的訂單，將其添加到剩餘金額
                                             remainingAmount += totalCommission;
 
-                                            // 检查N列（Total Margin）是否也为空，如果是则视为"进行中"
-                                            if (totalCommission == 0)
+                                            // 如果是 In Progress 狀態（N列也為空），則計算預期佣金
+                                            if (isInProgress)
                                             {
-                                                // 获取H列（Vertiv Value）的值，并添加其12%到inProgressAmount
-                                                decimal hColumnValue = GetDecimalValue(worksheet.Cells[row, 8]); // H列是第8列
+                                                // 獲取H列（Vertiv Value）的值，並添加其12%到inProgressAmount
+                                                decimal hColumnValue = vertivValue; // H列是第8列
                                                 decimal commission = hColumnValue * 0.12m;
                                                 totalHValue += hColumnValue;
                                                 calculatedInProgressAmount += commission;
                                                 inProgressCount++;
-                                                Debug.WriteLine($"[主表] 行 {row}: 添加进行中金额 ${hColumnValue} * 12% = ${commission}");
+                                                Debug.WriteLine($"[主表] 行 {row}: 添加進行中金額 ${hColumnValue} * 12% = ${commission}");
                                             }
                                         }
 
@@ -214,30 +223,34 @@ namespace ScoreCard.Services
                                             AgencyMargin = agencyMargin,   // M列 - Agency Margin
                                             TotalCommission = totalCommission, // N列 - Total Commission
                                             CommissionPercentage = GetDecimalValue(worksheet.Cells[row, 16]), // P列
-                                            Status = status,      // 根据Y列的完成日期确定状态
+                                            Status = status,      // 根據Y列和N列確定狀態
                                             CompletionDate = completionDate, // Y列 - 完成日期
                                             SalesRep = salesRep,    // Z列
                                             ProductType = productType, // AD列 - Product Type
                                             Department = worksheet.Cells[row, 29].GetValue<string>() ?? string.Empty,   // AC列 - Department/LOB
-                                                                                                                        // 添加一个标志，表示这是一个"剩余"项目（Y列为空）
+
+                                            // 添加一個標志，表示這是一個"剩餘"項目（Y列為空）
                                             IsRemaining = !completionDate.HasValue,
-                                            // 添加一个标志，表示这是一个"进行中"项目（Y列和N列都为空）
-                                            IsInProgress = !completionDate.HasValue && totalCommission == 0,
-                                            // 重要：只有已完成的订单才设置 QuarterDate，未完成的设置为 null
+
+                                            // 添加一個標志，表示這是一個"進行中"項目（Y列和N列都為空）
+                                            IsInProgress = isInProgress,
+
+                                            // 重要：只有已完成的訂單才設置 QuarterDate，未完成的設置為 null
                                             HasQuarterAssigned = completionDate.HasValue,
-                                            QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作为季度计算日期
+                                            QuarterDate = completionDate ?? DateTime.MinValue // 使用完成日期作為季度計算日期
                                         };
 
                                         if (row <= 5)
                                         {
                                             Debug.WriteLine($"第 {row} 行: 接收日期={salesData.ReceivedDate:yyyy-MM-dd}, " +
                                                            $"完成日期={salesData.CompletionDate?.ToString("yyyy-MM-dd") ?? "未完成"}, " +
-                                                           $"计入季度={salesData.HasQuarterAssigned}, " +
-                                                           (salesData.HasQuarterAssigned ? $"季度计算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
+                                                           $"計入季度={salesData.HasQuarterAssigned}, " +
+                                                           (salesData.HasQuarterAssigned ? $"季度計算日期={salesData.QuarterDate:yyyy-MM-dd}, 季度={salesData.Quarter}, " : "") +
                                                            $"POValue=${salesData.POValue}, " +
                                                            $"VertivValue=${salesData.VertivValue}, " +
                                                            $"TotalCommission=${salesData.TotalCommission}, " +
-                                                           $"Status={salesData.Status}");
+                                                           $"Status={salesData.Status}, " +
+                                                           $"IsInProgress={salesData.IsInProgress}");
                                         }
 
                                         if (IsValidSalesData(salesData))
@@ -249,18 +262,18 @@ namespace ScoreCard.Services
                                             }
                                         }
 
-                                        // 标记该行已处理
+                                        // 標記該行已處理
                                         processedRows.Add(row);
                                     }
                                     catch (Exception ex)
                                     {
-                                        Debug.WriteLine($"加载第 {row} 行数据时发生错误: {ex.Message}");
-                                        // 继续处理下一行
+                                        Debug.WriteLine($"加載第 {row} 行數據時發生錯誤: {ex.Message}");
+                                        // 繼續處理下一行
                                     }
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"行 {row} 已处理过，跳过");
+                                    Debug.WriteLine($"行 {row} 已處理過，跳過");
                                 }
                             }
 

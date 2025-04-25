@@ -777,8 +777,7 @@ namespace ScoreCard.ViewModels
                 if (IsAllStatus)
                 {
                     // All status: Include all records within the date range
-                    // For Booked/InProgress: filter by ReceivedDate
-                    // For Invoiced: filter by CompletionDate
+                    // For Booked: filter by ReceivedDate, no CompletionDate, TotalCommission > 0
                     var bookedData = _allSalesData
                         .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
                                x.ReceivedDate.Date <= currentEndDate.Date &&
@@ -786,6 +785,7 @@ namespace ScoreCard.ViewModels
                                x.TotalCommission > 0)
                         .ToList();
 
+                    // For In Progress: filter by ReceivedDate, no CompletionDate, TotalCommission == 0
                     var inProgressData = _allSalesData
                         .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
                                x.ReceivedDate.Date <= currentEndDate.Date &&
@@ -793,17 +793,39 @@ namespace ScoreCard.ViewModels
                                x.TotalCommission == 0)
                         .ToList();
 
+                    // For Invoiced: filter by CompletionDate within range
                     var invoicedData = _allSalesData
                         .Where(x => x.CompletionDate.HasValue &&
                                x.CompletionDate.Value.Date >= currentStartDate.Date &&
                                x.CompletionDate.Value.Date <= currentEndDate.Date)
                         .ToList();
 
-                    // Combine all data
-                    _filteredSalesData = bookedData.Concat(inProgressData).Concat(invoicedData).ToList();
-                    Debug.WriteLine($"[All] Combined filtered records: {_filteredSalesData.Count} (Booked: {bookedData.Count}, In Progress: {inProgressData.Count}, Invoiced: {invoicedData.Count})");
+                    // 確保正確地合併所有三種數據集
+                    _filteredSalesData = new List<SalesData>();
+                    _filteredSalesData.AddRange(bookedData);
+                    _filteredSalesData.AddRange(inProgressData); // 確保添加 In Progress 數據
+                    _filteredSalesData.AddRange(invoicedData);
+
+                    Debug.WriteLine($"[All] Combined filtered records: {_filteredSalesData.Count} " +
+                                  $"(Booked: {bookedData.Count}, In Progress: {inProgressData.Count}, Invoiced: {invoicedData.Count})");
+
+                    // 輸出 In Progress 數據的示例，用於調試
+                    if (inProgressData.Any())
+                    {
+                        Debug.WriteLine("範例 In Progress 數據:");
+                        foreach (var item in inProgressData.Take(3))
+                        {
+                            Debug.WriteLine($"  ReceivedDate={item.ReceivedDate:yyyy-MM-dd}, " +
+                                         $"POValue=${item.POValue:N2}, " +
+                                         $"VertivValue=${item.VertivValue:N2}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.WriteLine("沒有找到任何 In Progress 數據");
+                    }
                 }
-                // Apply individual status filters (existing logic)
+                // Apply individual status filters
                 else if (IsBookedStatus)
                 {
                     // Booked: A列(ReceivedDate)在日期範圍內，Y列(CompletionDate)為空，N列(TotalCommission)有值
@@ -827,17 +849,26 @@ namespace ScoreCard.ViewModels
                         .ToList();
 
                     Debug.WriteLine($"[In Progress] Filtered records: {_filteredSalesData.Count}");
+
+                    // Print sample records for debugging
+                    foreach (var item in _filteredSalesData.Take(Math.Min(5, _filteredSalesData.Count)))
+                    {
+                        Debug.WriteLine($"In Progress sample: " +
+                            $"ReceivedDate={item.ReceivedDate:yyyy-MM-dd}, " +
+                            $"POValue=${item.POValue:N2}, " +
+                            $"Expected commission (POValue*0.12)=${item.POValue * 0.12m:N2}");
+                    }
                 }
-                else if (IsInvoicedStatus)
+                else if (IsInvoicedStatus) // 或 IsCompletedStatus，取決於您的屬性名稱
                 {
-                    // Invoiced/Completed: Y列(CompletionDate)在日期範圍內且不為空
+                    // Completed/Invoiced: Y列(CompletionDate)在日期範圍內且不為空
                     _filteredSalesData = _allSalesData
                         .Where(x => x.CompletionDate.HasValue &&
                                x.CompletionDate.Value.Date >= currentStartDate.Date &&
                                x.CompletionDate.Value.Date <= currentEndDate.Date)
                         .ToList();
 
-                    Debug.WriteLine($"[Invoiced] Filtered records: {_filteredSalesData.Count}");
+                    Debug.WriteLine($"[Invoiced/Completed] Filtered records: {_filteredSalesData.Count}");
                 }
                 else
                 {
@@ -847,7 +878,7 @@ namespace ScoreCard.ViewModels
                 }
 
                 // Apply sales rep filtering if needed
-                if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
+                if (SelectedSalesReps != null && SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
                 {
                     var beforeCount = _filteredSalesData.Count;
 
@@ -920,39 +951,48 @@ namespace ScoreCard.ViewModels
 
 
 
+        // 在 DetailedSalesViewModel.cs 或 SalesAnalysisViewModel.cs 中修改 LoadProductData 方法
+
         private async Task LoadProductData(List<SalesData> data)
         {
             try
             {
                 Debug.WriteLine($"Loading product data, record count: {data.Count}");
 
+                // 跟蹤每種狀態的記錄數
+                int bookedCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission > 0);
+                int inProgressCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission == 0);
+                int invoicedCount = data.Count(x => x.CompletionDate.HasValue);
+
+                Debug.WriteLine($"數據分佈: Booked={bookedCount}, InProgress={inProgressCount}, Invoiced={invoicedCount}");
+
                 // 判斷是否處於 In Progress 狀態
                 bool isInProgressMode = IsInProgressStatus;
 
                 var products = data
-                    .GroupBy(x => x.ProductType)
+                    .GroupBy(x => NormalizeProductType(x.ProductType))
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
                     .Select(g => new ProductSalesData
                     {
                         ProductType = g.Key,
-                        // 如果是 In Progress 模式，则使用 POValue * 0.12 作为 Total Margin
-                        // 进一步拆分为 75% Agency 和 25% Buy Resell
+                        // 如果是 In Progress 模式，則使用 VertivValue * 0.12 作為預期的 Total Margin
                         AgencyMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.12m) : // 75% of expected commission (0.12)
+                            g.Sum(x => x.VertivValue * 0.12m * 0.75m) : // 75% of expected commission (0.12)
                             g.Sum(x => x.AgencyMargin), 2),
                         BuyResellMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.00m) : // 25% of expected commission (0.12)
+                            g.Sum(x => x.VertivValue * 0.12m * 0.25m) : // 25% of expected commission (0.12)
                             g.Sum(x => x.BuyResellValue), 2),
-                        // Total Margin 直接计算，不使用 TotalCommission
+                        // Total Margin 計算
                         TotalMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
+                            g.Sum(x => x.VertivValue * 0.12m) : // Expected margin for in progress items
                             g.Sum(x => x.TotalCommission), 2),
-                        // 修改为使用 VertivValue 代替 POValue
-                        POValue = Math.Round(g.Sum(x => x.VertivValue), 2),
-                        // 标记是否为 In Progress 模式（用于 UI 显示）
+                        // 修改為使用 VertivValue
+                        VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2),
+                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                        // 標記是否為 In Progress 模式（用於 UI 顯示）
                         IsInProgress = isInProgressMode
                     })
-                    .OrderByDescending(x => x.POValue)
+                    .OrderByDescending(x => x.VertivValue)
                     .ToList();
 
                 Debug.WriteLine($"Number of products after grouping: {products.Count}");
@@ -960,12 +1000,19 @@ namespace ScoreCard.ViewModels
                 if (products.Any())
                 {
                     // 計算百分比
-                    decimal totalPOValue = products.Sum(p => p.POValue);
+                    decimal totalPOValue = products.Sum(p => p.VertivValue);
                     foreach (var product in products)
                     {
                         product.PercentageOfTotal = totalPOValue > 0
-                            ? Math.Round((product.POValue / totalPOValue) * 100, 2)
+                            ? Math.Round((product.VertivValue / totalPOValue) * 100, 2)
                             : 0;
+
+                        Debug.WriteLine($"Product: {product.ProductType}, " +
+                                       $"Agency: ${product.AgencyMargin}, " +
+                                       $"BuyResell: ${product.BuyResellMargin}, " +
+                                       $"Total: ${product.TotalMargin}, " +
+                                       $"Vertiv Value: ${product.VertivValue}, " +
+                                       $"Percentage: {product.PercentageOfTotal}");
                     }
 
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -995,6 +1042,7 @@ namespace ScoreCard.ViewModels
                 });
             }
         }
+
 
 
         // 標準化產品類型名稱，處理可能的大小寫或拼寫差異
