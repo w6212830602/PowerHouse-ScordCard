@@ -772,6 +772,7 @@ namespace ScoreCard.ViewModels
                 var currentEndDate = EndDate.Date.AddDays(1).AddSeconds(-1); // Include the entire end date
 
                 Debug.WriteLine($"Filtering date range: {currentStartDate:yyyy-MM-dd} to {currentEndDate:yyyy-MM-dd}");
+                Debug.WriteLine($"Status flags: All={IsAllStatus}, Booked={IsBookedStatus}, InProgress={IsInProgressStatus}, Invoiced={IsInvoicedStatus}");
 
                 // New handling for "All" status
                 if (IsAllStatus)
@@ -800,19 +801,19 @@ namespace ScoreCard.ViewModels
                                x.CompletionDate.Value.Date <= currentEndDate.Date)
                         .ToList();
 
-                    // 確保正確地合併所有三種數據集
+                    // Ensure all three data sets are properly combined
                     _filteredSalesData = new List<SalesData>();
                     _filteredSalesData.AddRange(bookedData);
-                    _filteredSalesData.AddRange(inProgressData); // 確保添加 In Progress 數據
+                    _filteredSalesData.AddRange(inProgressData); // Make sure to add In Progress data
                     _filteredSalesData.AddRange(invoicedData);
 
                     Debug.WriteLine($"[All] Combined filtered records: {_filteredSalesData.Count} " +
                                   $"(Booked: {bookedData.Count}, In Progress: {inProgressData.Count}, Invoiced: {invoicedData.Count})");
 
-                    // 輸出 In Progress 數據的示例，用於調試
+                    // Output In Progress data samples for debugging
                     if (inProgressData.Any())
                     {
-                        Debug.WriteLine("範例 In Progress 數據:");
+                        Debug.WriteLine("Sample In Progress data:");
                         foreach (var item in inProgressData.Take(3))
                         {
                             Debug.WriteLine($"  ReceivedDate={item.ReceivedDate:yyyy-MM-dd}, " +
@@ -822,7 +823,7 @@ namespace ScoreCard.ViewModels
                     }
                     else
                     {
-                        Debug.WriteLine("沒有找到任何 In Progress 數據");
+                        Debug.WriteLine("No In Progress data found");
                     }
                 }
                 // Apply individual status filters
@@ -966,31 +967,49 @@ namespace ScoreCard.ViewModels
 
                 Debug.WriteLine($"數據分佈: Booked={bookedCount}, InProgress={inProgressCount}, Invoiced={invoicedCount}");
 
-                // 判斷是否處於 In Progress 狀態
+                // 檢查是否處於 In Progress 模式
                 bool isInProgressMode = IsInProgressStatus;
+
+                // 計算 In Progress 項目的總預期佣金，用於調試
+                decimal totalInProgressCommission = data
+                    .Where(x => !x.CompletionDate.HasValue && x.TotalCommission == 0)
+                    .Sum(x => x.VertivValue * 0.12m);
+
+                Debug.WriteLine($"In Progress 項目的預期總佣金: ${totalInProgressCommission:N2}");
 
                 var products = data
                     .GroupBy(x => NormalizeProductType(x.ProductType))
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                    .Select(g => new ProductSalesData
+                    .Select(g =>
                     {
-                        ProductType = g.Key,
-                        // 如果是 In Progress 模式，則使用 VertivValue * 0.12 作為預期的 Total Margin
-                        AgencyMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.VertivValue * 0.12m * 0.75m) : // 75% of expected commission (0.12)
-                            g.Sum(x => x.AgencyMargin), 2),
-                        BuyResellMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.VertivValue * 0.12m * 0.25m) : // 25% of expected commission (0.12)
-                            g.Sum(x => x.BuyResellValue), 2),
-                        // Total Margin 計算
-                        TotalMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.VertivValue * 0.12m) : // Expected margin for in progress items
-                            g.Sum(x => x.TotalCommission), 2),
-                        // 修改為使用 VertivValue
-                        VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2),
-                        POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                        // 標記是否為 In Progress 模式（用於 UI 顯示）
-                        IsInProgress = isInProgressMode
+                        // 針對 In Progress 模式，計算預期佣金
+                        decimal expectedCommission = 0;
+                        if (isInProgressMode)
+                        {
+                            expectedCommission = g.Sum(x => x.VertivValue * 0.12m);
+                        }
+
+                        return new ProductSalesData
+                        {
+                            ProductType = g.Key,
+                            // 在 In Progress 模式下，將所有預期佣金都放在 Agency Margin
+                            AgencyMargin = Math.Round(isInProgressMode ?
+                                expectedCommission : // In Progress 模式 - 使用預期佣金
+                                g.Sum(x => x.AgencyMargin), 2), // 其他模式 - 使用實際 Agency Margin
+                                                                // Buy Resell Margin 在 In Progress 模式下為 0
+                            BuyResellMargin = Math.Round(isInProgressMode ?
+                                0 : // In Progress 模式下為 0
+                                g.Sum(x => x.BuyResellValue), 2), // 其他模式 - 使用實際 Buy Resell Margin
+                                                                  // Total Margin 等於 Agency + Buy Resell
+                            TotalMargin = Math.Round(isInProgressMode ?
+                                expectedCommission : // In Progress 模式 - 使用預期佣金
+                                g.Sum(x => x.TotalCommission), 2), // 其他模式 - 使用實際 Total Commission
+                                                                   // 記錄 Vertiv Value
+                            VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2),
+                            POValue = Math.Round(g.Sum(x => x.POValue), 2),
+                            // 標記項目來源
+                            IsInProgress = isInProgressMode
+                        };
                     })
                     .OrderByDescending(x => x.VertivValue)
                     .ToList();
@@ -1083,27 +1102,55 @@ namespace ScoreCard.ViewModels
         {
             try
             {
-                // 判斷是否處於 In Progress 狀態
+                Debug.WriteLine("Loading sales rep data...");
+
+                // 追蹤數據分布
+                int bookedCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission > 0);
+                int inProgressCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission == 0);
+                int invoicedCount = data.Count(x => x.CompletionDate.HasValue);
+
+                Debug.WriteLine($"Data distribution: Booked={bookedCount}, InProgress={inProgressCount}, Invoiced={invoicedCount}");
+
+                // 檢查是否處於 In Progress 模式
                 bool isInProgressMode = IsInProgressStatus;
+
+                // 記錄 In Progress 項目的總預期佣金
+                decimal totalInProgressCommission = data
+                    .Where(x => !x.CompletionDate.HasValue && x.TotalCommission == 0)
+                    .Sum(x => x.VertivValue * 0.12m);
+
+                Debug.WriteLine($"Total expected commission for In Progress items: ${totalInProgressCommission:N2}");
 
                 var reps = data
                     .GroupBy(x => x.SalesRep)
                     .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                    .Select(g => new SalesLeaderboardItem
+                    .Select(g =>
                     {
-                        SalesRep = g.Key,
-                        // 如果是 In Progress 模式，則使用 POValue * 0.12 作為 Total Margin
-                        // 進一步拆分為 75% Agency 和 25% Buy Resell
-                        AgencyMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.12m) : // 75% of expected commission (0.12)
-                            g.Sum(x => x.AgencyMargin), 2),
-                        BuyResellMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.00m) : // 25% of expected commission (0.12)
-                            g.Sum(x => x.BuyResellValue), 2),
-                        // Total Margin 直接計算，不使用 TotalCommission
-                        TotalMargin = Math.Round(isInProgressMode ?
-                            g.Sum(x => x.POValue * 0.12m) : // Expected margin for in progress items
-                            g.Sum(x => x.TotalCommission), 2)
+                        // 針對 In Progress 模式，計算預期佣金
+                        decimal expectedCommission = 0;
+                        if (isInProgressMode)
+                        {
+                            expectedCommission = g.Sum(x => x.VertivValue * 0.12m);
+                        }
+
+                        return new SalesLeaderboardItem
+                        {
+                            SalesRep = g.Key,
+                            // 在 In Progress 模式下，將所有預期佣金都放在 Agency Margin
+                            AgencyMargin = Math.Round(isInProgressMode ?
+                                expectedCommission : // In Progress 模式 - 使用預期佣金
+                                g.Sum(x => x.AgencyMargin), 2), // 其他模式 - 使用實際 Agency Margin
+                                                                // Buy Resell Margin 在 In Progress 模式下為 0
+                            BuyResellMargin = Math.Round(isInProgressMode ?
+                                0 : // In Progress 模式下為 0
+                                g.Sum(x => x.BuyResellValue), 2), // 其他模式 - 使用實際 Buy Resell Margin
+                                                                  // Total Margin 等於 Agency + Buy Resell
+                            TotalMargin = Math.Round(isInProgressMode ?
+                                expectedCommission : // In Progress 模式 - 使用預期佣金
+                                g.Sum(x => x.TotalCommission), 2), // 其他模式 - 使用實際 Total Commission
+                                                                   // 記錄 Vertiv 值
+                            VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2)
+                        };
                     })
                     .OrderByDescending(x => x.TotalMargin)
                     .ToList();
@@ -1112,6 +1159,15 @@ namespace ScoreCard.ViewModels
                 for (int i = 0; i < reps.Count; i++)
                 {
                     reps[i].Rank = i + 1;
+                }
+
+                // 輸出每個銷售代表的佣金明細，用於調試
+                foreach (var rep in reps.Take(Math.Min(5, reps.Count)))
+                {
+                    Debug.WriteLine($"Rep: {rep.SalesRep}, " +
+                                   $"Agency: ${rep.AgencyMargin}, " +
+                                   $"BuyResell: ${rep.BuyResellMargin}, " +
+                                   $"Total: ${rep.TotalMargin}");
                 }
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
@@ -1124,6 +1180,7 @@ namespace ScoreCard.ViewModels
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error loading sales rep data: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
             }
         }
 

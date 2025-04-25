@@ -192,7 +192,7 @@ namespace ScoreCard.Services
                                         if (isInProgress)
                                         {
                                             status = "InProgress";
-                                            Debug.WriteLine($"檢測到 In Progress 記錄：行 {row}, VertivValue=${vertivValue:N2}");
+                                            Debug.WriteLine($"Detected In Progress record: row {row}, VertivValue=${vertivValue:N2}");
                                         }
 
                                         // 如果Y列（完成日期）為空，將總佣金添加到剩餘金額中，但不計入季度業績
