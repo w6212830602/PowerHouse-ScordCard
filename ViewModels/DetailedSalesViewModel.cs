@@ -1125,70 +1125,154 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine("Loading sales rep data...");
 
-                // 追蹤數據分布
-                int bookedCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission > 0);
-                int inProgressCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission == 0);
-                int invoicedCount = data.Count(x => x.CompletionDate.HasValue);
+                // 檢查當前視圖狀態
+                bool isAllStatus = IsAllStatus;
+                bool isInProgressStatus = IsInProgressStatus;
+                bool isBookedStatus = IsBookedStatus;
+                bool isInvoicedStatus = IsInvoicedStatus;
 
-                Debug.WriteLine($"Data distribution: Booked={bookedCount}, InProgress={inProgressCount}, Invoiced={invoicedCount}");
+                // 記錄狀態
+                Debug.WriteLine($"當前視圖狀態: All={isAllStatus}, InProgress={isInProgressStatus}, Booked={isBookedStatus}, Invoiced={isInvoicedStatus}");
 
-                // 檢查是否處於 In Progress 模式
-                bool isInProgressMode = IsInProgressStatus;
+                List<SalesLeaderboardItem> reps = new List<SalesLeaderboardItem>();
 
-                // 記錄 In Progress 項目的總預期佣金
-                decimal totalInProgressCommission = data
-                    .Where(x => !x.CompletionDate.HasValue && x.TotalCommission == 0)
-                    .Sum(x => x.VertivValue * 0.12m);
+                if (isAllStatus)
+                {
+                    // 重要修改：對於「All」狀態，我們需要先對資料進行處理
+                    // 首先獲取三個狀態的資料
+                    var startDate = StartDate.Date;
+                    var endDate = EndDate.Date.AddDays(1).AddSeconds(-1);
 
-                Debug.WriteLine($"Total expected commission for In Progress items: ${totalInProgressCommission:N2}");
+                    var bookedData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= startDate &&
+                               x.ReceivedDate.Date <= endDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission > 0)
+                        .ToList();
 
-                var reps = data
-                    .GroupBy(x => x.SalesRep)
-                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                    .Select(g =>
+                    var inProgressData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= startDate &&
+                               x.ReceivedDate.Date <= endDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission == 0)
+                        .ToList();
+
+                    var invoicedData = _allSalesData
+                        .Where(x => x.CompletionDate.HasValue &&
+                               x.CompletionDate.Value.Date >= startDate &&
+                               x.CompletionDate.Value.Date <= endDate.Date)
+                        .ToList();
+
+                    Debug.WriteLine($"All狀態資料：Booked={bookedData.Count}, InProgress={inProgressData.Count}, Invoiced={invoicedData.Count}");
+
+                    // 對每位銷售代表分別處理三種狀態的資料
+                    var allSalesReps = new HashSet<string>();
+
+                    // 收集所有銷售代表
+                    foreach (var item in bookedData.Concat(inProgressData).Concat(invoicedData))
                     {
-                        // 針對 In Progress 模式，計算預期佣金
-                        decimal expectedCommission = 0;
-                        if (isInProgressMode)
+                        if (!string.IsNullOrWhiteSpace(item.SalesRep))
                         {
-                            expectedCommission = g.Sum(x => x.VertivValue * 0.12m);
+                            allSalesReps.Add(item.SalesRep);
+                        }
+                    }
+
+                    foreach (var salesRep in allSalesReps)
+                    {
+                        // 處理不同狀態的資料並合併
+                        decimal bookedAgencyMargin = bookedData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.AgencyMargin);
+
+                        decimal bookedBuyResellMargin = bookedData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.BuyResellValue);
+
+                        decimal bookedTotalCommission = bookedData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.TotalCommission);
+
+                        // In Progress的預期佣金
+                        decimal inProgressExpectedCommission = inProgressData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.VertivValue * 0.12m);
+
+                        decimal invoicedAgencyMargin = invoicedData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.AgencyMargin);
+
+                        decimal invoicedBuyResellMargin = invoicedData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.BuyResellValue);
+
+                        decimal invoicedTotalCommission = invoicedData
+                            .Where(x => x.SalesRep == salesRep)
+                            .Sum(x => x.TotalCommission);
+
+                        // 合併所有狀態的數據
+                        decimal totalAgencyMargin = bookedAgencyMargin + invoicedAgencyMargin + inProgressExpectedCommission;
+                        decimal totalBuyResellMargin = bookedBuyResellMargin + invoicedBuyResellMargin;
+                        decimal totalCommission = bookedTotalCommission + invoicedTotalCommission + inProgressExpectedCommission;
+
+                        // 添加到結果集
+                        reps.Add(new SalesLeaderboardItem
+                        {
+                            SalesRep = salesRep,
+                            AgencyMargin = Math.Round(totalAgencyMargin, 2),
+                            BuyResellMargin = Math.Round(totalBuyResellMargin, 2),
+                            TotalMargin = Math.Round(totalCommission, 2)
+                        });
+
+                        Debug.WriteLine($"All視圖 - {salesRep}: " +
+                                       $"Booked+InProgress+Invoiced = ${totalAgencyMargin:N2}+${totalBuyResellMargin:N2}=${totalCommission:N2}");
+                    }
+                }
+                else
+                {
+                    // 對於特定狀態視圖的處理邏輯保持不變
+                    // ... [原程式碼保持不變] ...
+                    var repGroups = data
+                        .GroupBy(x => x.SalesRep)
+                        .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                        .ToList();
+
+                    foreach (var group in repGroups)
+                    {
+                        decimal agencyMargin, buyResellMargin, totalMargin, vertivValue;
+
+                        if (isInProgressStatus)
+                        {
+                            // In Progress模式下使用預期佣金
+                            agencyMargin = Math.Round(group.Sum(x => x.VertivValue * 0.12m), 2);
+                            buyResellMargin = 0; // In Progress模式下Buy Resell Margin為0
+                            totalMargin = agencyMargin; // 總佣金等於預期佣金
+                            vertivValue = Math.Round(group.Sum(x => x.VertivValue), 2);
+                        }
+                        else
+                        {
+                            // Booked或Invoiced模式下使用實際數據
+                            agencyMargin = Math.Round(group.Sum(x => x.AgencyMargin), 2);
+                            buyResellMargin = Math.Round(group.Sum(x => x.BuyResellValue), 2);
+                            totalMargin = Math.Round(group.Sum(x => x.TotalCommission), 2);
+                            vertivValue = Math.Round(group.Sum(x => x.VertivValue), 2);
                         }
 
-                        return new SalesLeaderboardItem
+                        reps.Add(new SalesLeaderboardItem
                         {
-                            SalesRep = g.Key,
-                            // 在 In Progress 模式下，將所有預期佣金都放在 Agency Margin
-                            AgencyMargin = Math.Round(isInProgressMode ?
-                                expectedCommission : // In Progress 模式 - 使用預期佣金
-                                g.Sum(x => x.AgencyMargin), 2), // 其他模式 - 使用實際 Agency Margin
-                                                                // Buy Resell Margin 在 In Progress 模式下為 0
-                            BuyResellMargin = Math.Round(isInProgressMode ?
-                                0 : // In Progress 模式下為 0
-                                g.Sum(x => x.BuyResellValue), 2), // 其他模式 - 使用實際 Buy Resell Margin
-                                                                  // Total Margin 等於 Agency + Buy Resell
-                            TotalMargin = Math.Round(isInProgressMode ?
-                                expectedCommission : // In Progress 模式 - 使用預期佣金
-                                g.Sum(x => x.TotalCommission), 2), // 其他模式 - 使用實際 Total Commission
-                                                                   // 記錄 Vertiv 值
-                            VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2)
-                        };
-                    })
-                    .OrderByDescending(x => x.TotalMargin)
-                    .ToList();
+                            SalesRep = group.Key,
+                            AgencyMargin = agencyMargin,
+                            BuyResellMargin = buyResellMargin,
+                            TotalMargin = totalMargin,
+                            VertivValue = vertivValue
+                        });
+                    }
+                }
 
-                // 設置排名
+                // 共同的排序和UI更新邏輯
+                reps = reps.OrderByDescending(x => x.TotalMargin).ToList();
                 for (int i = 0; i < reps.Count; i++)
                 {
                     reps[i].Rank = i + 1;
-                }
-
-                // 輸出每個銷售代表的佣金明細，用於調試
-                foreach (var rep in reps.Take(Math.Min(5, reps.Count)))
-                {
-                    Debug.WriteLine($"Rep: {rep.SalesRep}, " +
-                                   $"Agency: ${rep.AgencyMargin}, " +
-                                   $"BuyResell: ${rep.BuyResellMargin}, " +
-                                   $"Total: ${rep.TotalMargin}");
                 }
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
