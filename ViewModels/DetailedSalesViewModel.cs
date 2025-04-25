@@ -774,102 +774,62 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"Filtering date range: {currentStartDate:yyyy-MM-dd} to {currentEndDate:yyyy-MM-dd}");
                 Debug.WriteLine($"Status flags: All={IsAllStatus}, Booked={IsBookedStatus}, InProgress={IsInProgressStatus}, Invoiced={IsInvoicedStatus}");
 
-                // New handling for "All" status
+                // 我們需要3個不同狀態的數據集
+                List<SalesData> bookedData = new List<SalesData>();
+                List<SalesData> inProgressData = new List<SalesData>();
+                List<SalesData> invoicedData = new List<SalesData>();
+
+                // 無論選擇什麼狀態，總是提取所有3種狀態的數據
+                // For Booked: filter by ReceivedDate, no CompletionDate, TotalCommission > 0
+                bookedData = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                           x.ReceivedDate.Date <= currentEndDate.Date &&
+                           !x.CompletionDate.HasValue &&
+                           x.TotalCommission > 0)
+                    .ToList();
+
+                // For In Progress: filter by ReceivedDate, no CompletionDate, TotalCommission == 0
+                inProgressData = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                           x.ReceivedDate.Date <= currentEndDate.Date &&
+                           !x.CompletionDate.HasValue &&
+                           x.TotalCommission == 0)
+                    .ToList();
+
+                // For Invoiced: filter by CompletionDate within range
+                invoicedData = _allSalesData
+                    .Where(x => x.CompletionDate.HasValue &&
+                           x.CompletionDate.Value.Date >= currentStartDate.Date &&
+                           x.CompletionDate.Value.Date <= currentEndDate.Date)
+                    .ToList();
+
+                Debug.WriteLine($"Found data sets: Booked={bookedData.Count}, In Progress={inProgressData.Count}, Invoiced={invoicedData.Count}");
+
+                // 根據選定的狀態，決定要返回哪些數據
                 if (IsAllStatus)
                 {
                     // All status: Include all records within the date range
-                    // For Booked: filter by ReceivedDate, no CompletionDate, TotalCommission > 0
-                    var bookedData = _allSalesData
-                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                               x.ReceivedDate.Date <= currentEndDate.Date &&
-                               !x.CompletionDate.HasValue &&
-                               x.TotalCommission > 0)
-                        .ToList();
-
-                    // For In Progress: filter by ReceivedDate, no CompletionDate, TotalCommission == 0
-                    var inProgressData = _allSalesData
-                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                               x.ReceivedDate.Date <= currentEndDate.Date &&
-                               !x.CompletionDate.HasValue &&
-                               x.TotalCommission == 0)
-                        .ToList();
-
-                    // For Invoiced: filter by CompletionDate within range
-                    var invoicedData = _allSalesData
-                        .Where(x => x.CompletionDate.HasValue &&
-                               x.CompletionDate.Value.Date >= currentStartDate.Date &&
-                               x.CompletionDate.Value.Date <= currentEndDate.Date)
-                        .ToList();
-
-                    // Ensure all three data sets are properly combined
                     _filteredSalesData = new List<SalesData>();
                     _filteredSalesData.AddRange(bookedData);
-                    _filteredSalesData.AddRange(inProgressData); // Make sure to add In Progress data
+                    _filteredSalesData.AddRange(inProgressData);
                     _filteredSalesData.AddRange(invoicedData);
 
-                    Debug.WriteLine($"[All] Combined filtered records: {_filteredSalesData.Count} " +
-                                  $"(Booked: {bookedData.Count}, In Progress: {inProgressData.Count}, Invoiced: {invoicedData.Count})");
-
-                    // Output In Progress data samples for debugging
-                    if (inProgressData.Any())
-                    {
-                        Debug.WriteLine("Sample In Progress data:");
-                        foreach (var item in inProgressData.Take(3))
-                        {
-                            Debug.WriteLine($"  ReceivedDate={item.ReceivedDate:yyyy-MM-dd}, " +
-                                         $"POValue=${item.POValue:N2}, " +
-                                         $"VertivValue=${item.VertivValue:N2}");
-                        }
-                    }
-                    else
-                    {
-                        Debug.WriteLine("No In Progress data found");
-                    }
+                    Debug.WriteLine($"[All] Combined filtered records: {_filteredSalesData.Count}");
                 }
-                // Apply individual status filters
                 else if (IsBookedStatus)
                 {
-                    // Booked: A列(ReceivedDate)在日期範圍內，Y列(CompletionDate)為空，N列(TotalCommission)有值
-                    _filteredSalesData = _allSalesData
-                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                               x.ReceivedDate.Date <= currentEndDate.Date &&
-                               !x.CompletionDate.HasValue &&
-                               x.TotalCommission > 0)
-                        .ToList();
-
+                    _filteredSalesData = bookedData;
                     Debug.WriteLine($"[Booked] Filtered records: {_filteredSalesData.Count}");
                 }
                 else if (IsInProgressStatus)
                 {
-                    // In Progress: A列(ReceivedDate)在日期範圍內，Y列(CompletionDate)為空，N列(TotalCommission)為零或空
-                    _filteredSalesData = _allSalesData
-                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                               x.ReceivedDate.Date <= currentEndDate.Date &&
-                               !x.CompletionDate.HasValue &&
-                               x.TotalCommission == 0)
-                        .ToList();
-
+                    _filteredSalesData = inProgressData;
                     Debug.WriteLine($"[In Progress] Filtered records: {_filteredSalesData.Count}");
-
-                    // Print sample records for debugging
-                    foreach (var item in _filteredSalesData.Take(Math.Min(5, _filteredSalesData.Count)))
-                    {
-                        Debug.WriteLine($"In Progress sample: " +
-                            $"ReceivedDate={item.ReceivedDate:yyyy-MM-dd}, " +
-                            $"POValue=${item.POValue:N2}, " +
-                            $"Expected commission (POValue*0.12)=${item.POValue * 0.12m:N2}");
-                    }
                 }
-                else if (IsInvoicedStatus) // 或 IsCompletedStatus，取決於您的屬性名稱
+                else if (IsInvoicedStatus)
                 {
-                    // Completed/Invoiced: Y列(CompletionDate)在日期範圍內且不為空
-                    _filteredSalesData = _allSalesData
-                        .Where(x => x.CompletionDate.HasValue &&
-                               x.CompletionDate.Value.Date >= currentStartDate.Date &&
-                               x.CompletionDate.Value.Date <= currentEndDate.Date)
-                        .ToList();
-
-                    Debug.WriteLine($"[Invoiced/Completed] Filtered records: {_filteredSalesData.Count}");
+                    _filteredSalesData = invoicedData;
+                    Debug.WriteLine($"[Invoiced] Filtered records: {_filteredSalesData.Count}");
                 }
                 else
                 {
@@ -960,78 +920,139 @@ namespace ScoreCard.ViewModels
             {
                 Debug.WriteLine($"Loading product data, record count: {data.Count}");
 
-                // 跟蹤每種狀態的記錄數
+                // 跟蹤數據狀態分布
                 int bookedCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission > 0);
                 int inProgressCount = data.Count(x => !x.CompletionDate.HasValue && x.TotalCommission == 0);
                 int invoicedCount = data.Count(x => x.CompletionDate.HasValue);
-
                 Debug.WriteLine($"數據分佈: Booked={bookedCount}, InProgress={inProgressCount}, Invoiced={invoicedCount}");
 
-                // 檢查是否處於 In Progress 模式
+                // 檢查當前視圖狀態
+                bool isAllStatus = IsAllStatus;
                 bool isInProgressMode = IsInProgressStatus;
+                bool isBookedMode = IsBookedStatus;
+                bool isInvoicedMode = IsInvoicedStatus;
 
-                // 計算 In Progress 項目的總預期佣金，用於調試
-                decimal totalInProgressCommission = data
-                    .Where(x => !x.CompletionDate.HasValue && x.TotalCommission == 0)
-                    .Sum(x => x.VertivValue * 0.12m);
+                Debug.WriteLine($"當前視圖狀態: All={isAllStatus}, InProgress={isInProgressMode}, Booked={isBookedMode}, Invoiced={isInvoicedMode}");
 
-                Debug.WriteLine($"In Progress 項目的預期總佣金: ${totalInProgressCommission:N2}");
+                // 根據視圖狀態分組和處理數據
+                List<ProductSalesData> products = new List<ProductSalesData>();
 
-                var products = data
-                    .GroupBy(x => NormalizeProductType(x.ProductType))
-                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                    .Select(g =>
+                if (isAllStatus)
+                {
+                    // 對於All視圖，我們需要合併所有狀態的數據
+                    // 首先按產品類型分組
+                    var productGroups = data
+                        .GroupBy(x => NormalizeProductType(x.ProductType))
+                        .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                        .ToList();
+
+                    foreach (var group in productGroups)
                     {
-                        // 針對 In Progress 模式，計算預期佣金
-                        decimal expectedCommission = 0;
+                        // 對於每種產品類型，分別計算3種狀態的數據
+                        var productType = group.Key;
+
+                        // Booked數據 (Y列為空，N列有值)
+                        var bookedItems = group.Where(x => !x.CompletionDate.HasValue && x.TotalCommission > 0).ToList();
+                        decimal bookedAgencyMargin = bookedItems.Sum(x => x.AgencyMargin);
+                        decimal bookedBuyResellMargin = bookedItems.Sum(x => x.BuyResellValue);
+                        decimal bookedTotalMargin = bookedItems.Sum(x => x.TotalCommission);
+                        decimal bookedVertivValue = bookedItems.Sum(x => x.VertivValue);
+
+                        // In Progress數據 (Y列為空，N列為0) - 計算預期佣金
+                        var inProgressItems = group.Where(x => !x.CompletionDate.HasValue && x.TotalCommission == 0).ToList();
+                        decimal expectedCommission = inProgressItems.Sum(x => x.VertivValue * 0.12m);
+                        decimal inProgressVertivValue = inProgressItems.Sum(x => x.VertivValue);
+
+                        // Invoiced數據 (Y列有值)
+                        var invoicedItems = group.Where(x => x.CompletionDate.HasValue).ToList();
+                        decimal invoicedAgencyMargin = invoicedItems.Sum(x => x.AgencyMargin);
+                        decimal invoicedBuyResellMargin = invoicedItems.Sum(x => x.BuyResellValue);
+                        decimal invoicedTotalMargin = invoicedItems.Sum(x => x.TotalCommission);
+                        decimal invoicedVertivValue = invoicedItems.Sum(x => x.VertivValue);
+
+                        // 合併所有狀態的數據
+                        decimal totalAgencyMargin = bookedAgencyMargin + expectedCommission + invoicedAgencyMargin;
+                        decimal totalBuyResellMargin = bookedBuyResellMargin + invoicedBuyResellMargin; // In Progress的Buy Resell Margin為0
+                        decimal totalMargin = bookedTotalMargin + expectedCommission + invoicedTotalMargin;
+                        decimal totalVertivValue = bookedVertivValue + inProgressVertivValue + invoicedVertivValue;
+
+                        products.Add(new ProductSalesData
+                        {
+                            ProductType = productType,
+                            AgencyMargin = Math.Round(totalAgencyMargin, 2),
+                            BuyResellMargin = Math.Round(totalBuyResellMargin, 2),
+                            TotalMargin = Math.Round(totalMargin, 2),
+                            VertivValue = Math.Round(totalVertivValue, 2),
+                            POValue = Math.Round(totalVertivValue, 2), // POValue與VertivValue相同
+                            IsInProgress = false // 在All視圖中不標記為In Progress
+                        });
+
+                        Debug.WriteLine($"All視圖 - 產品: {productType}, " +
+                                       $"總Agency: ${totalAgencyMargin:N2}, " +
+                                       $"總BuyResell: ${totalBuyResellMargin:N2}, " +
+                                       $"總Margin: ${totalMargin:N2}, " +
+                                       $"總VertivValue: ${totalVertivValue:N2}");
+                    }
+                }
+                else
+                {
+                    // 對於特定狀態的視圖，使用原有邏輯
+                    var productGroups = data
+                        .GroupBy(x => NormalizeProductType(x.ProductType))
+                        .Where(g => !string.IsNullOrWhiteSpace(g.Key))
+                        .ToList();
+
+                    foreach (var group in productGroups)
+                    {
+                        decimal agencyMargin, buyResellMargin, totalMargin, vertivValue;
+
                         if (isInProgressMode)
                         {
-                            expectedCommission = g.Sum(x => x.VertivValue * 0.12m);
+                            // In Progress模式下使用預期佣金
+                            agencyMargin = Math.Round(group.Sum(x => x.VertivValue * 0.12m), 2);
+                            buyResellMargin = 0; // In Progress模式下Buy Resell Margin為0
+                            totalMargin = agencyMargin; // 總佣金等於預期佣金
+                            vertivValue = Math.Round(group.Sum(x => x.VertivValue), 2);
+                        }
+                        else
+                        {
+                            // Booked或Invoiced模式下使用實際數據
+                            agencyMargin = Math.Round(group.Sum(x => x.AgencyMargin), 2);
+                            buyResellMargin = Math.Round(group.Sum(x => x.BuyResellValue), 2);
+                            totalMargin = Math.Round(group.Sum(x => x.TotalCommission), 2);
+                            vertivValue = Math.Round(group.Sum(x => x.VertivValue), 2);
                         }
 
-                        return new ProductSalesData
+                        products.Add(new ProductSalesData
                         {
-                            ProductType = g.Key,
-                            // 在 In Progress 模式下，將所有預期佣金都放在 Agency Margin
-                            AgencyMargin = Math.Round(isInProgressMode ?
-                                expectedCommission : // In Progress 模式 - 使用預期佣金
-                                g.Sum(x => x.AgencyMargin), 2), // 其他模式 - 使用實際 Agency Margin
-                                                                // Buy Resell Margin 在 In Progress 模式下為 0
-                            BuyResellMargin = Math.Round(isInProgressMode ?
-                                0 : // In Progress 模式下為 0
-                                g.Sum(x => x.BuyResellValue), 2), // 其他模式 - 使用實際 Buy Resell Margin
-                                                                  // Total Margin 等於 Agency + Buy Resell
-                            TotalMargin = Math.Round(isInProgressMode ?
-                                expectedCommission : // In Progress 模式 - 使用預期佣金
-                                g.Sum(x => x.TotalCommission), 2), // 其他模式 - 使用實際 Total Commission
-                                                                   // 記錄 Vertiv Value
-                            VertivValue = Math.Round(g.Sum(x => x.VertivValue), 2),
-                            POValue = Math.Round(g.Sum(x => x.POValue), 2),
-                            // 標記項目來源
+                            ProductType = group.Key,
+                            AgencyMargin = agencyMargin,
+                            BuyResellMargin = buyResellMargin,
+                            TotalMargin = totalMargin,
+                            VertivValue = vertivValue,
+                            POValue = vertivValue, // POValue與VertivValue相同
                             IsInProgress = isInProgressMode
-                        };
-                    })
-                    .OrderByDescending(x => x.VertivValue)
-                    .ToList();
+                        });
 
-                Debug.WriteLine($"Number of products after grouping: {products.Count}");
+                        Debug.WriteLine($"狀態視圖 - 產品: {group.Key}, " +
+                                       $"Agency: ${agencyMargin:N2}, " +
+                                       $"BuyResell: ${buyResellMargin:N2}, " +
+                                       $"Total: ${totalMargin:N2}, " +
+                                       $"VertivValue: ${vertivValue:N2}");
+                    }
+                }
+
+                // 排序並計算百分比
+                products = products.OrderByDescending(x => x.VertivValue).ToList();
 
                 if (products.Any())
                 {
-                    // 計算百分比
-                    decimal totalPOValue = products.Sum(p => p.VertivValue);
+                    decimal totalVertivValue = products.Sum(p => p.VertivValue);
                     foreach (var product in products)
                     {
-                        product.PercentageOfTotal = totalPOValue > 0
-                            ? Math.Round((product.VertivValue / totalPOValue) * 100, 2)
+                        product.PercentageOfTotal = totalVertivValue > 0
+                            ? Math.Round((product.VertivValue / totalVertivValue) * 100, 1)
                             : 0;
-
-                        Debug.WriteLine($"Product: {product.ProductType}, " +
-                                       $"Agency: ${product.AgencyMargin}, " +
-                                       $"BuyResell: ${product.BuyResellMargin}, " +
-                                       $"Total: ${product.TotalMargin}, " +
-                                       $"Vertiv Value: ${product.VertivValue}, " +
-                                       $"Percentage: {product.PercentageOfTotal}");
                     }
 
                     await MainThread.InvokeOnMainThreadAsync(() =>
@@ -1039,11 +1060,11 @@ namespace ScoreCard.ViewModels
                         ProductSalesData = new ObservableCollection<ProductSalesData>(products);
                     });
 
-                    Debug.WriteLine($"Successfully loaded {products.Count} product data items");
+                    Debug.WriteLine($"成功載入 {products.Count} 個產品數據項目");
                 }
                 else
                 {
-                    Debug.WriteLine("No product data to display");
+                    Debug.WriteLine("沒有產品數據可顯示");
                     await MainThread.InvokeOnMainThreadAsync(() =>
                     {
                         ProductSalesData = new ObservableCollection<ProductSalesData>();
@@ -1052,7 +1073,7 @@ namespace ScoreCard.ViewModels
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Error loading product data: {ex.Message}");
+                Debug.WriteLine($"載入產品數據時出錯: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
 
                 await MainThread.InvokeOnMainThreadAsync(() =>
