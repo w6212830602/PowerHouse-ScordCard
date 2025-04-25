@@ -29,6 +29,9 @@ namespace ScoreCard.ViewModels
         private string _viewType = "ByProduct";
 
         [ObservableProperty]
+        private bool _isAllStatus = true; // Default to All status
+
+        [ObservableProperty]
         private ObservableCollection<ProductSalesData> _productSalesData = new();
 
         [ObservableProperty]
@@ -55,7 +58,7 @@ namespace ScoreCard.ViewModels
         private ObservableCollection<RepSelectionItem> _repSelectionItems = new();
 
         [ObservableProperty]
-        private bool _isBookedStatus = true; // 默認為 Booked 狀態
+        private bool _isBookedStatus = false; // 默認為 Booked 狀態
 
         [ObservableProperty]
         private bool _isInProgressStatus = false;
@@ -149,14 +152,26 @@ namespace ScoreCard.ViewModels
         [RelayCommand]
         private async Task ChangeStatus(string status)
         {
-            Debug.WriteLine($"嘗試切換到狀態: {status}");
+            Debug.WriteLine($"Attempting to switch to status: {status}");
             bool changed = false;
 
             switch (status.ToLower())
             {
+                case "all":
+                    if (!IsAllStatus)
+                    {
+                        IsAllStatus = true;
+                        IsBookedStatus = false;
+                        IsInProgressStatus = false;
+                        IsInvoicedStatus = false;
+                        changed = true;
+                    }
+                    break;
+
                 case "booked":
                     if (!IsBookedStatus)
                     {
+                        IsAllStatus = false;
                         IsBookedStatus = true;
                         IsInProgressStatus = false;
                         IsInvoicedStatus = false;
@@ -167,6 +182,7 @@ namespace ScoreCard.ViewModels
                 case "inprogress":
                     if (!IsInProgressStatus)
                     {
+                        IsAllStatus = false;
                         IsBookedStatus = false;
                         IsInProgressStatus = true;
                         IsInvoicedStatus = false;
@@ -174,9 +190,10 @@ namespace ScoreCard.ViewModels
                     }
                     break;
 
-                case "invoiced":
+                case "invoiced": // Changed from "completed" to "invoiced" for consistency
                     if (!IsInvoicedStatus)
                     {
+                        IsAllStatus = false;
                         IsBookedStatus = false;
                         IsInProgressStatus = false;
                         IsInvoicedStatus = true;
@@ -187,14 +204,15 @@ namespace ScoreCard.ViewModels
 
             if (changed)
             {
-                Debug.WriteLine($"狀態已更改為: {status}，重新載入數據");
+                Debug.WriteLine($"Status changed to: {status}, reloading data");
                 await FilterDataCommand.ExecuteAsync(null);
             }
             else
             {
-                Debug.WriteLine($"狀態未變更，仍然是: {status}");
+                Debug.WriteLine($"Status not changed, still: {status}");
             }
         }
+
 
         [RelayCommand]
         private async Task FilterData()
@@ -742,21 +760,51 @@ namespace ScoreCard.ViewModels
         {
             if (_allSalesData == null || !_allSalesData.Any())
             {
-                Debug.WriteLine("沒有原始數據可以過濾");
+                Debug.WriteLine("No original data available for filtering");
                 _filteredSalesData = new List<SalesData>();
                 return;
             }
 
             try
             {
-                // 獲取最新的日期值
+                // Get the current date values
                 var currentStartDate = StartDate.Date;
-                var currentEndDate = EndDate.Date.AddDays(1).AddSeconds(-1); // 包含結束日期的整天
+                var currentEndDate = EndDate.Date.AddDays(1).AddSeconds(-1); // Include the entire end date
 
-                Debug.WriteLine($"過濾日期範圍: {currentStartDate:yyyy-MM-dd} 到 {currentEndDate:yyyy-MM-dd}");
+                Debug.WriteLine($"Filtering date range: {currentStartDate:yyyy-MM-dd} to {currentEndDate:yyyy-MM-dd}");
 
-                // 根據所選標籤應用不同的過濾條件
-                if (IsBookedStatus)
+                // New handling for "All" status
+                if (IsAllStatus)
+                {
+                    // All status: Include all records within the date range
+                    // For Booked/InProgress: filter by ReceivedDate
+                    // For Invoiced: filter by CompletionDate
+                    var bookedData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                               x.ReceivedDate.Date <= currentEndDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission > 0)
+                        .ToList();
+
+                    var inProgressData = _allSalesData
+                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
+                               x.ReceivedDate.Date <= currentEndDate.Date &&
+                               !x.CompletionDate.HasValue &&
+                               x.TotalCommission == 0)
+                        .ToList();
+
+                    var invoicedData = _allSalesData
+                        .Where(x => x.CompletionDate.HasValue &&
+                               x.CompletionDate.Value.Date >= currentStartDate.Date &&
+                               x.CompletionDate.Value.Date <= currentEndDate.Date)
+                        .ToList();
+
+                    // Combine all data
+                    _filteredSalesData = bookedData.Concat(inProgressData).Concat(invoicedData).ToList();
+                    Debug.WriteLine($"[All] Combined filtered records: {_filteredSalesData.Count} (Booked: {bookedData.Count}, In Progress: {inProgressData.Count}, Invoiced: {invoicedData.Count})");
+                }
+                // Apply individual status filters (existing logic)
+                else if (IsBookedStatus)
                 {
                     // Booked: A列(ReceivedDate)在日期範圍內，Y列(CompletionDate)為空，N列(TotalCommission)有值
                     _filteredSalesData = _allSalesData
@@ -766,7 +814,7 @@ namespace ScoreCard.ViewModels
                                x.TotalCommission > 0)
                         .ToList();
 
-                    Debug.WriteLine($"[Booked] 過濾後記錄數: {_filteredSalesData.Count}");
+                    Debug.WriteLine($"[Booked] Filtered records: {_filteredSalesData.Count}");
                 }
                 else if (IsInProgressStatus)
                 {
@@ -778,31 +826,27 @@ namespace ScoreCard.ViewModels
                                x.TotalCommission == 0)
                         .ToList();
 
-                    Debug.WriteLine($"[In Progress] 過濾後記錄數: {_filteredSalesData.Count}");
+                    Debug.WriteLine($"[In Progress] Filtered records: {_filteredSalesData.Count}");
                 }
                 else if (IsInvoicedStatus)
                 {
-                    // Invoiced(Completed): Y列(CompletionDate)在日期範圍內且不為空
+                    // Invoiced/Completed: Y列(CompletionDate)在日期範圍內且不為空
                     _filteredSalesData = _allSalesData
                         .Where(x => x.CompletionDate.HasValue &&
                                x.CompletionDate.Value.Date >= currentStartDate.Date &&
                                x.CompletionDate.Value.Date <= currentEndDate.Date)
                         .ToList();
 
-                    Debug.WriteLine($"[Invoiced] 過濾後記錄數: {_filteredSalesData.Count}");
+                    Debug.WriteLine($"[Invoiced] Filtered records: {_filteredSalesData.Count}");
                 }
                 else
                 {
-                    // 默認：顯示所有數據，以接收日期為基準
-                    _filteredSalesData = _allSalesData
-                        .Where(x => x.ReceivedDate.Date >= currentStartDate.Date &&
-                               x.ReceivedDate.Date <= currentEndDate.Date)
-                        .ToList();
-
-                    Debug.WriteLine($"[Default] 過濾後記錄數: {_filteredSalesData.Count}");
+                    // Default: empty data
+                    _filteredSalesData = new List<SalesData>();
+                    Debug.WriteLine("No status selected, returning empty data");
                 }
 
-                // 根據銷售代表過濾
+                // Apply sales rep filtering if needed
                 if (SelectedSalesReps.Any() && !SelectedSalesReps.Contains("All Reps"))
                 {
                     var beforeCount = _filteredSalesData.Count;
@@ -815,13 +859,13 @@ namespace ScoreCard.ViewModels
                                     r.Contains(x.SalesRep, StringComparison.OrdinalIgnoreCase)))
                         .ToList();
 
-                    Debug.WriteLine($"銷售代表過濾: 從 {beforeCount} 條記錄中篩選，" +
-                                   $"剩餘 {_filteredSalesData.Count} 條數據");
+                    Debug.WriteLine($"Sales Rep filtering: from {beforeCount} records, " +
+                                   $"remaining {_filteredSalesData.Count} records");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"過濾數據時發生錯誤: {ex.Message}");
+                Debug.WriteLine($"Error filtering data: {ex.Message}");
                 Debug.WriteLine(ex.StackTrace);
                 _filteredSalesData = new List<SalesData>();
             }

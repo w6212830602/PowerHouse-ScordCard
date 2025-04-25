@@ -401,57 +401,74 @@
                                         </Border>
                                     </HorizontalStackLayout>
 
-                                    <!-- Status filter (Booked, In Progress, Completed) -->
+                                    <!-- Status filter (All, Booked, In Progress, Completed) -->
                                     <HorizontalStackLayout Grid.Column="1" Spacing="0" HorizontalOptions="End">
-                                        <!-- Booked 按钮 -->
+                                        <!-- All button (NEW) -->
                                         <Border Stroke="#E2E8F0"
-        StrokeThickness="1"
-        BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
-        StrokeShape="RoundRectangle 4,0,0,4"
-        HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsAllStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#3949AB,#F0F0F0'}"
+            StrokeShape="RoundRectangle 4,0,0,4"
+            HeightRequest="36">
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="All"/>
+                                            </Border.GestureRecognizers>
+                                            <Label Text="All"
+               TextColor="{Binding IsAllStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsAllStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
+                                        </Border>
+
+                                        <!-- Booked button (MODIFIED - change StrokeShape to Rectangle since it's no longer the first element) -->
+                                        <Border Stroke="#E2E8F0"
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#E53935,#F0F0F0'}"
+            StrokeShape="Rectangle"
+            HeightRequest="36">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Booked"/>
                                             </Border.GestureRecognizers>
                                             <Label Text="Booked"
-           TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-           VerticalOptions="Center"
-           HorizontalOptions="Center"
-           FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-           Margin="15,0"/>
+               TextColor="{Binding IsBookedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsBookedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
                                         </Border>
 
-                                        <!-- In Progress 按钮 -->
+                                        <!-- In Progress button (unchanged) -->
                                         <Border Stroke="#E2E8F0"
-        StrokeThickness="1"
-        BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
-        StrokeShape="Rectangle"
-        HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#FB8C00,#F0F0F0'}"
+            StrokeShape="Rectangle"
+            HeightRequest="36">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="InProgress"/>
                                             </Border.GestureRecognizers>
                                             <Label Text="In Progress"
-           TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-           VerticalOptions="Center"
-           HorizontalOptions="Center"
-           FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-           Margin="15,0"/>
+               TextColor="{Binding IsInProgressStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsInProgressStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
                                         </Border>
 
-                                        <!-- Completed 按钮 -->
+                                        <!-- Completed button (unchanged) -->
                                         <Border Stroke="#E2E8F0"
-        StrokeThickness="1"
-        BackgroundColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
-        StrokeShape="RoundRectangle 0,4,4,0"
-        HeightRequest="36">
+            StrokeThickness="1"
+            BackgroundColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='#43A047,#F0F0F0'}"
+            StrokeShape="RoundRectangle 0,4,4,0"
+            HeightRequest="36">
                                             <Border.GestureRecognizers>
                                                 <TapGestureRecognizer Command="{Binding ChangeStatusCommand}" CommandParameter="Completed"/>
                                             </Border.GestureRecognizers>
                                             <Label Text="Invoiced"
-           TextColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
-           VerticalOptions="Center"
-           HorizontalOptions="Center"
-           FontAttributes="{Binding IsCompletedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
-           Margin="15,0"/>
+               TextColor="{Binding IsCompletedStatus, Converter={StaticResource BoolToColorConverter}, ConverterParameter='White,#333333'}"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               FontAttributes="{Binding IsCompletedStatus, Converter={StaticResource BoolToStringConverter}, ConverterParameter='Bold|Normal'}"
+               Margin="15,0"/>
                                         </Border>
                                     </HorizontalStackLayout>
                                 </Grid>
