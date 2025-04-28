@@ -124,20 +124,26 @@
                 </Border>
 
                 <!-- Progress Labels -->
-                <Grid ColumnDefinitions="*,*,*">
-                    <Label Text="{Binding AchievementDisplay}"
-                           TextColor="OrangeRed"
-                           FontSize="20"/>
-                    <Label Grid.Column="1" 
-                           Text="{Binding NotInvoicedDisplay}"
-                           TextColor="OrangeRed"
-                           FontSize="20"
-                           HorizontalOptions="Center"/>
+                <Grid ColumnDefinitions="*,*,*,*">
+                    <Label Grid.Column="0" 
+           Text="{Binding AchievementDisplay}"
+           TextColor="OrangeRed"
+           FontSize="20"/>
+                    <Label Grid.Column="3" 
+           Text="{Binding NotInvoicedDisplay}"
+           TextColor="OrangeRed"
+           FontSize="20"
+           HorizontalOptions="End"/>
                     <Label Grid.Column="2" 
-                           Text="{Binding InProgressDisplay}"
-                           TextColor="OrangeRed"
-                           FontSize="20"
-                           HorizontalOptions="End"/>
+           Text="{Binding InProgressDisplay}"
+           TextColor="OrangeRed"
+           FontSize="20"
+           HorizontalOptions="Center"/>
+                    <Label Grid.Column="1" 
+           Text="{Binding TotalAchievementDisplay}"
+           TextColor="#FF9900"
+           FontSize="20"
+           HorizontalOptions="Start"/>
                 </Grid>
             </VerticalStackLayout>
 

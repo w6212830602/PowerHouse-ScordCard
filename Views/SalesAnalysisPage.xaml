@@ -346,7 +346,7 @@
                                 </chart:SfCartesianChart.Series>
                             </chart:SfCartesianChart>
                         </Grid>
-                    </Border>
+                    </Border> 
 
                     <!-- Sales Leaderboard -->
                     <Border Stroke="#E5E7EB"

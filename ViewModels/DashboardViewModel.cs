@@ -51,15 +51,18 @@ namespace ScoreCard.ViewModels
             {
                 if (SetProperty(ref _annualTarget, value))
                 {
-                    // Only handle distribution if in edit mode and value actually changed
+                    // 原有逻辑
                     if (IsEditMode && _annualTarget != _originalAnnualTarget)
                     {
                         _isAnnualEdited = true;
                         DistributeAnnualTarget();
                     }
 
-                    // Update display properties
+                    // 更新显示属性
                     OnPropertyChanged(nameof(AnnualTargetDisplay));
+                    // 添加这两行
+                    OnPropertyChanged(nameof(TotalAchievementPercentage));
+                    OnPropertyChanged(nameof(TotalAchievementDisplay));
                     UpdateRemainingValues();
                 }
             }
@@ -162,6 +165,7 @@ namespace ScoreCard.ViewModels
         }
 
         public string TestQ1Display => "Test Q1: +$295,671";
+
 
         // Achievement values
         [ObservableProperty]
@@ -275,6 +279,19 @@ namespace ScoreCard.ViewModels
         public decimal Q3FinalTarget => Q3Target + Q2Carried;
         public decimal Q4FinalTarget => Q4Target + Q3Carried;
         public string TotalValueDisplay => $"${TotalValue:N0}";
+
+        public decimal TotalAchievementPercentage => AnnualTarget > 0 ?
+            Math.Round((TotalValue / AnnualTarget) * 100, 1) : 0;
+
+
+        partial void OnTotalValueChanged(decimal value)
+        {
+            OnPropertyChanged(nameof(TotalAchievementPercentage));
+            OnPropertyChanged(nameof(TotalAchievementDisplay));
+        }
+
+        // 格式化显示的字符串
+        public string TotalAchievementDisplay => $"Total Achievement(All):{TotalAchievementPercentage:N1}%";
 
         public DashboardViewModel(IExcelService excelService, ITargetService targetService)
         {

@@ -793,8 +793,8 @@ namespace ScoreCard.ViewModels
                     }
 
                     double maxValue = Math.Max(maxTarget, maxAchievement);
-                    maxValue = Math.Max(maxValue * 1.2, 5); // 增加 20% 空間，但確保至少為 5
-                    YAxisMaximum = Math.Ceiling(maxValue);
+                    maxValue = Math.Max(maxValue * 1.2, 1); // 增加 20% 空間，但確保至少為 1
+                    YAxisMaximum = Math.Min(2, Math.Ceiling(maxValue)); // 最大不超過2
 
                     Debug.WriteLine($"設置 Y 軸最大值: {YAxisMaximum}");
                 });
@@ -1434,22 +1434,23 @@ namespace ScoreCard.ViewModels
                 }
 
                 double maxValue = Math.Max(maxTarget, maxAchievement);
-                // 增加 20% 空間，使圖表不會太緊湊
+                // 增加一些空間，使圖表不會太緊湊
                 maxValue = maxValue * 1.2;
                 // 向上取整到下一個整數
                 maxValue = Math.Ceiling(maxValue);
 
-                // 確保最小有 5 的空間
-                YAxisMaximum = Math.Max(5, maxValue);
+                // 將最大值設為2，除非數據值超過2
+                YAxisMaximum = Math.Min(2, Math.Max(maxValue, 1));
 
                 Debug.WriteLine($"圖表 Y 軸最大值設為: {YAxisMaximum}");
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"更新圖表軸時發生錯誤: {ex.Message}");
-                YAxisMaximum = 10; // 默認值
+                YAxisMaximum = 2; // 默認值改為2
             }
         }
+
 
         #region 輔助方法
 
