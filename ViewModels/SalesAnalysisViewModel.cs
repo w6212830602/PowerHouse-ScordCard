@@ -207,7 +207,30 @@ namespace ScoreCard.ViewModels
             if (changed)
             {
                 Debug.WriteLine($"Status changed to: {status}, reloading data");
-                await FilterData(); // Direct method call instead of using Command
+
+                try
+                {
+                    IsLoading = true;
+
+                    // 過濾數據
+                    FilterDataByDateRange();
+
+                    // 重要：重新加載圖表數據
+                    await LoadChartDataAsync();
+
+                    // 加載排行榜數據
+                    await LoadLeaderboardDataAsync();
+
+                    Debug.WriteLine("數據重新加載完成");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"重新載入數據時發生錯誤: {ex.Message}");
+                }
+                finally
+                {
+                    IsLoading = false;
+                }
             }
             else
             {
@@ -314,7 +337,10 @@ namespace ScoreCard.ViewModels
             {
                 IsLoading = true;
 
-                // Reload raw data if needed
+                // 在重新載入數據之前強制清除緩存
+                _excelService.ClearCache();
+
+                // 重新載入原始數據（如果需要）
                 if (_allSalesData == null || !_allSalesData.Any())
                 {
                     try
@@ -332,26 +358,24 @@ namespace ScoreCard.ViewModels
                                 "OK");
                         });
                         IsLoading = false;
-
-                        // Clear all data displays instead of showing sample data
                         ClearAllDisplays();
                         return;
                     }
                 }
 
-                // Filter data
+                // 過濾數據，確保應用日期範圍
                 FilterDataByDateRange();
 
-                // Load summary data
+                // 載入摘要數據
                 await LoadSummaryDataAsync();
 
-                // Load chart data
+                // 載入圖表數據
                 await LoadChartDataAsync();
 
-                // Load leaderboard data
+                // 載入排行榜數據
                 await LoadLeaderboardDataAsync();
 
-                // Update chart axes
+                // 更新圖表軸
                 UpdateChartAxes();
             }
             catch (Exception ex)
@@ -367,7 +391,6 @@ namespace ScoreCard.ViewModels
                         "OK");
                 });
 
-                // Clear all data displays instead of showing sample data
                 ClearAllDisplays();
             }
             finally
@@ -418,7 +441,7 @@ namespace ScoreCard.ViewModels
                 List<SalesData> inProgressData = new List<SalesData>();
                 List<SalesData> completedData = new List<SalesData>();
 
-                // 無論選擇什麼狀態，總是提取所有三種狀態的數據
+                // 無論選擇什麼狀態，總是嚴格按照所選日期範圍提取數據
                 // Booked數據: A列在日期範圍內，Y列為空，N列有值
                 bookedData = _allSalesData
                     .Where(x => x.ReceivedDate.Date >= startDate &&
@@ -447,7 +470,7 @@ namespace ScoreCard.ViewModels
                 // 根據選擇的狀態過濾數據
                 if (IsAllStatus)
                 {
-                    // All狀態: 合併所有數據
+                    // All狀態: 合併所有數據，確保只包含所選日期範圍內的數據
                     _filteredData = new List<SalesData>();
                     _filteredData.AddRange(bookedData);
                     _filteredData.AddRange(inProgressData);
@@ -463,15 +486,6 @@ namespace ScoreCard.ViewModels
                 {
                     _filteredData = inProgressData;
                     Debug.WriteLine($"[In Progress] 過濾後的記錄: {_filteredData.Count}");
-
-                    // 輸出樣本記錄用於調試
-                    foreach (var item in _filteredData.Take(Math.Min(5, _filteredData.Count)))
-                    {
-                        Debug.WriteLine($"In Progress樣本: " +
-                            $"ReceivedDate={item.ReceivedDate:yyyy-MM-dd}, " +
-                            $"POValue=${item.POValue:N2}, " +
-                            $"預期佣金(POValue*0.12)=${item.POValue * 0.12m:N2}");
-                    }
                 }
                 else if (IsCompletedStatus)
                 {
@@ -483,6 +497,14 @@ namespace ScoreCard.ViewModels
                     // 默認: 空數據
                     _filteredData = new List<SalesData>();
                     Debug.WriteLine("未選擇狀態，返回空數據");
+                }
+
+                // 驗證過濾結果的日期範圍
+                if (_filteredData.Any())
+                {
+                    var minDate = _filteredData.Min(x => x.CompletionDate ?? x.ReceivedDate);
+                    var maxDate = _filteredData.Max(x => x.CompletionDate ?? x.ReceivedDate);
+                    Debug.WriteLine($"過濾後數據的日期範圍: {minDate:yyyy-MM-dd} 到 {maxDate:yyyy-MM-dd}");
                 }
             }
             catch (Exception ex)
@@ -631,111 +653,104 @@ namespace ScoreCard.ViewModels
                     return;
                 }
 
+                // 記錄當前的日期過濾範圍
+                Debug.WriteLine($"載入圖表數據，日期範圍: {StartDate:yyyy-MM-dd} 到 {EndDate:yyyy-MM-dd}");
+
+                // 確保使用已過濾的數據（這些數據應該已經按日期過濾）
+                Debug.WriteLine($"已過濾的數據記錄數: {_filteredData.Count}");
+
+                // 首先，獲取所選日期範圍內的所有月份
+                var startMonth = new DateTime(StartDate.Year, StartDate.Month, 1);
+                var endMonth = new DateTime(EndDate.Year, EndDate.Month, 1);
+
+                var allMonthsInRange = new List<(int Year, int Month)>();
+                var currentMonth = startMonth;
+
+                while (currentMonth <= endMonth)
+                {
+                    allMonthsInRange.Add((currentMonth.Year, currentMonth.Month));
+                    currentMonth = currentMonth.AddMonths(1);
+                }
+
+                Debug.WriteLine($"日期範圍內的月份數: {allMonthsInRange.Count}");
+
                 // 建立月度數據集
                 var monthlyData = new List<dynamic>();
 
-                // 根據選中的狀態，創建不同的月度數據
-                // 準備三個不同的數據集
-                var bookedData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= StartDate.Date &&
-                           x.ReceivedDate.Date <= EndDate.Date.AddDays(1).AddSeconds(-1) &&
-                           !x.CompletionDate.HasValue &&
-                           x.TotalCommission > 0)
-                    .ToList();
-
-                var inProgressData = _allSalesData
-                    .Where(x => x.ReceivedDate.Date >= StartDate.Date &&
-                           x.ReceivedDate.Date <= EndDate.Date.AddDays(1).AddSeconds(-1) &&
-                           !x.CompletionDate.HasValue &&
-                           x.TotalCommission == 0)
-                    .ToList();
-
-                var invoicedData = _allSalesData
-                    .Where(x => x.CompletionDate.HasValue &&
-                           x.CompletionDate.Value.Date >= StartDate.Date &&
-                           x.CompletionDate.Value.Date <= EndDate.Date.AddDays(1).AddSeconds(-1))
-                    .ToList();
-
-                // 建立月份分組，依據狀態處理不同的數據
-                var allMonths = new HashSet<(int Year, int Month)>();
-
-                // 添加所有獨特的月份
-                foreach (var item in bookedData)
+                // 對每個月處理數據
+                foreach (var (year, month) in allMonthsInRange)
                 {
-                    allMonths.Add((item.ReceivedDate.Year, item.ReceivedDate.Month));
-                }
+                    Debug.WriteLine($"處理月份數據: {year}/{month:D2}");
 
-                foreach (var item in inProgressData)
-                {
-                    allMonths.Add((item.ReceivedDate.Year, item.ReceivedDate.Month));
-                }
+                    // 計算該月的數據
+                    decimal monthlyCommission = 0;
+                    decimal monthlyPOValue = 0;
+                    int recordCount = 0;
 
-                foreach (var item in invoicedData)
-                {
-                    allMonths.Add((item.CompletionDate.Value.Year, item.CompletionDate.Value.Month));
-                }
+                    // 確定當月的日期範圍
+                    var monthStart = new DateTime(year, month, 1);
+                    var monthEnd = monthStart.AddMonths(1).AddDays(-1);
 
-                // 對每個月份進行處理
-                foreach (var (year, month) in allMonths.OrderBy(m => m.Year).ThenBy(m => m.Month))
-                {
-                    // 計算不同狀態的數據
-                    var bookedForMonth = bookedData
-                        .Where(x => x.ReceivedDate.Year == year && x.ReceivedDate.Month == month)
-                        .ToList();
+                    // 如果是起始月份，使用StartDate
+                    if (year == StartDate.Year && month == StartDate.Month)
+                        monthStart = StartDate;
 
-                    var inProgressForMonth = inProgressData
-                        .Where(x => x.ReceivedDate.Year == year && x.ReceivedDate.Month == month)
-                        .ToList();
+                    // 如果是結束月份，使用EndDate
+                    if (year == EndDate.Year && month == EndDate.Month)
+                        monthEnd = EndDate;
 
-                    var invoicedForMonth = invoicedData
-                        .Where(x => x.CompletionDate.Value.Year == year && x.CompletionDate.Value.Month == month)
-                        .ToList();
+                    Debug.WriteLine($"月份詳細範圍: {monthStart:yyyy-MM-dd} 到 {monthEnd:yyyy-MM-dd}");
 
-                    // 計算各種數據
-                    decimal bookedCommission = bookedForMonth.Sum(x => x.TotalCommission);
-                    decimal inProgressEstimate = inProgressForMonth.Sum(x => x.VertivValue * 0.12m);
-                    decimal invoicedCommission = invoicedForMonth.Sum(x => x.TotalCommission);
-
-                    // 計算總和
-                    decimal totalCommission = 0;
-                    decimal totalPOValue = 0;
-
-                    // 根據狀態選擇要包含的數據
-                    if (IsAllStatus)
+                    // 遍歷已過濾的數據（這些應該已經按狀態過濾）
+                    foreach (var item in _filteredData)
                     {
-                        totalCommission = bookedCommission + inProgressEstimate + invoicedCommission;
-                        totalPOValue = bookedForMonth.Sum(x => x.POValue) +
-                                      inProgressForMonth.Sum(x => x.POValue) +
-                                      invoicedForMonth.Sum(x => x.POValue);
-                    }
-                    else if (IsBookedStatus)
-                    {
-                        totalCommission = bookedCommission;
-                        totalPOValue = bookedForMonth.Sum(x => x.POValue);
-                    }
-                    else if (IsInProgressStatus)
-                    {
-                        totalCommission = inProgressEstimate;
-                        totalPOValue = inProgressForMonth.Sum(x => x.POValue);
-                    }
-                    else if (IsCompletedStatus)
-                    {
-                        totalCommission = invoicedCommission;
-                        totalPOValue = invoicedForMonth.Sum(x => x.POValue);
+                        // 決定要使用哪個日期進行比較
+                        DateTime dateToCompare;
+
+                        if (IsCompletedStatus && item.CompletionDate.HasValue)
+                        {
+                            // 已完成項目用完成日期
+                            dateToCompare = item.CompletionDate.Value;
+                        }
+                        else
+                        {
+                            // 其他狀態用接收日期
+                            dateToCompare = item.ReceivedDate;
+                        }
+
+                        // 檢查日期是否在當月範圍內
+                        if (dateToCompare >= monthStart && dateToCompare <= monthEnd)
+                        {
+                            recordCount++;
+
+                            // 計算佣金
+                            if (IsInProgressStatus)
+                            {
+                                // In Progress模式下使用預期佣金 (12% of Vertiv Value)
+                                monthlyCommission += item.VertivValue * 0.12m;
+                            }
+                            else
+                            {
+                                // 其他模式使用實際佣金
+                                monthlyCommission += item.TotalCommission;
+                            }
+
+                            // 計算PO值
+                            monthlyPOValue += item.VertivValue;
+                        }
                     }
 
-                    // 添加到月度數據
+                    // 只有當有數據時才添加到月度數據中
                     monthlyData.Add(new
                     {
                         YearMonth = new { Year = year, Month = month },
-                        POValue = totalPOValue,
-                        MarginValue = totalCommission,
-                        CommissionValue = totalCommission
+                        POValue = monthlyPOValue,
+                        CommissionValue = monthlyCommission,
+                        RecordCount = recordCount
                     });
-                }
 
-                // 檢查處理後的資料
-                Debug.WriteLine($"處理後的月度資料筆數: {monthlyData.Count}");
+                    Debug.WriteLine($"月份 {year}/{month:D2}: 記錄數={recordCount}, 佣金=${monthlyCommission:N2}, PO值=${monthlyPOValue:N2}");
+                }
 
                 // 準備圖表資料
                 var newTargetVsAchievementData = new ObservableCollection<ChartData>();
@@ -745,9 +760,7 @@ namespace ScoreCard.ViewModels
                 {
                     var label = $"{month.YearMonth.Year}/{month.YearMonth.Month:D2}";
 
-                    // 所有模式下都添加預期佣金到總佣金中
                     decimal commissionValueInMillions = Math.Round(month.CommissionValue / 1000000m, 2);
-                    decimal marginValueInMillions = Math.Round(month.MarginValue / 1000000m, 2);
 
                     // 從目標服務獲取該月份的目標值
                     int fiscalYear = month.YearMonth.Month >= 8 ? month.YearMonth.Year + 1 : month.YearMonth.Year;
@@ -773,8 +786,11 @@ namespace ScoreCard.ViewModels
                 }
 
                 // 記錄生成的圖表資料
-                Debug.WriteLine($"生成 Target vs Achievement 資料: {newTargetVsAchievementData.Count} 筆");
-                Debug.WriteLine($"生成 Achievement Trend 資料: {newAchievementTrendData.Count} 筆");
+                Debug.WriteLine($"生成的圖表資料點數: {newTargetVsAchievementData.Count}");
+                foreach (var point in newTargetVsAchievementData)
+                {
+                    Debug.WriteLine($"圖表點: {point.Label}, 目標=${point.Target:N2}M, 達成=${point.Achievement:N2}M");
+                }
 
                 // 更新 UI
                 await MainThread.InvokeOnMainThreadAsync(() =>
