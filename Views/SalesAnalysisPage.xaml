@@ -334,19 +334,19 @@
                                 </chart:SfCartesianChart.YAxes>
 
                                 <chart:SfCartesianChart.Series>
-                                    <chart:SplineSeries ItemsSource="{Binding AchievementTrendData}"
+                                    <!-- 改成 ColumnSeries 長條圖 -->
+                                    <chart:ColumnSeries ItemsSource="{Binding AchievementTrendData}"
                                    XBindingPath="Label"
                                    YBindingPath="Achievement"
-                                   ShowDataLabels="True"
-                                   StrokeWidth="2">
-                                        <chart:SplineSeries.Fill>
+                                   ShowDataLabels="True">
+                                        <chart:ColumnSeries.Fill>
                                             <Color>#4CAF50</Color>
-                                        </chart:SplineSeries.Fill>
-                                    </chart:SplineSeries>
+                                        </chart:ColumnSeries.Fill>
+                                    </chart:ColumnSeries>
                                 </chart:SfCartesianChart.Series>
                             </chart:SfCartesianChart>
                         </Grid>
-                    </Border> 
+                    </Border>
 
                     <!-- Sales Leaderboard -->
                     <Border Stroke="#E5E7EB"
