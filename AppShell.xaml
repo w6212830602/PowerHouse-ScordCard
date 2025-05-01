@@ -8,28 +8,31 @@
     <FlyoutItem FlyoutDisplayOptions="AsMultipleItems">
         <!-- Dashboard Page -->
         <ShellContent
-            Title="Dashboard"
-            ContentTemplate="{DataTemplate views:DashboardPage}"
-            Route="Dashboard" />
+        Title="Dashboard"
+        ContentTemplate="{DataTemplate views:DashboardPage}"
+        Route="Dashboard" />
 
         <!-- Sales Analysis Page -->
         <ShellContent
-            Title="Sales Analysis"
-            ContentTemplate="{DataTemplate views:SalesAnalysisPage}"
-            Route="SalesAnalysis" />
-
-        <!-- Settings Page -->
-        <ShellContent
-            Title="Settings"
-            ContentTemplate="{DataTemplate views:SettingsPage}"
-            Route="Settings" />
+        Title="Sales Analysis"
+        ContentTemplate="{DataTemplate views:SalesAnalysisPage}"
+        Route="SalesAnalysis" />
 
         <!-- 添加詳細分析頁面，但設置為不顯示在菜單中 -->
         <ShellContent
-            Title="Detailed Analysis"
-            ContentTemplate="{DataTemplate views:DetailedSalesPage}"
-            Route="DetailedAnalysis"
-            FlyoutItemIsVisible="False" />
+        Title="Detailed Analysis"
+        ContentTemplate="{DataTemplate views:DetailedSalesPage}"
+        Route="DetailedAnalysis"
+        />
     </FlyoutItem>
+
+    <!-- 單獨的FlyoutItem用於Settings，設置為不顯示 -->
+    <FlyoutItem FlyoutItemIsVisible="False">
+        <ShellContent
+        Title="Settings"
+        ContentTemplate="{DataTemplate views:SettingsPage}"
+        Route="Settings" />
+    </FlyoutItem>
+
 
 </Shell>
