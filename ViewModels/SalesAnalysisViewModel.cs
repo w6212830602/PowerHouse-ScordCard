@@ -651,6 +651,207 @@ namespace ScoreCard.ViewModels
             }
         }
 
+        private async Task LoadChartDataForAllStatus()
+        {
+            try
+            {
+                Debug.WriteLine("正在載入All狀態的圖表數據（修正版）");
+
+                // 使用日期範圍
+                var startDate = StartDate.Date;
+                var endDate = EndDate.Date.AddDays(1).AddSeconds(-1);
+
+                // 取得各個狀態的數據
+                List<SalesData> bookedData = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= startDate &&
+                           x.ReceivedDate.Date <= endDate.Date &&
+                           !x.CompletionDate.HasValue &&
+                           x.TotalCommission > 0)
+                    .ToList();
+
+                List<SalesData> inProgressData = _allSalesData
+                    .Where(x => x.ReceivedDate.Date >= startDate &&
+                           x.ReceivedDate.Date <= endDate.Date &&
+                           !x.CompletionDate.HasValue &&
+                           x.TotalCommission == 0)
+                    .ToList();
+
+                List<SalesData> completedData = _allSalesData
+                    .Where(x => x.CompletionDate.HasValue &&
+                           x.CompletionDate.Value.Date >= startDate &&
+                           x.CompletionDate.Value.Date <= endDate.Date)
+                    .ToList();
+
+                Debug.WriteLine($"各狀態數據量：Booked={bookedData.Count}, InProgress={inProgressData.Count}, Completed={completedData.Count}");
+
+                // 獲取所有月份
+                var allMonths = GetAllMonthsInRange(startDate, endDate);
+
+                // 針對每個月份分別計算各狀態的數據
+                var monthlyData = new List<MonthlyDataItem>();
+
+                foreach (var (year, month) in allMonths)
+                {
+                    var monthStart = new DateTime(year, month, 1);
+                    var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+
+                    // 調整月份範圍，確保不超出選定日期範圍
+                    if (monthStart < startDate) monthStart = startDate;
+                    if (monthEnd > endDate) monthEnd = endDate;
+
+                    // 1. 計算Booked數據
+                    decimal bookedCommission = CalculateMonthlyCommission(
+                        bookedData,
+                        item => item.ReceivedDate,
+                        monthStart,
+                        monthEnd,
+                        item => item.TotalCommission);
+
+                    // 2. 計算InProgress數據（使用12%的Vertiv值）
+                    decimal inProgressCommission = CalculateMonthlyCommission(
+                        inProgressData,
+                        item => item.ReceivedDate,
+                        monthStart,
+                        monthEnd,
+                        item => item.VertivValue * 0.12m);
+
+                    // 3. 計算Completed數據
+                    decimal completedCommission = CalculateMonthlyCommission(
+                        completedData,
+                        item => item.CompletionDate.Value,
+                        monthStart,
+                        monthEnd,
+                        item => item.TotalCommission);
+
+                    // 計算合計
+                    decimal totalMonthlyCommission = bookedCommission + inProgressCommission + completedCommission;
+
+                    Debug.WriteLine($"月份{year}/{month:D2}: Booked=${bookedCommission:N2} + InProgress=${inProgressCommission:N2} + " +
+                                  $"Completed=${completedCommission:N2} = 總計${totalMonthlyCommission:N2}");
+
+                    // 添加到月度數據集合
+                    monthlyData.Add(new MonthlyDataItem
+                    {
+                        Year = year,
+                        Month = month,
+                        CommissionValue = totalMonthlyCommission,
+                        VertivValue = 0, // 不需要用於圖表
+                        RecordCount = 0  // 不需要用於圖表
+                    });
+                }
+
+                // 從月度數據生成圖表數據
+                var chartData = GenerateChartDataFromMonthlyData(monthlyData);
+
+                // 更新UI
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    TargetVsAchievementData = chartData;
+                    AchievementTrendData = chartData;
+
+                    // 設置Y軸最大值
+                    SetChartYAxisMaximum(chartData);
+                });
+
+                Debug.WriteLine("All狀態圖表數據載入完成（修正版）");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"載入All狀態圖表數據時出錯: {ex.Message}");
+                Debug.WriteLine(ex.StackTrace);
+
+                // 確保發生錯誤時顯示空圖表
+                await MainThread.InvokeOnMainThreadAsync(() => {
+                    TargetVsAchievementData = new ObservableCollection<ChartData>();
+                    AchievementTrendData = new ObservableCollection<ChartData>();
+                    YAxisMaximum = 5000;
+                });
+            }
+        }
+
+        // 輔助方法：獲取日期範圍內的所有月份
+        private List<(int Year, int Month)> GetAllMonthsInRange(DateTime startDate, DateTime endDate)
+        {
+            var result = new List<(int Year, int Month)>();
+            var currentMonth = new DateTime(startDate.Year, startDate.Month, 1);
+            var endMonth = new DateTime(endDate.Year, endDate.Month, 1);
+
+            while (currentMonth <= endMonth)
+            {
+                result.Add((currentMonth.Year, currentMonth.Month));
+                currentMonth = currentMonth.AddMonths(1);
+            }
+
+            return result;
+        }
+
+        // 輔助方法：計算月度佣金
+        private decimal CalculateMonthlyCommission<T>(
+            List<T> items,
+            Func<T, DateTime> dateSelector,
+            DateTime monthStart,
+            DateTime monthEnd,
+            Func<T, decimal> valueSelector)
+            where T : SalesData
+        {
+            return items
+                .Where(item => {
+                    var date = dateSelector(item);
+                    return date >= monthStart && date <= monthEnd;
+                })
+                .Sum(valueSelector);
+        }
+
+        private ObservableCollection<ChartData> GenerateChartDataFromMonthlyData(List<MonthlyDataItem> monthlyData)
+        {
+            var result = new ObservableCollection<ChartData>();
+
+            foreach (var item in monthlyData)
+            {
+                var label = $"{item.Year}/{item.Month:D2}";
+
+                // 轉換為千單位
+                decimal commissionInThousands = Math.Round(item.CommissionValue / 1000m, 2);
+
+                // 獲取月度目標
+                int fiscalYear = item.Month >= 8 ? item.Year + 1 : item.Year;
+                int quarter = GetQuarterFromMonth(item.Month);
+                decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3;
+                decimal targetInThousands = Math.Round(targetValue / 1000m, 2);
+
+                // 添加到結果集合
+                result.Add(new ChartData
+                {
+                    Label = label,
+                    Target = targetInThousands,
+                    Achievement = commissionInThousands
+                });
+
+                Debug.WriteLine($"圖表數據點: {label}, 目標=${targetInThousands:N2}K, 達成=${commissionInThousands:N2}K");
+            }
+
+            return result;
+        }
+
+        // 輔助方法：設置圖表Y軸最大值
+        private void SetChartYAxisMaximum(ObservableCollection<ChartData> chartData)
+        {
+            double maxTarget = 0;
+            double maxAchievement = 0;
+
+            if (chartData.Any())
+            {
+                maxTarget = (double)chartData.Max(d => d.Target);
+                maxAchievement = (double)chartData.Max(d => d.Achievement);
+            }
+
+            double maxValue = Math.Max(maxTarget, maxAchievement);
+            maxValue = Math.Max(maxValue * 1.2, 1000); // 增加20%空間，但確保至少為1000
+            YAxisMaximum = Math.Ceiling(maxValue);
+
+            Debug.WriteLine($"設置Y軸最大值: {YAxisMaximum}");
+        }
+
+
         // 載入圖表數據
         private async Task LoadChartDataAsync()
         {
@@ -677,6 +878,13 @@ namespace ScoreCard.ViewModels
 
                     Debug.WriteLine("沒有數據可用於圖表，顯示空圖表");
                     return;
+                }
+
+                // 關鍵修改：如果是 All 狀態，使用特殊的方法直接計算三種狀態的總和
+                if (IsAllStatus)
+                {
+                    await LoadChartDataForAllStatus();
+                    return; // 提前返回，不執行後續代碼
                 }
 
                 // 確認表格數據已經加載完成
@@ -711,7 +919,6 @@ namespace ScoreCard.ViewModels
                 Debug.WriteLine($"日期範圍內的月份數: {allMonthsInRange.Count}");
 
                 // 計算狀態相關數據
-                bool isAllStatus = IsAllStatus;
                 bool isInProgressStatus = IsInProgressStatus;
                 bool isBookedStatus = IsBookedStatus;
                 bool isCompletedStatus = IsCompletedStatus;
@@ -771,11 +978,6 @@ namespace ScoreCard.ViewModels
                             if (isInProgressStatus)
                             {
                                 // In Progress模式下使用預期佣金 (12% of Vertiv Value)
-                                monthlyCommission += item.VertivValue * 0.12m;
-                            }
-                            else if (isAllStatus && !item.CompletionDate.HasValue && item.TotalCommission == 0)
-                            {
-                                // All狀態下，對In Progress項目使用預期佣金
                                 monthlyCommission += item.VertivValue * 0.12m;
                             }
                             else
