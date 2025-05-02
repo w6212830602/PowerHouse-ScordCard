@@ -243,11 +243,11 @@
 
                                     <chart:SfCartesianChart.YAxes>
                                         <chart:NumericalAxis Minimum="0"
-                                         Maximum="{Binding YAxisMaximum}"
-                                         Interval="1"
-                                         ShowMajorGridLines="True">
+                        Maximum="1500"
+                        Interval="1"
+                        ShowMajorGridLines="True">
                                             <chart:NumericalAxis.MajorGridLineStyle>
-                                                <chart:ChartLineStyle StrokeWidth="1" StrokeDashArray="5,5"/>
+                                                <chart:ChartLineStyle StrokeWidth="1"/>
                                             </chart:NumericalAxis.MajorGridLineStyle>
                                         </chart:NumericalAxis>
                                     </chart:SfCartesianChart.YAxes>
@@ -304,7 +304,7 @@
         StrokeShape="RoundRectangle 4"
         BackgroundColor="White">
                         <Grid RowDefinitions="Auto,*" Padding="15">
-                            <Label Text="Achievement Trend"
+                            <Label Text="Achievement Trend (K)"
                TextColor="#1A1A1A"
                FontSize="16"
                FontAttributes="Bold"/>

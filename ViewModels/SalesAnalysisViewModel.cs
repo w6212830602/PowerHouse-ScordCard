@@ -672,7 +672,7 @@ namespace ScoreCard.ViewModels
                         TargetVsAchievementData = new ObservableCollection<ChartData>();
                         AchievementTrendData = new ObservableCollection<ChartData>();
                         // 設置一個合理的 Y 軸最大值
-                        YAxisMaximum = 5;
+                        YAxisMaximum = 5000;
                     });
 
                     Debug.WriteLine("沒有數據可用於圖表，顯示空圖表");
@@ -842,32 +842,34 @@ namespace ScoreCard.ViewModels
                 {
                     var label = $"{monthData.Year}/{monthData.Month:D2}";
 
-                    // 轉換為百萬單位
-                    decimal commissionValueInMillions = Math.Round(monthData.CommissionValue / 1000000m, 2);
+                    // 修改：轉換為千單位，而不是百萬單位
+                    decimal commissionValueInThousands = Math.Round(monthData.CommissionValue / 1000m, 2);
 
                     // 從目標服務獲取該月份的目標值
                     int fiscalYear = monthData.Month >= 8 ? monthData.Year + 1 : monthData.Year;
                     int quarter = GetQuarterFromMonth(monthData.Month);
                     decimal targetValue = _targetService.GetCompanyQuarterlyTarget(fiscalYear, quarter) / 3; // 將季度目標平均分配到月
-                    decimal targetValueInMillions = Math.Round(targetValue / 1000000m, 2);
+
+                    // 修改：轉換為千單位，而不是百萬單位
+                    decimal targetValueInThousands = Math.Round(targetValue / 1000m, 2);
 
                     // 添加到目標與達成對比圖表
                     newTargetVsAchievementData.Add(new ChartData
                     {
                         Label = label,
-                        Target = targetValueInMillions,
-                        Achievement = commissionValueInMillions
+                        Target = targetValueInThousands,
+                        Achievement = commissionValueInThousands
                     });
 
                     // 添加到達成趨勢圖表
                     newAchievementTrendData.Add(new ChartData
                     {
                         Label = label,
-                        Target = targetValueInMillions,
-                        Achievement = commissionValueInMillions
+                        Target = targetValueInThousands,
+                        Achievement = commissionValueInThousands
                     });
 
-                    Debug.WriteLine($"圖表數據點: {label}, 目標=${targetValueInMillions:N2}M, 達成=${commissionValueInMillions:N2}M");
+                    Debug.WriteLine($"圖表數據點: {label}, 目標=${targetValueInThousands:N2}K, 達成=${commissionValueInThousands:N2}K");
                 }
 
                 // 更新 UI
@@ -887,8 +889,8 @@ namespace ScoreCard.ViewModels
                     }
 
                     double maxValue = Math.Max(maxTarget, maxAchievement);
-                    maxValue = Math.Max(maxValue * 1.2, 1); // 增加 20% 空間，但確保至少為 1
-                    YAxisMaximum = Math.Min(2, Math.Ceiling(maxValue)); // 最大不超過2
+                    maxValue = Math.Max(maxValue * 1.2, 1000); // 增加 20% 空間，但確保至少為 1000
+                    YAxisMaximum = Math.Ceiling(maxValue); // 不再使用 Math.Min(2, ...) 限制
 
                     Debug.WriteLine($"設置 Y 軸最大值: {YAxisMaximum}");
                 });
@@ -906,7 +908,7 @@ namespace ScoreCard.ViewModels
                 {
                     TargetVsAchievementData = new ObservableCollection<ChartData>();
                     AchievementTrendData = new ObservableCollection<ChartData>();
-                    YAxisMaximum = 5;
+                    YAxisMaximum = 5000; // 調整為適合千單位的最大值
                 });
             }
         }
@@ -1565,7 +1567,7 @@ namespace ScoreCard.ViewModels
                 maxValue = Math.Ceiling(maxValue);
 
                 // 將最大值設為2，除非數據值超過2
-                YAxisMaximum = Math.Min(2, Math.Max(maxValue, 1));
+                YAxisMaximum = 1500;
 
                 Debug.WriteLine($"圖表 Y 軸最大值設為: {YAxisMaximum}");
             }
